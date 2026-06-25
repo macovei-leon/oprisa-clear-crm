@@ -454,7 +454,7 @@ export const TableViewer = () => {
           
           {showOnlyUnassigned && (
             <button 
-              onClick={() => { setShowOnlyUnassigned(false); setSelectedRowIndices(new Set()); }}
+              onClick={() => { setShowOnlyUnassigned(false); setSelectedRowIds(new Set()); }}
               className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 font-bold border border-amber-300 rounded-lg hover:bg-amber-200 transition-colors"
             >
               <X size={18} /> Anulează Filtru Nealocate
@@ -470,7 +470,7 @@ export const TableViewer = () => {
         </button>
       </div>
 
-      {unassignedCount > 0 && (
+      {unassignedCount > 0 && unassignedCount < data.length && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
           <div className="flex items-center gap-3 text-amber-800">
             <AlertCircle size={24} className="shrink-0" />
@@ -483,11 +483,11 @@ export const TableViewer = () => {
             onClick={() => {
               setShowOnlyUnassigned(true);
               // Select all unassigned rows automatically to prompt adding to campaign
-              const newUnassignedIndices = new Set();
-              data.forEach((r, idx) => {
-                if (r.crm_processed === false) newUnassignedIndices.add(idx);
+              const newUnassignedIds = new Set();
+              data.forEach((r) => {
+                if (r.crm_processed === false) newUnassignedIds.add(r.id);
               });
-              setSelectedRowIndices(newUnassignedIndices);
+              setSelectedRowIds(newUnassignedIds);
             }}
             className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition-colors"
           >
@@ -674,14 +674,14 @@ export const TableViewer = () => {
 
       <AppendToCampaignModal 
         isOpen={showAppendCampaignModal} 
-        onClose={() => { setShowAppendCampaignModal(false); setSelectedRowIndices(new Set()); }}
+        onClose={() => { setShowAppendCampaignModal(false); setSelectedRowIds(new Set()); }}
         selectedRowsData={selectedRowsData}
         tableName={tableName}
         isRepetitive={false}
       />
       <AppendToCampaignModal 
         isOpen={showAppendRepetitiveModal} 
-        onClose={() => { setShowAppendRepetitiveModal(false); setSelectedRowIndices(new Set()); }}
+        onClose={() => { setShowAppendRepetitiveModal(false); setSelectedRowIds(new Set()); }}
         selectedRowsData={selectedRowsData}
         tableName={tableName}
         isRepetitive={true}
@@ -689,14 +689,14 @@ export const TableViewer = () => {
 
       <CampaignBuilderModal 
         isOpen={showCampaignModal} 
-        onClose={() => { setShowCampaignModal(false); setSelectedRowIndices(new Set()); }}
+        onClose={() => { setShowCampaignModal(false); setSelectedRowIds(new Set()); }}
         selectedRowsData={selectedRowsData}
         tableName={tableName}
         visibleColumns={visibleColumns}
       />
       <CampaignBuilderModal 
         isOpen={showRepetitiveModal} 
-        onClose={() => { setShowRepetitiveModal(false); setSelectedRowIndices(new Set()); }}
+        onClose={() => { setShowRepetitiveModal(false); setSelectedRowIds(new Set()); }}
         selectedRowsData={selectedRowsData}
         tableName={tableName}
         visibleColumns={visibleColumns}
