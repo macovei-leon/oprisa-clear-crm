@@ -39,14 +39,8 @@ export const TableViewer = () => {
   // Replace/Append Data Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState(1);
-  const [uploadMode, setUploadMode] = useState('append'); // 'append' | 'overwrite'
-  const [matchColumn, setMatchColumn] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [excelFile, setExcelFile] = useState(null);
-  const [detectedColumns, setDetectedColumns] = useState([]);
   const [parsedRows, setParsedRows] = useState([]);
-  const [hideUnassignedBanner, setHideUnassignedBanner] = useState(false);
-  const [justUploaded, setJustUploaded] = useState(false);
+  const [newlySyncedRowIds, setNewlySyncedRowIds] = useState([]);
 
   useEffect(() => {
     fetchTableData();
@@ -247,7 +241,9 @@ export const TableViewer = () => {
   };
 
   const executeImport = async () => {
-    if (uploadMode === 'overwrite') {
+    const isSmartSync = data.length > 0;
+    
+    if (isSmartSync) {
        if (!confirm("Ești sigur? Sincronizarea inteligentă va modifica tabelul existent.")) return;
     }
     
@@ -284,7 +280,9 @@ export const TableViewer = () => {
         return newRow;
       });
 
-      if (uploadMode === 'overwrite' && matchColumn) {
+      let insertedIds = [];
+
+      if (isSmartSync && matchColumn) {
         // Smart Sync logic
         const newCol = detectedColumns.find(c => c.sanitized === matchColumn)?.original;
         
@@ -357,7 +355,9 @@ export const TableViewer = () => {
         if (newRowsToInsert.length > 0) {
           for (let i = 0; i < newRowsToInsert.length; i += 500) {
             const batch = newRowsToInsert.slice(i, i + 500);
-            await supabase.from(tableName).insert(batch);
+            const { data: inserted, error } = await supabase.from(tableName).insert(batch).select('id');
+            if (error) throw error;
+            if (inserted) insertedIds.push(...inserted.map(r => r.id));
           }
         }
 
@@ -366,16 +366,16 @@ export const TableViewer = () => {
         // Normal Append
         for (let i = 0; i < mappedRows.length; i += 500) {
           const batch = mappedRows.slice(i, i + 500);
-          const { error: insertError } = await supabase.from(tableName).insert(batch);
+          const { data: inserted, error: insertError } = await supabase.from(tableName).insert(batch).select('id');
           if (insertError) throw insertError;
+          if (inserted) insertedIds.push(...inserted.map(r => r.id));
         }
         alert('Date adăugate cu succes!');
       }
 
       setIsModalOpen(false);
       resetModal();
-      setJustUploaded(true);
-      setHideUnassignedBanner(false);
+      setNewlySyncedRowIds(insertedIds);
       fetchTableData(); // refresh UI
     } catch (err) {
       console.error(err);
@@ -456,22 +456,7 @@ export const TableViewer = () => {
             <Filter size={18} /> Filtre Smart
           </button>
 
-          {unassignedCount > 0 && (!justUploaded || hideUnassignedBanner) && (
-            <button 
-              onClick={() => {
-                setShowOnlyUnassigned(true);
-                const newUnassignedIds = new Set();
-                data.forEach((r) => {
-                  if (r.crm_processed === false) newUnassignedIds.add(r.id);
-                });
-                setSelectedRowIds(newUnassignedIds);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 font-bold border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
-              title="Afișează și selectează rândurile nealocate"
-            >
-              <AlertCircle size={18} /> {unassignedCount} Nealocate
-            </button>
-          )}
+          {/* REMOVED UNASSIGNED BANNER AND BUTTON */}
           
           {showOnlyUnassigned && (
             <button 
@@ -491,36 +476,31 @@ export const TableViewer = () => {
         </button>
       </div>
 
-      {!hideUnassignedBanner && justUploaded && unassignedCount > 0 && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 relative">
-          <button 
-            onClick={() => setHideUnassignedBanner(true)} 
-            className="absolute top-2 right-2 text-amber-600 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-full p-1 transition-colors"
-            title="Ascunde alerta"
-          >
-            <X size={14} />
-          </button>
-          <div className="flex items-center gap-3 text-amber-800">
-            <AlertCircle size={24} className="shrink-0" />
+      {newlySyncedRowIds.length > 0 && (
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl shadow-sm flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 relative">
+          <div className="flex items-center gap-3 text-emerald-800">
+            <CheckCircle2 size={24} className="shrink-0" />
             <div>
-              <p className="font-bold">Ai {unassignedCount} înregistrări noi nealocate!</p>
-              <p className="text-sm">Aceste rânduri au fost importate recent și nu sunt încă adăugate într-o campanie.</p>
+              <p className="font-bold">Sincronizare completă! Au fost adăugați {newlySyncedRowIds.length} angajați noi.</p>
+              <p className="text-sm">Aceste rânduri au fost identificate ca fiind complet noi în urma importului.</p>
             </div>
           </div>
-          <button 
-            onClick={() => {
-              setShowOnlyUnassigned(true);
-              // Select all unassigned rows automatically to prompt adding to campaign
-              const newUnassignedIds = new Set();
-              data.forEach((r) => {
-                if (r.crm_processed === false) newUnassignedIds.add(r.id);
-              });
-              setSelectedRowIds(newUnassignedIds);
-            }}
-            className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition-colors mr-6"
-          >
-            Afișează și Selectează Rândurile Noi
-          </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => {
+                setSelectedRowIds(new Set(newlySyncedRowIds));
+              }}
+              className="shrink-0 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-colors"
+            >
+              Afișează și Selectează Rândurile Noi
+            </button>
+            <button 
+              onClick={() => setNewlySyncedRowIds([])}
+              className="shrink-0 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-lg shadow-sm transition-colors"
+            >
+              Am înțeles, Continuă
+            </button>
+          </div>
         </div>
       )}
 
@@ -745,35 +725,23 @@ export const TableViewer = () => {
             <div className="p-6 overflow-y-auto">
               {modalStep === 1 ? (
                 <form onSubmit={analyzeFile} className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-slate-700">Mod de Încărcare / Upload Mode</label>
-                    <select 
-                      value={uploadMode} 
-                      onChange={e => setUploadMode(e.target.value)}
-                      className="p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white"
-                    >
-                      <option value="append">Adaugă Date Noi (Append - Păstrează datele vechi)</option>
-                      <option value="overwrite">Suprascrie Tot (Overwrite - Șterge datele vechi)</option>
-                    </select>
-                  </div>
-                  
-                  {uploadMode === 'overwrite' && (
+                  {data.length > 0 ? (
                     <div className="p-4 bg-indigo-50 text-indigo-800 rounded-lg flex gap-3 text-sm border border-indigo-200">
                       <AlertCircle className="shrink-0" size={20} />
                       <div>
                         <p><strong>SINCRONIZARE INTELIGENTĂ:</strong></p>
                         <ul className="list-disc ml-5 mt-1">
-                          <li>Rândurile care nu se mai găsesc în noul fișier vor fi marcate ca "Exclus/Lipsă" în campanii, dar NU vor fi șterse din sarcinile existente.</li>
+                          <li>Tabelul conține deja date. Importul va rula în modul de sincronizare inteligentă.</li>
+                          <li>Rândurile care nu se mai găsesc în noul fișier vor fi marcate ca "Exclus/Lipsă" în campanii.</li>
                           <li>Rândurile existente vor fi actualizate cu noile date.</li>
-                          <li>Rândurile complet noi vor fi adăugate ca "Nealocate".</li>
+                          <li>Rândurile noi vor fi adăugate la final.</li>
                         </ul>
                       </div>
                     </div>
-                  )}
-                  {uploadMode === 'append' && (
-                    <div className="p-4 bg-indigo-50 text-indigo-800 rounded-lg flex gap-3 text-sm border border-indigo-200">
+                  ) : (
+                    <div className="p-4 bg-emerald-50 text-emerald-800 rounded-lg flex gap-3 text-sm border border-emerald-200">
                       <AlertCircle className="shrink-0" size={20} />
-                      <p><strong>INFORMAȚIE:</strong> Rândurile noi vor fi adăugate la finalul tabelului. Datele existente vor fi păstrate. Rândurile adăugate vor fi marcate ca "Nealocate" (noi).</p>
+                      <p><strong>INFORMAȚIE:</strong> Tabelul este gol. Toate rândurile din fișier vor fi inserate.</p>
                     </div>
                   )}
 
@@ -790,7 +758,7 @@ export const TableViewer = () => {
                 </form>
               ) : (
                 <div className="flex flex-col gap-6">
-                  {uploadMode === 'append' || data.length === 0 ? (
+                  {data.length === 0 ? (
                     <div className="bg-emerald-50 text-emerald-800 p-4 rounded-lg flex items-start gap-3">
                       <CheckCircle2 className="shrink-0 mt-0.5" size={20} />
                       <div>
