@@ -325,27 +325,22 @@ export const TableViewer = () => {
           
           // Badge tasks as missing
           try {
-            const badgeDdl = `
-              CREATE OR REPLACE FUNCTION public.mark_tasks_missing(p_ids uuid[])
-              RETURNS void AS $$
-              BEGIN
-                UPDATE public.crm_tasks
-                SET row_data = jsonb_set(row_data, '{is_missing}', 'true'::jsonb)
-                WHERE row_data->>'id' = ANY(p_ids::text[]);
-
-                UPDATE public.crm_repetitive_tasks
-                SET row_data = jsonb_set(row_data, '{is_missing}', 'true'::jsonb)
-                WHERE row_data->>'id' = ANY(p_ids::text[]);
-              END;
-              $$ LANGUAGE plpgsql SECURITY DEFINER;
-              NOTIFY pgrst, 'reload schema';
-            `;
-            await supabase.rpc('execute_ddl', { query_text: badgeDdl });
-            await new Promise(r => setTimeout(r, 1000)); // wait for PostgREST cache to reload
-
+            // Update crm_tasks
             for (let i = 0; i < missingIds.length; i += 500) {
               const batch = missingIds.slice(i, i + 500);
-              await supabase.rpc('mark_tasks_missing', { p_ids: batch });
+              const batchSql = batch.map(id => `'${id}'`).join(',');
+              
+              const updateSql = `
+                UPDATE public.crm_tasks 
+                SET row_data = jsonb_set(row_data, '{is_missing}', 'true'::jsonb) 
+                WHERE row_data->>'id' IN (${batchSql});
+
+                UPDATE public.crm_repetitive_tasks 
+                SET row_data = jsonb_set(row_data, '{is_missing}', 'true'::jsonb) 
+                WHERE row_data->>'id' IN (${batchSql});
+              `;
+              
+              await supabase.rpc('execute_ddl', { query_text: updateSql });
             }
           } catch (badgeErr) {
             console.error("Eroare la marcarea badge-urilor:", badgeErr);
