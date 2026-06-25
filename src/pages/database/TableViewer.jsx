@@ -28,7 +28,7 @@ export const TableViewer = () => {
   const itemsPerPage = 100;
 
   // Row Selection State
-  const [selectedRowIndices, setSelectedRowIndices] = useState(new Set());
+  const [selectedRowIds, setSelectedRowIds] = useState(new Set());
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [showRepetitiveModal, setShowRepetitiveModal] = useState(false);
   
@@ -68,10 +68,10 @@ export const TableViewer = () => {
       // 2. Fetch Data (Fetch all in chunks to allow client-side filtering)
       let allData = [];
       let from = 0;
-      const step = 5000;
+      const step = 1000;
       
       while (true) {
-        const { data: tableData, error: dataErr } = await supabase.from(tableName).select('*').range(from, from + step - 1);
+        const { data: tableData, error: dataErr } = await supabase.from(tableName).select('*').order('id').range(from, from + step - 1);
         if (dataErr) {
           if (dataErr.code === '42P01') {
             // Table does not exist (maybe newly created frontend card without DB backend)
@@ -175,33 +175,32 @@ export const TableViewer = () => {
     return filteredData.slice(start, start + itemsPerPage);
   }, [filteredData, currentPage]);
 
-  const toggleRowSelection = (absoluteIndex) => {
-    setSelectedRowIndices(prev => {
+  const toggleRowSelection = (rowId) => {
+    setSelectedRowIds(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(absoluteIndex)) newSet.delete(absoluteIndex);
-      else newSet.add(absoluteIndex);
+      if (newSet.has(rowId)) newSet.delete(rowId);
+      else newSet.add(rowId);
       return newSet;
     });
   };
 
   const toggleAllPageSelection = () => {
-    const start = (currentPage - 1) * itemsPerPage;
-    const pageIndices = Array.from({ length: paginatedData.length }, (_, i) => start + i);
-    const allSelected = pageIndices.every(idx => selectedRowIndices.has(idx));
+    const pageIds = paginatedData.map(row => row.id);
+    const allSelected = pageIds.every(id => selectedRowIds.has(id));
     
-    setSelectedRowIndices(prev => {
+    setSelectedRowIds(prev => {
       const newSet = new Set(prev);
-      pageIndices.forEach(idx => {
-        if (allSelected) newSet.delete(idx);
-        else newSet.add(idx);
+      pageIds.forEach(id => {
+        if (allSelected) newSet.delete(id);
+        else newSet.add(id);
       });
       return newSet;
     });
   };
 
   const selectedRowsData = useMemo(() => {
-    return Array.from(selectedRowIndices).map(idx => filteredData[idx]).filter(Boolean);
-  }, [selectedRowIndices, filteredData]);
+    return data.filter(row => selectedRowIds.has(row.id));
+  }, [selectedRowIds, data]);
 
   // ---- OVERWRITE LOGIC ----
   const handleFileChange = (e) => {
@@ -562,11 +561,11 @@ export const TableViewer = () => {
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-4 border-b border-slate-200 w-10">
+                  <th className="px-4 py-4 text-left font-bold text-slate-700 bg-slate-50 w-12 sticky left-0 z-10 border-r border-slate-200">
                     <input 
                       type="checkbox" 
-                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
-                      checked={paginatedData.length > 0 && paginatedData.every((_, i) => selectedRowIndices.has((currentPage - 1) * itemsPerPage + i))}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      checked={paginatedData.length > 0 && paginatedData.every(row => selectedRowIds.has(row.id))}
                       onChange={toggleAllPageSelection}
                     />
                   </th>
@@ -579,20 +578,17 @@ export const TableViewer = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {paginatedData.map((row, idx) => {
-                  const absoluteIndex = (currentPage - 1) * itemsPerPage + idx;
-                  const isSelected = selectedRowIndices.has(absoluteIndex);
                   return (
                     <tr 
-                      key={idx} 
-                      onClick={() => toggleRowSelection(absoluteIndex)}
-                      className={`transition-colors cursor-pointer ${isSelected ? 'bg-indigo-50/60' : 'hover:bg-slate-50/50'}`}
+                      key={row.id || idx} 
+                      className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${selectedRowIds.has(row.id) ? 'bg-indigo-50/50' : ''}`}
                     >
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-slate-50 border-r border-slate-200">
                         <input 
                           type="checkbox" 
-                          className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
-                          checked={isSelected}
-                          onChange={() => toggleRowSelection(absoluteIndex)}
+                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                          checked={selectedRowIds.has(row.id)}
+                          onChange={() => toggleRowSelection(row.id)}
                         />
                       </td>
                       {columns.filter(c => visibleColumns.includes(c)).map(col => (
@@ -633,14 +629,14 @@ export const TableViewer = () => {
       </div>
 
       {/* Floating Action Bar for Selected Rows */}
-      {selectedRowIndices.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 z-40 border border-slate-700 animate-in slide-in-from-bottom-10 fade-in duration-300">
-          <div className="flex items-center gap-3 border-r border-slate-600 pr-6">
-            <div className="bg-indigo-500 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{selectedRowIndices.size}</div>
+      {selectedRowIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 z-40 border border-slate-700 animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <div className="flex items-center gap-3 border-r border-slate-700 pr-6">
+            <div className="bg-indigo-500 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{selectedRowIds.size}</div>
             <span className="font-semibold text-sm">rânduri selectate</span>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setSelectedRowIndices(new Set())} className="text-slate-300 hover:text-white text-sm font-semibold transition-colors">Deselectează</button>
+            <button onClick={() => setSelectedRowIds(new Set())} className="text-slate-300 hover:text-white text-sm font-semibold transition-colors">Deselectează</button>
             
             <div className="flex flex-col gap-2">
               <div className="flex gap-2 justify-end">
