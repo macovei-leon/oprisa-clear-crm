@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #4f46e5;
+  --color-secondary: #818cf8;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --card-border: rgba(255, 255, 255, 0.5);
+  --border-radius-sm: 0.5rem;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background-size: 400% 400%;
+  animation: gradientAnim 15s ease infinite;
+  overflow: hidden;
+  position: relative;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+@keyframes gradientAnim {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Animated Floating Orbs */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  z-index: 0;
+  animation: float 20s infinite ease-in-out alternate;
+}
+
+.orb-1 {
+  width: 300px; height: 300px;
+  background: #38bdf8;
+  top: -100px; left: -100px;
+}
+
+.orb-2 {
+  width: 400px; height: 400px;
+  background: #818cf8;
+  bottom: -150px; right: -100px;
+  animation-delay: -5s;
+}
+
+.orb-3 {
+  width: 250px; height: 250px;
+  background: #f472b6;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  animation-duration: 25s;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(50px, 50px) scale(1.1); }
+}
+
+/* Glassmorphism Auth Card */
+.auth-container {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  border-radius: 1.5rem;
+  width: 100%;
+  max-width: 600px;
+  min-height: 500px;
+  padding: 4rem 3rem;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Auth Button Animations */
+.auth-btn {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+  transition: all 0.3s ease;
+}
+
+.auth-btn::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: 0.5s;
+}
+
+.auth-btn:hover::after {
+  left: 100%;
+}
+
+.auth-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
+}

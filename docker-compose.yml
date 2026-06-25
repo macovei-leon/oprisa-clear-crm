@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  oprisa-clear-crm:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: oprisa-clear-crm
+    ports:
+      - "3050:80"
+    restart: unless-stopped
+    # If deploying to Coolify with Traefik later, you can add Traefik labels here
+    # similar to your oprisa ultimate crm project, but for now this exposes port 3050.
