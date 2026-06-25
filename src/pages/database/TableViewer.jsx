@@ -348,8 +348,12 @@ export const TableViewer = () => {
         }
 
         // Execute UPDATES
-        for (let row of rowsToUpdate) {
-          await supabase.from(tableName).update(row).eq('id', row.id);
+        if (rowsToUpdate.length > 0) {
+          for (let i = 0; i < rowsToUpdate.length; i += 500) {
+            const batch = rowsToUpdate.slice(i, i + 500);
+            const { error: updateError } = await supabase.from(tableName).upsert(batch);
+            if (updateError) throw updateError;
+          }
         }
 
         // Execute INSERTS
