@@ -65,7 +65,8 @@ export const AuthProvider = ({ children }) => {
       email,
       password,
       options: {
-        data: { name, department_id }
+        data: { name, department_id },
+        emailRedirectTo: window.location.origin
       }
     });
   };
