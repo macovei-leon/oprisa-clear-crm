@@ -48,8 +48,7 @@ export const Sidebar = () => {
         const { data: tasks, error: tasksError } = await supabase
           .from('crm_tasks')
           .select('campaign_id')
-          .eq('assigned_to', profile.id)
-          .eq('completed', false);
+          .eq('assigned_to', profile.id);
 
         if (tasksError) throw tasksError;
         campaignIds = [...new Set(tasks.map(t => t.campaign_id))];
@@ -57,8 +56,7 @@ export const Sidebar = () => {
         const { data: repTasks, error: repTasksError } = await supabase
           .from('crm_repetitive_tasks')
           .select('repetitive_flow_id')
-          .eq('assigned_to', profile.id)
-          .eq('completed', false);
+          .eq('assigned_to', profile.id);
 
         if (repTasksError) throw repTasksError;
         const flowIds = [...new Set(repTasks.map(t => t.repetitive_flow_id))];

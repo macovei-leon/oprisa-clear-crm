@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSwitcher, Alert } from '../components/auth/Shared';
-import { Bolt, Clock, MailOpen, ChevronDown } from 'lucide-react';
+import { Bolt, Clock, MailOpen, ChevronDown, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export const AuthPage = ({ forceView }) => {

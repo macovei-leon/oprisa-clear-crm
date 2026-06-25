@@ -10,6 +10,7 @@ export const KanbanBoard = ({ campaign }) => {
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
   const [activeTabIdx, setActiveTabIdx] = useState(0);
+  const [viewMode, setViewMode] = useState('mine'); // 'mine' | 'all'
 
   const steps = campaign?.steps || [];
   
@@ -28,7 +29,7 @@ export const KanbanBoard = ({ campaign }) => {
       fetchTasks();
       setActiveTabIdx(0); // Reset tab when campaign changes
     }
-  }, [campaign]);
+  }, [campaign, viewMode]);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -39,8 +40,8 @@ export const KanbanBoard = ({ campaign }) => {
         .eq('campaign_id', campaign.id);
         // We fetch ALL tasks including completed ones now, so we can show them in Category tabs
 
-      // If operator, only see own tasks. Admin sees all.
-      if (profile?.role !== 'admin') {
+      // If operator and viewMode is 'mine', only see own tasks. Admin sees all.
+      if (profile?.role !== 'admin' && viewMode === 'mine') {
         query = query.eq('assigned_to', profile?.id);
       }
 
@@ -103,8 +104,26 @@ export const KanbanBoard = ({ campaign }) => {
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">{campaign.name}</h2>
           <p className="text-sm text-slate-500 mt-1 font-medium">{campaign.description || 'Nicio descriere adăugată.'}</p>
         </div>
-        <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold border border-indigo-100 flex items-center gap-2">
-          <Activity size={16} /> Total Sarcini: {tasks.length}
+        <div className="flex items-center gap-4">
+          {profile?.role !== 'admin' && (
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button 
+                onClick={() => setViewMode('mine')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'mine' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Atribuite Mie
+              </button>
+              <button 
+                onClick={() => setViewMode('all')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'all' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Toate
+              </button>
+            </div>
+          )}
+          <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold border border-indigo-100 flex items-center gap-2">
+            <Activity size={16} /> Total Sarcini: {tasks.length}
+          </div>
         </div>
       </div>
 
