@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Target, Trash2, Archive, RefreshCw, AlertTriangle, Calendar } from 'lucide-react';
+import { Target, Trash2, Archive, RefreshCw, AlertTriangle, Calendar, Edit } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { RepetitiveHistoryModal } from './RepetitiveHistoryModal';
+import { CampaignBuilderModal } from '../campaigns/CampaignBuilderModal';
 
 export const CampaignManagement = ({ filterType, isRepetitive, setGlobalAlert }) => {
   const { t } = useLanguage();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [historyFlow, setHistoryFlow] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
 
   const fetchCampaigns = async () => {
     setLoading(true);
@@ -127,6 +129,13 @@ export const CampaignManagement = ({ filterType, isRepetitive, setGlobalAlert })
                         </button>
                       )}
                       <button 
+                        onClick={() => setEditingItem(c)}
+                        className="px-3 py-1.5 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 rounded flex items-center gap-1 transition-colors"
+                        title="Editează"
+                      >
+                        <Edit size={14} /> Editează
+                      </button>
+                      <button 
                         onClick={() => handleArchive(c.id)}
                         className="px-3 py-1.5 text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 rounded flex items-center gap-1 transition-colors"
                         title={t.btnArchive || "Arhivează"}
@@ -185,6 +194,15 @@ export const CampaignManagement = ({ filterType, isRepetitive, setGlobalAlert })
       
       {historyFlow && (
         <RepetitiveHistoryModal flow={historyFlow} onClose={() => setHistoryFlow(null)} />
+      )}
+      
+      {editingItem && (
+        <CampaignBuilderModal 
+          isOpen={!!editingItem} 
+          onClose={() => { setEditingItem(null); fetchCampaigns(); }} 
+          initialData={editingItem} 
+          isRepetitive={isRepetitive} 
+        />
       )}
     </div>
   );

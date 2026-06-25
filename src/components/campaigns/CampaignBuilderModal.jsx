@@ -8,7 +8,7 @@ const generateId = () => {
     : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
 
-export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableName, visibleColumns = [], isRepetitive = false }) => {
+export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], tableName = '', visibleColumns = [], isRepetitive = false, initialData = null }) => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [workers, setWorkers] = useState([]);
@@ -39,9 +39,25 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
 
   useEffect(() => {
     if (isOpen) {
-      fetchWorkers();
+      if (initialData) {
+        setTitle(initialData.name || '');
+        setDescription(initialData.description || '');
+        setCampaignSteps(initialData.steps || [
+          {
+            id: generateId(),
+            name: '',
+            description: '',
+            branches: [{ id: generateId(), label: 'Pas Următor', action: 'next', color: 'success' }]
+          }
+        ]);
+        if (isRepetitive && initialData.reset_interval_hours) {
+          setResetIntervalHours(initialData.reset_interval_hours);
+        }
+      } else {
+        fetchWorkers();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   const fetchWorkers = async () => {
     const { data } = await supabase
@@ -129,8 +145,8 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
   };
 
   const launchCampaign = async () => {
-    if (!title.trim()) return alert("Introduceți un titlu pentru campanie.");
-    if (totalAssigned !== selectedRowsData.length) return alert(`Ați distribuit ${totalAssigned} sarcini din ${selectedRowsData.length}. Trebuie să le distribuiți pe toate.`);
+    if (!title.trim()) return alert("Introduceți un titlu.");
+    if (!initialData && totalAssigned !== selectedRowsData.length) return alert(`Ați distribuit ${totalAssigned} sarcini din ${selectedRowsData.length}. Trebuie să le distribuiți pe toate.`);
     
     // Validate steps
     for (let s of campaignSteps) {
@@ -146,7 +162,23 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
       const tableFlows = isRepetitive ? 'crm_repetitive_flows' : 'crm_campaigns';
       const tableTasks = isRepetitive ? 'crm_repetitive_tasks' : 'crm_tasks';
 
-      // Create campaign in db
+      if (initialData) {
+        // Edit Mode
+        const updateData = {
+          name: title.trim(),
+          description: description.trim(),
+          steps: campaignSteps,
+        };
+        if (isRepetitive) updateData.reset_interval_hours = resetIntervalHours;
+
+        const { error } = await supabase.from(tableFlows).update(updateData).eq('id', initialData.id);
+        if (error) throw error;
+        alert("Modificările au fost salvate cu succes!");
+        onClose();
+        return;
+      }
+
+      // Create Mode
       const insertData = {
         name: title.trim(),
         description: description.trim(),
@@ -204,7 +236,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
       onClose(); // and trigger a refresh upstream to uncheck rows
     } catch (err) {
       console.error(err);
-      alert("Eroare la crearea campaniei: " + err.message);
+      alert("Eroare la operare: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -220,7 +252,10 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
             <Activity className="text-indigo-600" />
-            {isRepetitive ? "Creează Flux Repetitiv" : "Creează Campanie Sarcini"}
+            {initialData 
+              ? (isRepetitive ? "Editează Flux Repetitiv" : "Editează Campanie")
+              : (isRepetitive ? "Creează Flux Repetitiv" : "Creează Campanie Sarcini")
+            }
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-white p-1 rounded-full shadow-sm">
             <X size={20} />
@@ -232,10 +267,12 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
           
           {/* Left Column: Metadata & Distribution */}
           <div className="flex-1 flex flex-col gap-5">
-            <div className="bg-blue-50 text-blue-800 p-4 rounded-xl font-bold text-sm border border-blue-200 flex justify-between items-center">
-              <span>{selectedRowsData.length} Rânduri Selectate din `{tableName}`</span>
-              <span>Pasul 1 / 2</span>
-            </div>
+            {!initialData && (
+              <div className="bg-blue-50 text-blue-800 p-4 rounded-xl font-bold text-sm border border-blue-200 flex justify-between items-center">
+                <span>{selectedRowsData.length} Rânduri Selectate din `{tableName}`</span>
+                <span>Pasul 1 / 2</span>
+              </div>
+            )}
 
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
               <h3 className="font-bold text-slate-700">{isRepetitive ? "Detalii Flux" : "Detalii Campanie"}</h3>
@@ -265,37 +302,39 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
               )}
             </div>
 
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-slate-700 flex items-center gap-2"><Users size={16}/> Distribuire Sarcini</h3>
-                <button onClick={distributeEvenly} className="text-xs bg-slate-100 px-3 py-1 font-bold rounded hover:bg-slate-200 border">Distribuie Egal</button>
-              </div>
-              <div className="max-h-48 overflow-y-auto flex flex-col gap-2">
-                {workers.map(w => (
-                  <div key={w.id} className="flex justify-between items-center p-2 bg-slate-50 border rounded-lg">
-                    <div>
-                      <div className="font-bold text-sm text-slate-800">{w.name || w.email}</div>
-                      <div className="text-xs text-slate-500 uppercase">{w.role} - {w.departments?.name || '-'}</div>
+            {!initialData && (
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-slate-700 flex items-center gap-2"><Users size={16}/> Distribuire Sarcini</h3>
+                  <button onClick={distributeEvenly} className="text-xs bg-slate-100 px-3 py-1 font-bold rounded hover:bg-slate-200 border">Distribuie Egal</button>
+                </div>
+                <div className="max-h-48 overflow-y-auto flex flex-col gap-2">
+                  {workers.map(w => (
+                    <div key={w.id} className="flex justify-between items-center p-2 bg-slate-50 border rounded-lg">
+                      <div>
+                        <div className="font-bold text-sm text-slate-800">{w.name || w.email}</div>
+                        <div className="text-xs text-slate-500 uppercase">{w.role} - {w.departments?.name || '-'}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="number" min="0" 
+                          value={workerSplits.find(s=>s.id===w.id)?.count || 0}
+                          onChange={(e) => handleSplitChange(w.id, e.target.value)}
+                          className="w-16 p-1 text-center border rounded text-sm font-bold"
+                        />
+                        <span className="text-xs text-slate-500">sarcini</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="number" min="0" 
-                        value={workerSplits.find(s=>s.id===w.id)?.count || 0}
-                        onChange={(e) => handleSplitChange(w.id, e.target.value)}
-                        className="w-16 p-1 text-center border rounded text-sm font-bold"
-                      />
-                      <span className="text-xs text-slate-500">sarcini</span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="flex justify-between items-center font-bold text-sm border-t pt-2">
+                  <span>Total Distribuit:</span>
+                  <span className={totalAssigned !== selectedRowsData.length ? 'text-red-500' : 'text-emerald-600'}>
+                    {totalAssigned} / {selectedRowsData.length}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between items-center font-bold text-sm border-t pt-2">
-                <span>Total Distribuit:</span>
-                <span className={totalAssigned !== selectedRowsData.length ? 'text-red-500' : 'text-emerald-600'}>
-                  {totalAssigned} / {selectedRowsData.length}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Right Column: Dynamic Steps */}
@@ -394,7 +433,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
         <div className="p-4 border-t border-slate-200 bg-white flex justify-end gap-3">
           <button onClick={onClose} disabled={loading} className="px-6 py-2 border rounded-lg font-bold text-slate-600 hover:bg-slate-50">Anulează</button>
           <button onClick={launchCampaign} disabled={loading} className="px-8 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-50">
-            {loading ? 'Se procesează...' : 'Lansează Campanie'} <ArrowRight size={18} />
+            {loading ? 'Se procesează...' : (initialData ? 'Salvează Modificările' : 'Lansează Campanie')} <ArrowRight size={18} />
           </button>
         </div>
       </div>
