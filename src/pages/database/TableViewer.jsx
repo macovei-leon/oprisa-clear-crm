@@ -46,6 +46,7 @@ export const TableViewer = () => {
   const [detectedColumns, setDetectedColumns] = useState([]);
   const [parsedRows, setParsedRows] = useState([]);
   const [hideUnassignedBanner, setHideUnassignedBanner] = useState(false);
+  const [justUploaded, setJustUploaded] = useState(false);
 
   useEffect(() => {
     fetchTableData();
@@ -373,6 +374,8 @@ export const TableViewer = () => {
 
       setIsModalOpen(false);
       resetModal();
+      setJustUploaded(true);
+      setHideUnassignedBanner(false);
       fetchTableData(); // refresh UI
     } catch (err) {
       console.error(err);
@@ -452,6 +455,23 @@ export const TableViewer = () => {
           >
             <Filter size={18} /> Filtre Smart
           </button>
+
+          {unassignedCount > 0 && (!justUploaded || hideUnassignedBanner) && (
+            <button 
+              onClick={() => {
+                setShowOnlyUnassigned(true);
+                const newUnassignedIds = new Set();
+                data.forEach((r) => {
+                  if (r.crm_processed === false) newUnassignedIds.add(r.id);
+                });
+                setSelectedRowIds(newUnassignedIds);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 font-bold border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+              title="Afișează și selectează rândurile nealocate"
+            >
+              <AlertCircle size={18} /> {unassignedCount} Nealocate
+            </button>
+          )}
           
           {showOnlyUnassigned && (
             <button 
@@ -471,7 +491,7 @@ export const TableViewer = () => {
         </button>
       </div>
 
-      {!hideUnassignedBanner && unassignedCount > 0 && unassignedCount < data.length && (
+      {!hideUnassignedBanner && justUploaded && unassignedCount > 0 && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 relative">
           <button 
             onClick={() => setHideUnassignedBanner(true)} 
