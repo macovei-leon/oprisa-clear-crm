@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, Users, Activity, Plus, Trash2, ArrowRight } from 'lucide-react';
 
+const generateId = () => {
+  return (crypto && crypto.randomUUID) 
+    ? crypto.randomUUID() 
+    : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
 export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableName, visibleColumns = [], isRepetitive = false }) => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -22,11 +28,11 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
   // Campaign Steps & Branches
   const [campaignSteps, setCampaignSteps] = useState([
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: '',
       description: '',
       branches: [
-        { id: crypto.randomUUID(), label: 'Pas Următor', action: 'next', color: 'success' }
+        { id: generateId(), label: 'Pas Următor', action: 'next', color: 'success' }
       ]
     }
   ]);
@@ -74,10 +80,10 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
   // --- Step Builder Helpers ---
   const addStep = () => {
     setCampaignSteps([...campaignSteps, {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: '',
       description: '',
-      branches: [{ id: crypto.randomUUID(), label: 'Continuă', action: 'next', color: 'success' }]
+      branches: [{ id: generateId(), label: 'Continuă', action: 'next', color: 'success' }]
     }]);
   };
 
@@ -94,7 +100,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData, tableN
       if (s.id === stepId) {
         return {
           ...s,
-          branches: [...s.branches, { id: crypto.randomUUID(), label: 'Opțiune nouă', action: 'next', color: 'primary' }]
+          branches: [...s.branches, { id: generateId(), label: 'Opțiune nouă', action: 'next', color: 'primary' }]
         };
       }
       return s;
