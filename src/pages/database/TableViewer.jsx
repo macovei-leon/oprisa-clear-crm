@@ -45,6 +45,7 @@ export const TableViewer = () => {
   const [excelFile, setExcelFile] = useState(null);
   const [detectedColumns, setDetectedColumns] = useState([]);
   const [parsedRows, setParsedRows] = useState([]);
+  const [hideUnassignedBanner, setHideUnassignedBanner] = useState(false);
 
   useEffect(() => {
     fetchTableData();
@@ -470,8 +471,15 @@ export const TableViewer = () => {
         </button>
       </div>
 
-      {unassignedCount > 0 && unassignedCount < data.length && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
+      {!hideUnassignedBanner && unassignedCount > 0 && unassignedCount < data.length && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 relative">
+          <button 
+            onClick={() => setHideUnassignedBanner(true)} 
+            className="absolute top-2 right-2 text-amber-600 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-full p-1 transition-colors"
+            title="Ascunde alerta"
+          >
+            <X size={14} />
+          </button>
           <div className="flex items-center gap-3 text-amber-800">
             <AlertCircle size={24} className="shrink-0" />
             <div>
@@ -489,7 +497,7 @@ export const TableViewer = () => {
               });
               setSelectedRowIds(newUnassignedIds);
             }}
-            className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition-colors"
+            className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition-colors mr-6"
           >
             Afișează și Selectează Rândurile Noi
           </button>
