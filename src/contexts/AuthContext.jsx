@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
     // Fetch profile to check status and role
     const { data, error } = await supabase
       .from('profiles')
-      .select('status, role')
+      .select('*')
       .eq('id', currentUser.id)
       .single();
 
