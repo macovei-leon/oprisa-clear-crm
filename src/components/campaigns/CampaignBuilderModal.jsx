@@ -24,6 +24,9 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], t
   
   // Worker Splits (Array of { id, count })
   const [workerSplits, setWorkerSplits] = useState([]);
+  
+  // Existing tasks when editing
+  const [existingTasks, setExistingTasks] = useState([]);
 
   // Campaign Steps & Branches
   const [campaignSteps, setCampaignSteps] = useState([
@@ -53,24 +56,43 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], t
         if (isRepetitive && initialData.reset_interval_hours) {
           setResetIntervalHours(initialData.reset_interval_hours);
         }
-      } else {
-        fetchWorkers();
       }
+      fetchWorkers();
     }
   }, [isOpen, initialData]);
 
   const fetchWorkers = async () => {
-    const { data } = await supabase
+    const { data: activeWorkers } = await supabase
       .from('profiles')
       .select('id, name, email, role, status, departments(name)')
       .in('status', ['approved'])
       .order('name');
       
-    const activeWorkers = data || [];
-    setWorkers(activeWorkers);
+    const workersList = activeWorkers || [];
+    setWorkers(workersList);
     
-    // Initialize splits with 0
-    setWorkerSplits(activeWorkers.map(w => ({ id: w.id, count: 0 })));
+    if (initialData) {
+      // Fetch current task distribution
+      const tableTasks = isRepetitive ? 'crm_repetitive_tasks' : 'crm_tasks';
+      const colName = isRepetitive ? 'repetitive_flow_id' : 'campaign_id';
+      const { data: tasks } = await supabase
+        .from(tableTasks)
+        .select('id, assigned_to')
+        .eq(colName, initialData.id);
+        
+      const taskList = tasks || [];
+      setExistingTasks(taskList);
+      
+      const counts = {};
+      taskList.forEach(t => {
+        counts[t.assigned_to] = (counts[t.assigned_to] || 0) + 1;
+      });
+      
+      setWorkerSplits(workersList.map(w => ({ id: w.id, count: counts[w.id] || 0 })));
+    } else {
+      // Initialize splits with 0
+      setWorkerSplits(workersList.map(w => ({ id: w.id, count: 0 })));
+    }
   };
 
   const handleSplitChange = (workerId, value) => {
@@ -79,7 +101,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], t
   };
 
   const distributeEvenly = () => {
-    const total = selectedRowsData.length;
+    const total = initialData ? existingTasks.length : selectedRowsData.length;
     if (total === 0 || workers.length === 0) return;
     
     const base = Math.floor(total / workers.length);
@@ -146,7 +168,11 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], t
 
   const launchCampaign = async () => {
     if (!title.trim()) return alert("Introduceți un titlu.");
-    if (!initialData && totalAssigned !== selectedRowsData.length) return alert(`Ați distribuit ${totalAssigned} sarcini din ${selectedRowsData.length}. Trebuie să le distribuiți pe toate.`);
+    
+    const totalAvailable = initialData ? existingTasks.length : selectedRowsData.length;
+    if (totalAssigned !== totalAvailable) {
+      return alert(`Ați distribuit ${totalAssigned} sarcini din ${totalAvailable}. Trebuie să le distribuiți pe toate.`);
+    }
     
     // Validate steps
     for (let s of campaignSteps) {
@@ -173,6 +199,26 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], t
 
         const { error } = await supabase.from(tableFlows).update(updateData).eq('id', initialData.id);
         if (error) throw error;
+
+        // Reassign tasks if distribution changed
+        let taskIdx = 0;
+        const updates = [];
+        for (let split of workerSplits) {
+          for (let i = 0; i < split.count; i++) {
+            const task = existingTasks[taskIdx];
+            if (task && task.assigned_to !== split.id) {
+              updates.push(
+                supabase.from(tableTasks).update({ assigned_to: split.id }).eq('id', task.id)
+              );
+            }
+            taskIdx++;
+          }
+        }
+        
+        if (updates.length > 0) {
+          await Promise.all(updates);
+        }
+
         alert("Modificările au fost salvate cu succes!");
         onClose();
         return;
@@ -274,6 +320,13 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], t
               </div>
             )}
 
+            {initialData && (
+              <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl font-bold text-sm border border-emerald-200 flex justify-between items-center">
+                <span>Total Sarcini în {isRepetitive ? "Flux" : "Campanie"}: {existingTasks.length}</span>
+                <span>Editare</span>
+              </div>
+            )}
+
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
               <h3 className="font-bold text-slate-700">{isRepetitive ? "Detalii Flux" : "Detalii Campanie"}</h3>
               <div>
@@ -302,39 +355,37 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], t
               )}
             </div>
 
-            {!initialData && (
-              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-slate-700 flex items-center gap-2"><Users size={16}/> Distribuire Sarcini</h3>
-                  <button onClick={distributeEvenly} className="text-xs bg-slate-100 px-3 py-1 font-bold rounded hover:bg-slate-200 border">Distribuie Egal</button>
-                </div>
-                <div className="max-h-48 overflow-y-auto flex flex-col gap-2">
-                  {workers.map(w => (
-                    <div key={w.id} className="flex justify-between items-center p-2 bg-slate-50 border rounded-lg">
-                      <div>
-                        <div className="font-bold text-sm text-slate-800">{w.name || w.email}</div>
-                        <div className="text-xs text-slate-500 uppercase">{w.role} - {w.departments?.name || '-'}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="number" min="0" 
-                          value={workerSplits.find(s=>s.id===w.id)?.count || 0}
-                          onChange={(e) => handleSplitChange(w.id, e.target.value)}
-                          className="w-16 p-1 text-center border rounded text-sm font-bold"
-                        />
-                        <span className="text-xs text-slate-500">sarcini</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-between items-center font-bold text-sm border-t pt-2">
-                  <span>Total Distribuit:</span>
-                  <span className={totalAssigned !== selectedRowsData.length ? 'text-red-500' : 'text-emerald-600'}>
-                    {totalAssigned} / {selectedRowsData.length}
-                  </span>
-                </div>
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-slate-700 flex items-center gap-2"><Users size={16}/> {initialData ? "Redistribuire Sarcini Existente" : "Distribuire Sarcini Noi"}</h3>
+                <button onClick={distributeEvenly} className="text-xs bg-slate-100 px-3 py-1 font-bold rounded hover:bg-slate-200 border">Distribuie Egal</button>
               </div>
-            )}
+              <div className="max-h-48 overflow-y-auto flex flex-col gap-2">
+                {workers.map(w => (
+                  <div key={w.id} className="flex justify-between items-center p-2 bg-slate-50 border rounded-lg">
+                    <div>
+                      <div className="font-bold text-sm text-slate-800">{w.name || w.email}</div>
+                      <div className="text-xs text-slate-500 uppercase">{w.role} - {w.departments?.name || '-'}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" min="0" 
+                        value={workerSplits.find(s=>s.id===w.id)?.count || 0}
+                        onChange={(e) => handleSplitChange(w.id, e.target.value)}
+                        className="w-16 p-1 text-center border rounded text-sm font-bold"
+                      />
+                      <span className="text-xs text-slate-500">sarcini</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between items-center font-bold text-sm border-t pt-2">
+                <span>Total Distribuit:</span>
+                <span className={totalAssigned !== (initialData ? existingTasks.length : selectedRowsData.length) ? 'text-red-500' : 'text-emerald-600'}>
+                  {totalAssigned} / {initialData ? existingTasks.length : selectedRowsData.length}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Right Column: Dynamic Steps */}
