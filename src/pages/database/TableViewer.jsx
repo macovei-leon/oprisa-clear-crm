@@ -338,8 +338,10 @@ export const TableViewer = () => {
                 WHERE row_data->>'id' = ANY(p_ids::text[]);
               END;
               $$ LANGUAGE plpgsql SECURITY DEFINER;
+              NOTIFY pgrst, 'reload schema';
             `;
             await supabase.rpc('execute_ddl', { query_text: badgeDdl });
+            await new Promise(r => setTimeout(r, 1000)); // wait for PostgREST cache to reload
 
             for (let i = 0; i < missingIds.length; i += 500) {
               const batch = missingIds.slice(i, i + 500);
