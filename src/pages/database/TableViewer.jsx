@@ -851,8 +851,8 @@ export const TableViewer = () => {
 
                   <div className="flex gap-4">
                     <button onClick={() => setModalStep(1)} disabled={uploading} className="flex-1 py-3 border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-50">Înapoi / Back</button>
-                    <button onClick={executeImport} disabled={uploading || (uploadMode === 'overwrite' && data.length > 0 && !matchColumn)} className={`flex-[2] py-3 text-white font-bold rounded-lg flex justify-center items-center ${(uploadMode === 'overwrite' && data.length > 0 && !matchColumn) ? 'bg-slate-400 cursor-not-allowed' : (uploadMode === 'overwrite' && data.length > 0 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700')}`}>
-                      {uploading ? 'Se procesează / Processing...' : (uploadMode === 'overwrite' && data.length > 0 ? 'Sincronizează Datele / Sync Data' : 'Adaugă Datele Noi / Append')}
+                    <button onClick={executeImport} disabled={uploading || (data.length > 0 && !matchColumn)} className={`flex-[2] py-3 text-white font-bold rounded-lg flex justify-center items-center ${(data.length > 0 && !matchColumn) ? 'bg-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                      {uploading ? 'Se procesează / Processing...' : (data.length > 0 ? 'Sincronizează Datele / Sync Data' : 'Adaugă Datele Noi / Append')}
                     </button>
                   </div>
                 </div>
