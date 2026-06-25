@@ -322,26 +322,25 @@ export const TableViewer = () => {
           
           // Badge tasks as missing
           try {
-            // Update crm_tasks
+            const badgeDdl = `
+              CREATE OR REPLACE FUNCTION public.mark_tasks_missing(p_ids uuid[])
+              RETURNS void AS $$
+              BEGIN
+                UPDATE public.crm_tasks
+                SET row_data = jsonb_set(row_data, '{is_missing}', 'true'::jsonb)
+                WHERE row_data->>'id' = ANY(p_ids::text[]);
+
+                UPDATE public.crm_repetitive_tasks
+                SET row_data = jsonb_set(row_data, '{is_missing}', 'true'::jsonb)
+                WHERE row_data->>'id' = ANY(p_ids::text[]);
+              END;
+              $$ LANGUAGE plpgsql SECURITY DEFINER;
+            `;
+            await supabase.rpc('execute_ddl', { query_text: badgeDdl });
+
             for (let i = 0; i < missingIds.length; i += 500) {
               const batch = missingIds.slice(i, i + 500);
-              const batchSql = batch.map(id => `'${id}'`).join(',');
-              
-              // We use RPC or raw query. Since we can't do arbitrary raw queries easily on jsonb in supabase-js, 
-              // we can fetch the tasks and update them.
-              const { data: tasks } = await supabase.from('crm_tasks').select('id, row_data').in('row_data->>id', batch);
-              if (tasks && tasks.length > 0) {
-                for (let task of tasks) {
-                  await supabase.from('crm_tasks').update({ row_data: { ...task.row_data, is_missing: true } }).eq('id', task.id);
-                }
-              }
-
-              const { data: repTasks } = await supabase.from('crm_repetitive_tasks').select('id, row_data').in('row_data->>id', batch);
-              if (repTasks && repTasks.length > 0) {
-                for (let task of repTasks) {
-                  await supabase.from('crm_repetitive_tasks').update({ row_data: { ...task.row_data, is_missing: true } }).eq('id', task.id);
-                }
-              }
+              await supabase.rpc('mark_tasks_missing', { p_ids: batch });
             }
           } catch (badgeErr) {
             console.error("Eroare la marcarea badge-urilor:", badgeErr);
@@ -767,7 +766,7 @@ export const TableViewer = () => {
                 </form>
               ) : (
                 <div className="flex flex-col gap-6">
-                  {uploadMode === 'append' ? (
+                  {uploadMode === 'append' || data.length === 0 ? (
                     <div className="bg-emerald-50 text-emerald-800 p-4 rounded-lg flex items-start gap-3">
                       <CheckCircle2 className="shrink-0 mt-0.5" size={20} />
                       <div>
@@ -856,8 +855,8 @@ export const TableViewer = () => {
 
                   <div className="flex gap-4">
                     <button onClick={() => setModalStep(1)} disabled={uploading} className="flex-1 py-3 border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-50">Înapoi / Back</button>
-                    <button onClick={executeImport} disabled={uploading || (uploadMode === 'overwrite' && !matchColumn)} className={`flex-[2] py-3 text-white font-bold rounded-lg flex justify-center items-center ${(uploadMode === 'overwrite' && !matchColumn) ? 'bg-slate-400 cursor-not-allowed' : (uploadMode === 'overwrite' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700')}`}>
-                      {uploading ? 'Se procesează / Processing...' : (uploadMode === 'overwrite' ? 'Sincronizează Datele / Sync Data' : 'Adaugă Datele Noi / Append')}
+                    <button onClick={executeImport} disabled={uploading || (uploadMode === 'overwrite' && data.length > 0 && !matchColumn)} className={`flex-[2] py-3 text-white font-bold rounded-lg flex justify-center items-center ${(uploadMode === 'overwrite' && data.length > 0 && !matchColumn) ? 'bg-slate-400 cursor-not-allowed' : (uploadMode === 'overwrite' && data.length > 0 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700')}`}>
+                      {uploading ? 'Se procesează / Processing...' : (uploadMode === 'overwrite' && data.length > 0 ? 'Sincronizează Datele / Sync Data' : 'Adaugă Datele Noi / Append')}
                     </button>
                   </div>
                 </div>
