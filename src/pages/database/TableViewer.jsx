@@ -39,6 +39,10 @@ export const TableViewer = () => {
   // Replace/Append Data Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState(1);
+  const [matchColumn, setMatchColumn] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [excelFile, setExcelFile] = useState(null);
+  const [detectedColumns, setDetectedColumns] = useState([]);
   const [parsedRows, setParsedRows] = useState([]);
   const [newlySyncedRowIds, setNewlySyncedRowIds] = useState([]);
 
