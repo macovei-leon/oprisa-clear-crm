@@ -181,6 +181,7 @@ export const KanbanBoard = ({ campaign }) => {
             {activeTasks.map(task => {
               const rowData = task.row_data || {};
               const titleStr = rowData.nume_complet || rowData.nume || rowData.name || rowData.denumire || rowData.titlu || 'FIȘĂ DOSAR CAMPANIE SARCINI';
+              const isMissing = rowData.is_missing;
               
               const totalSteps = steps.length;
               const progressPercent = totalSteps > 0 ? ((task.active_step_idx + 1) / totalSteps) * 100 : 0;
@@ -190,15 +191,20 @@ export const KanbanBoard = ({ campaign }) => {
                 <div 
                   key={task.id}
                   onClick={() => setSelectedTask(task)}
-                  className={`bg-white p-4 rounded-xl border shadow-sm hover:shadow-md cursor-pointer transition-all group flex flex-col justify-between min-h-[160px] relative overflow-hidden ${isClosed ? 'border-emerald-200 hover:border-emerald-300' : 'border-slate-200 hover:border-indigo-300'}`}
+                  className={`bg-white p-4 rounded-xl border shadow-sm hover:shadow-md cursor-pointer transition-all group flex flex-col justify-between min-h-[160px] relative overflow-hidden ${isClosed ? 'border-emerald-200 hover:border-emerald-300' : isMissing ? 'border-red-300 hover:border-red-400' : 'border-slate-200 hover:border-indigo-300'}`}
                 >
                   {/* Subtle top color bar */}
-                  <div className={`absolute top-0 left-0 right-0 h-1 transition-colors ${isClosed ? 'bg-emerald-300 group-hover:bg-emerald-400' : 'bg-indigo-100 group-hover:bg-indigo-400'}`}></div>
+                  <div className={`absolute top-0 left-0 right-0 h-1 transition-colors ${isClosed ? 'bg-emerald-300 group-hover:bg-emerald-400' : isMissing ? 'bg-red-300 group-hover:bg-red-400' : 'bg-indigo-100 group-hover:bg-indigo-400'}`}></div>
                   
                   <div>
                     <div className="flex justify-between items-start mb-3 mt-1">
                       <span className="font-black text-slate-800 line-clamp-1 text-base">{titleStr}</span>
                     </div>
+                    {isMissing && (
+                      <div className="mb-2 bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center w-fit">
+                        🚨 Exclus din baza de date
+                      </div>
+                    )}
                     
                     {/* Quick Data Fields */}
                     <div className="text-[11px] text-slate-600 flex flex-col gap-1.5 mb-4 font-medium">

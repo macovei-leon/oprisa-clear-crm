@@ -278,8 +278,22 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], t
         if (taskErr) throw taskErr;
       }
 
+      // Mark the rows as processed in the original custom table
+      const rowIds = selectedRowsData.map(r => r.id).filter(Boolean);
+      if (rowIds.length > 0 && tableName) {
+        for (let i = 0; i < rowIds.length; i += 500) {
+          const batchIds = rowIds.slice(i, i + 500);
+          const { error: markErr } = await supabase
+            .from(tableName)
+            .update({ crm_processed: true })
+            .in('id', batchIds);
+          if (markErr) console.error("Eroare la marcarea rândurilor ca procesate:", markErr);
+        }
+      }
+
       alert(isRepetitive ? "Flux repetitiv lansat cu succes!" : "Campanie lansată cu succes!");
       onClose(); // and trigger a refresh upstream to uncheck rows
+      window.location.reload();
     } catch (err) {
       console.error(err);
       alert("Eroare la operare: " + err.message);

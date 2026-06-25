@@ -124,6 +124,7 @@ export const DatabasePage = () => {
         const createSql = `
           CREATE TABLE IF NOT EXISTS public."${formData.tableName}" (
               id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+              crm_processed boolean DEFAULT false,
               ${selectedCols.map(c => `"${c.sanitized}" text`).join(',\n')}
           );
           ALTER TABLE public."${formData.tableName}" ENABLE ROW LEVEL SECURITY;

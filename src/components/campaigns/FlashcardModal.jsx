@@ -42,6 +42,11 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                   {status}
                 </span>
               )}
+              {rowData.is_missing && (
+                <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full border border-red-200 flex items-center gap-1">
+                  🚨 Exclus din baza de date
+                </span>
+              )}
             </div>
             {city && (
               <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-1 font-medium">

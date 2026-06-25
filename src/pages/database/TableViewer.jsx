@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { ArrowLeft, Upload, Search, Filter, Trash2, CheckCircle2, AlertCircle, X, ChevronDown, Eye } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { CampaignBuilderModal } from '../../components/campaigns/CampaignBuilderModal';
+import { AppendToCampaignModal } from '../../components/campaigns/AppendToCampaignModal';
 
 export const TableViewer = () => {
   const { tableName } = useParams();
@@ -20,6 +21,7 @@ export const TableViewer = () => {
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showColumnsPanel, setShowColumnsPanel] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState([]);
+  const [showOnlyUnassigned, setShowOnlyUnassigned] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,9 +32,15 @@ export const TableViewer = () => {
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [showRepetitiveModal, setShowRepetitiveModal] = useState(false);
   
-  // Replace Data Modal State
+  // Append to Existing Modals
+  const [showAppendCampaignModal, setShowAppendCampaignModal] = useState(false);
+  const [showAppendRepetitiveModal, setShowAppendRepetitiveModal] = useState(false);
+  
+  // Replace/Append Data Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState(1);
+  const [uploadMode, setUploadMode] = useState('append'); // 'append' | 'overwrite'
+  const [matchColumn, setMatchColumn] = useState('');
   const [uploading, setUploading] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
   const [detectedColumns, setDetectedColumns] = useState([]);
@@ -49,7 +57,7 @@ export const TableViewer = () => {
       const { data: schemaCols, error: schemaErr } = await supabase.rpc('get_table_columns', { p_table_name: tableName });
       if (schemaErr) throw schemaErr;
       
-      const cols = schemaCols ? schemaCols.map(c => c.column_name).filter(c => c !== 'id') : [];
+      const cols = schemaCols ? schemaCols.map(c => c.column_name).filter(c => c !== 'id' && c !== 'crm_processed') : [];
       setColumns(cols);
       
       // Initialize visible columns if empty
@@ -85,9 +93,15 @@ export const TableViewer = () => {
       
       // Auto-extract column names if schema RPC failed but we have data
       if (cols.length === 0 && allData.length > 0) {
-        const fallbackCols = Object.keys(allData[0]).filter(k => k !== 'id');
+        const fallbackCols = Object.keys(allData[0]).filter(k => k !== 'id' && k !== 'crm_processed');
         setColumns(fallbackCols);
         if (visibleColumns.length === 0) setVisibleColumns(fallbackCols);
+      }
+      
+      // Auto-add crm_processed if missing
+      if (schemaCols && !schemaCols.some(c => c.column_name === 'crm_processed')) {
+         const ddlSql = `ALTER TABLE public."${tableName}" ADD COLUMN IF NOT EXISTS crm_processed boolean DEFAULT false;\nNOTIFY pgrst, 'reload schema';`;
+         await supabase.rpc('execute_ddl', { query_text: ddlSql });
       }
     } catch (err) {
       console.error(err);
@@ -124,6 +138,9 @@ export const TableViewer = () => {
 
   const filteredData = useMemo(() => {
     return data.filter(row => {
+      // 0. Unassigned filter
+      if (showOnlyUnassigned && row.crm_processed !== false) return false;
+
       // 1. Global Search (matches any column)
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -228,8 +245,10 @@ export const TableViewer = () => {
     reader.readAsArrayBuffer(excelFile);
   };
 
-  const executeOverwrite = async () => {
-    if (!confirm("Ești sigur? Această acțiune va șterge COMPLET datele existente din tabel și le va înlocui cu cele noi.")) return;
+  const executeImport = async () => {
+    if (uploadMode === 'overwrite') {
+       if (!confirm("Ești sigur? Sincronizarea inteligentă va modifica tabelul existent.")) return;
+    }
     
     setUploading(true);
     try {
@@ -240,7 +259,8 @@ export const TableViewer = () => {
       if (newCols.length > 0 || columns.length === 0) {
         const ddlSql = `
           CREATE TABLE IF NOT EXISTS public."${tableName}" (
-            id uuid DEFAULT gen_random_uuid() PRIMARY KEY
+            id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+            crm_processed boolean DEFAULT false
           );
           ${selectedCols.map(c => `ALTER TABLE public."${tableName}" ADD COLUMN IF NOT EXISTS "${c.sanitized}" text;`).join('\n')}
           ALTER TABLE public."${tableName}" ENABLE ROW LEVEL SECURITY;
@@ -252,13 +272,9 @@ export const TableViewer = () => {
         await new Promise(r => setTimeout(r, 1000));
       }
 
-      // 2. DELETE ALL EXISTING DATA
-      const { error: delError } = await supabase.from(tableName).delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all trick
-      if (delError) throw delError;
-
-      // 3. Insert new data
+      // Map new rows
       const mappedRows = parsedRows.map(row => {
-        const newRow = {};
+        const newRow = { crm_processed: false };
         selectedCols.forEach(col => {
           let val = row[col.original];
           if (val instanceof Date) val = val.toISOString();
@@ -267,13 +283,95 @@ export const TableViewer = () => {
         return newRow;
       });
 
-      for (let i = 0; i < mappedRows.length; i += 500) {
-        const batch = mappedRows.slice(i, i + 500);
-        const { error: insertError } = await supabase.from(tableName).insert(batch);
-        if (insertError) throw insertError;
+      if (uploadMode === 'overwrite' && matchColumn) {
+        // Smart Sync logic
+        const newCol = detectedColumns.find(c => c.sanitized === matchColumn)?.original;
+        
+        const newRowsToInsert = [];
+        const rowsToUpdate = [];
+        
+        // Find updates and inserts
+        mappedRows.forEach((row, idx) => {
+          const matchValue = String(parsedRows[idx][newCol]);
+          const existingRow = data.find(d => String(d[matchColumn]) === matchValue);
+          
+          if (existingRow) {
+            // Found it, add ID so we can update
+            rowsToUpdate.push({ ...row, id: existingRow.id, crm_processed: existingRow.crm_processed });
+          } else {
+            // New row
+            newRowsToInsert.push(row);
+          }
+        });
+
+        // Find missing rows (deleted)
+        const newKeys = new Set(parsedRows.map(r => String(r[newCol])));
+        const missingIds = [];
+        data.forEach(d => {
+          if (!newKeys.has(String(d[matchColumn]))) {
+            missingIds.push(d.id);
+          }
+        });
+
+        // Execute DELETES
+        if (missingIds.length > 0) {
+          for (let i = 0; i < missingIds.length; i += 500) {
+            const batch = missingIds.slice(i, i + 500);
+            await supabase.from(tableName).delete().in('id', batch);
+          }
+          
+          // Badge tasks as missing
+          try {
+            // Update crm_tasks
+            for (let i = 0; i < missingIds.length; i += 500) {
+              const batch = missingIds.slice(i, i + 500);
+              const batchSql = batch.map(id => `'${id}'`).join(',');
+              
+              // We use RPC or raw query. Since we can't do arbitrary raw queries easily on jsonb in supabase-js, 
+              // we can fetch the tasks and update them.
+              const { data: tasks } = await supabase.from('crm_tasks').select('id, row_data').in('row_data->>id', batch);
+              if (tasks && tasks.length > 0) {
+                for (let task of tasks) {
+                  await supabase.from('crm_tasks').update({ row_data: { ...task.row_data, is_missing: true } }).eq('id', task.id);
+                }
+              }
+
+              const { data: repTasks } = await supabase.from('crm_repetitive_tasks').select('id, row_data').in('row_data->>id', batch);
+              if (repTasks && repTasks.length > 0) {
+                for (let task of repTasks) {
+                  await supabase.from('crm_repetitive_tasks').update({ row_data: { ...task.row_data, is_missing: true } }).eq('id', task.id);
+                }
+              }
+            }
+          } catch (badgeErr) {
+            console.error("Eroare la marcarea badge-urilor:", badgeErr);
+          }
+        }
+
+        // Execute UPDATES
+        for (let row of rowsToUpdate) {
+          await supabase.from(tableName).update(row).eq('id', row.id);
+        }
+
+        // Execute INSERTS
+        if (newRowsToInsert.length > 0) {
+          for (let i = 0; i < newRowsToInsert.length; i += 500) {
+            const batch = newRowsToInsert.slice(i, i + 500);
+            await supabase.from(tableName).insert(batch);
+          }
+        }
+
+        alert('Sincronizare completă!');
+      } else {
+        // Normal Append
+        for (let i = 0; i < mappedRows.length; i += 500) {
+          const batch = mappedRows.slice(i, i + 500);
+          const { error: insertError } = await supabase.from(tableName).insert(batch);
+          if (insertError) throw insertError;
+        }
+        alert('Date adăugate cu succes!');
       }
 
-      alert('Tabel suprascris cu succes!');
       setIsModalOpen(false);
       resetModal();
       fetchTableData(); // refresh UI
@@ -290,7 +388,12 @@ export const TableViewer = () => {
     setExcelFile(null);
     setDetectedColumns([]);
     setParsedRows([]);
+    setMatchColumn('');
   };
+
+  const unassignedCount = useMemo(() => {
+    return data.filter(r => r.crm_processed === false).length;
+  }, [data]);
 
   return (
     <MainLayout title={`Bază Date / ${tableName}`} subtitle="Vizualizare și administrare date">
@@ -350,6 +453,15 @@ export const TableViewer = () => {
           >
             <Filter size={18} /> Filtre Smart
           </button>
+          
+          {showOnlyUnassigned && (
+            <button 
+              onClick={() => { setShowOnlyUnassigned(false); setSelectedRowIndices(new Set()); }}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 font-bold border border-amber-300 rounded-lg hover:bg-amber-200 transition-colors"
+            >
+              <X size={18} /> Anulează Filtru Nealocate
+            </button>
+          )}
         </div>
 
         <button 
@@ -359,6 +471,32 @@ export const TableViewer = () => {
           <Upload size={18} /> Încărcare Date / Upload Data
         </button>
       </div>
+
+      {unassignedCount > 0 && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-center gap-3 text-amber-800">
+            <AlertCircle size={24} className="shrink-0" />
+            <div>
+              <p className="font-bold">Ai {unassignedCount} înregistrări noi nealocate!</p>
+              <p className="text-sm">Aceste rânduri au fost importate recent și nu sunt încă adăugate într-o campanie.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              setShowOnlyUnassigned(true);
+              // Select all unassigned rows automatically to prompt adding to campaign
+              const newUnassignedIndices = new Set();
+              data.forEach((r, idx) => {
+                if (r.crm_processed === false) newUnassignedIndices.add(idx);
+              });
+              setSelectedRowIndices(newUnassignedIndices);
+            }}
+            className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition-colors"
+          >
+            Afișează și Selectează Rândurile Noi
+          </button>
+        </div>
+      )}
 
       {/* Filter Panel */}
       {showFilterPanel && (
@@ -504,23 +642,55 @@ export const TableViewer = () => {
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => setSelectedRowIndices(new Set())} className="text-slate-300 hover:text-white text-sm font-semibold transition-colors">Deselectează</button>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setShowCampaignModal(true)}
-                className="bg-indigo-500 hover:bg-indigo-400 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg transition-colors flex items-center gap-2"
-              >
-                Creează Campanie Sarcini
-              </button>
-              <button 
-                onClick={() => setShowRepetitiveModal(true)}
-                className="bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg transition-colors flex items-center gap-2"
-              >
-                Creează Flux Repetitiv
-              </button>
+            
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2 justify-end">
+                <button 
+                  onClick={() => setShowAppendCampaignModal(true)}
+                  className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg transition-colors flex items-center gap-2"
+                >
+                  + Campanie Existentă
+                </button>
+                <button 
+                  onClick={() => setShowAppendRepetitiveModal(true)}
+                  className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg transition-colors flex items-center gap-2"
+                >
+                  + Flux Existent
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowCampaignModal(true)}
+                  className="bg-indigo-500 hover:bg-indigo-400 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg transition-colors flex items-center gap-2"
+                >
+                  Campanie Nouă
+                </button>
+                <button 
+                  onClick={() => setShowRepetitiveModal(true)}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg transition-colors flex items-center gap-2"
+                >
+                  Flux Repetitiv Nou
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      <AppendToCampaignModal 
+        isOpen={showAppendCampaignModal} 
+        onClose={() => { setShowAppendCampaignModal(false); setSelectedRowIndices(new Set()); }}
+        selectedRowsData={selectedRowsData}
+        tableName={tableName}
+        isRepetitive={false}
+      />
+      <AppendToCampaignModal 
+        isOpen={showAppendRepetitiveModal} 
+        onClose={() => { setShowAppendRepetitiveModal(false); setSelectedRowIndices(new Set()); }}
+        selectedRowsData={selectedRowsData}
+        tableName={tableName}
+        isRepetitive={true}
+      />
 
       <CampaignBuilderModal 
         isOpen={showCampaignModal} 
@@ -552,10 +722,38 @@ export const TableViewer = () => {
             <div className="p-6 overflow-y-auto">
               {modalStep === 1 ? (
                 <form onSubmit={analyzeFile} className="flex flex-col gap-5">
-                  <div className="p-4 bg-red-50 text-red-800 rounded-lg flex gap-3 text-sm border border-red-200">
-                    <Trash2 className="shrink-0" size={20} />
-                    <p><strong>ATENȚIE / WARNING!</strong> Această acțiune va șterge TOATE rândurile existente din tabelul <code>{tableName}</code> și le va înlocui complet cu datele din noul fișier. / This action will DELETE ALL existing rows and replace them with the new file.</p>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-bold text-slate-700">Mod de Încărcare / Upload Mode</label>
+                    <select 
+                      value={uploadMode} 
+                      onChange={e => setUploadMode(e.target.value)}
+                      className="p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white"
+                    >
+                      <option value="append">Adaugă Date Noi (Append - Păstrează datele vechi)</option>
+                      <option value="overwrite">Suprascrie Tot (Overwrite - Șterge datele vechi)</option>
+                    </select>
                   </div>
+                  
+                  {uploadMode === 'overwrite' && (
+                    <div className="p-4 bg-indigo-50 text-indigo-800 rounded-lg flex gap-3 text-sm border border-indigo-200">
+                      <AlertCircle className="shrink-0" size={20} />
+                      <div>
+                        <p><strong>SINCRONIZARE INTELIGENTĂ:</strong></p>
+                        <ul className="list-disc ml-5 mt-1">
+                          <li>Rândurile care nu se mai găsesc în noul fișier vor fi marcate ca "Exclus/Lipsă" în campanii, dar NU vor fi șterse din sarcinile existente.</li>
+                          <li>Rândurile existente vor fi actualizate cu noile date.</li>
+                          <li>Rândurile complet noi vor fi adăugate ca "Nealocate".</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  {uploadMode === 'append' && (
+                    <div className="p-4 bg-indigo-50 text-indigo-800 rounded-lg flex gap-3 text-sm border border-indigo-200">
+                      <AlertCircle className="shrink-0" size={20} />
+                      <p><strong>INFORMAȚIE:</strong> Rândurile noi vor fi adăugate la finalul tabelului. Datele existente vor fi păstrate. Rândurile adăugate vor fi marcate ca "Nealocate" (noi).</p>
+                    </div>
+                  )}
+
                   <div>
                     <label htmlFor="file-upload-overwrite" className="border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center hover:bg-indigo-50 transition-colors bg-indigo-50/30 cursor-pointer flex flex-col items-center justify-center w-full">
                       <input type="file" id="file-upload-overwrite" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileChange} />
@@ -569,12 +767,67 @@ export const TableViewer = () => {
                 </form>
               ) : (
                 <div className="flex flex-col gap-6">
-                  <div className="bg-emerald-50 text-emerald-800 p-4 rounded-lg flex items-start gap-3">
-                    <CheckCircle2 className="shrink-0 mt-0.5" size={20} />
-                    <div>
-                      <p className="text-sm">Se vor insera / Will insert <strong>{parsedRows.length} rânduri noi / new rows</strong>. Analizați corespondența coloanelor mai jos. Dacă o coloană nouă apare în Excel, aceasta va fi adăugată automat la structura tabelului curent. / Analyze column mapping below.</p>
+                  {uploadMode === 'append' ? (
+                    <div className="bg-emerald-50 text-emerald-800 p-4 rounded-lg flex items-start gap-3">
+                      <CheckCircle2 className="shrink-0 mt-0.5" size={20} />
+                      <div>
+                        <p className="text-sm">Se vor insera / Will insert <strong>{parsedRows.length} rânduri noi / new rows</strong>. Analizați corespondența coloanelor mai jos. Dacă o coloană nouă apare în Excel, aceasta va fi adăugată automat la structura tabelului curent.</p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-indigo-50 border border-indigo-200 p-5 rounded-xl flex flex-col gap-4">
+                      <div className="flex items-center gap-3 text-indigo-800">
+                        <AlertCircle className="shrink-0" size={20} />
+                        <h3 className="font-bold">Sincronizare Inteligentă</h3>
+                      </div>
+                      
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm font-bold text-slate-700">Alege coloana unică pentru a potrivi rândurile (ex: Email, Nume):</label>
+                        <select 
+                          value={matchColumn} 
+                          onChange={e => setMatchColumn(e.target.value)}
+                          className="p-3 border border-slate-300 rounded-lg text-sm bg-white"
+                        >
+                          <option value="">-- Selectează o coloană --</option>
+                          {detectedColumns.filter(c => c.matchesExisting).map(c => (
+                            <option key={c.sanitized} value={c.sanitized}>{c.original} (→ {c.sanitized})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {matchColumn && (
+                        <div className="mt-2 grid grid-cols-3 gap-3">
+                          <div className="bg-white p-3 rounded-lg border text-center shadow-sm">
+                            <div className="text-2xl font-black text-emerald-600">
+                              {parsedRows.filter(r => {
+                                const newCol = detectedColumns.find(c => c.sanitized === matchColumn)?.original;
+                                return !data.some(d => String(d[matchColumn]) === String(r[newCol]));
+                              }).length}
+                            </div>
+                            <div className="text-xs font-bold text-slate-500 uppercase">Rânduri Noi</div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border text-center shadow-sm">
+                            <div className="text-2xl font-black text-indigo-600">
+                              {parsedRows.filter(r => {
+                                const newCol = detectedColumns.find(c => c.sanitized === matchColumn)?.original;
+                                return data.some(d => String(d[matchColumn]) === String(r[newCol]));
+                              }).length}
+                            </div>
+                            <div className="text-xs font-bold text-slate-500 uppercase">Actualizate</div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-red-200 text-center shadow-sm">
+                            <div className="text-2xl font-black text-red-600">
+                              {data.filter(d => {
+                                const newCol = detectedColumns.find(c => c.sanitized === matchColumn)?.original;
+                                return !parsedRows.some(r => String(r[newCol]) === String(d[matchColumn]));
+                              }).length}
+                            </div>
+                            <div className="text-xs font-bold text-red-500 uppercase">Lipsă / Excluse</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   <div className="border border-slate-200 rounded-lg overflow-hidden">
                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 font-bold text-sm text-slate-700">Mapare Coloane</div>
@@ -603,8 +856,8 @@ export const TableViewer = () => {
 
                   <div className="flex gap-4">
                     <button onClick={() => setModalStep(1)} disabled={uploading} className="flex-1 py-3 border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-50">Înapoi / Back</button>
-                    <button onClick={executeOverwrite} disabled={uploading} className="flex-[2] py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex justify-center items-center">
-                      {uploading ? 'Se procesează / Processing...' : 'Șterge Datele Vechi și Suprascrie / Delete Old & Overwrite'}
+                    <button onClick={executeImport} disabled={uploading || (uploadMode === 'overwrite' && !matchColumn)} className={`flex-[2] py-3 text-white font-bold rounded-lg flex justify-center items-center ${(uploadMode === 'overwrite' && !matchColumn) ? 'bg-slate-400 cursor-not-allowed' : (uploadMode === 'overwrite' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700')}`}>
+                      {uploading ? 'Se procesează / Processing...' : (uploadMode === 'overwrite' ? 'Sincronizează Datele / Sync Data' : 'Adaugă Datele Noi / Append')}
                     </button>
                   </div>
                 </div>
