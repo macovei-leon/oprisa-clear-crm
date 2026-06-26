@@ -342,7 +342,7 @@
 
         let allDrivers = [];
         let dailyStatuses = {}; // pn -> status
-        let displayLimit = 30;
+        let displayLimit = 100;
         let sortByShifts = false;
         let activeDriverPn = null;
         let currentUserRole = null;
@@ -353,7 +353,7 @@
                 // In iframe, auth is handled by the parent React app.
                 // We'll just assume admin for the dashboard logic if needed.
                 currentUserRole = 'admin';
-                document.getElementById('btn-admin-panel').style.display = 'none';
+                
 
                 // Fetch today's statuses from Supabase
                 const today = new Date();
@@ -453,7 +453,7 @@
                 cb.value = c;
                 cb.className = 'contract-type-cb';
                 cb.addEventListener('change', () => {
-                    displayLimit = 30;
+                    displayLimit = 100;
                     renderCards(getActiveDriversState());
                 });
                 label.appendChild(cb);
@@ -836,7 +836,7 @@
                 loadBtn.style.fontWeight = '600';
                 loadBtn.innerHTML = `<i class="fa-solid fa-chevron-down"></i> Load More (${drivers.length - displayLimit} remaining)`;
                 loadBtn.addEventListener('click', () => {
-                    displayLimit += 30;
+                    displayLimit += 100;
                     renderCards(drivers);
                 });
                 
@@ -982,7 +982,7 @@
             const sortBtnShifts = document.getElementById('sort-btn-shifts');
 
             const performFilter = () => {
-                displayLimit = 30;
+                displayLimit = 100;
                 renderCards(getActiveDriversState());
             };
 
@@ -1052,7 +1052,7 @@
             });
             
             // Re-render
-            displayLimit = 30;
+            displayLimit = 100;
             renderCards(getActiveDriversState());
         }
 
