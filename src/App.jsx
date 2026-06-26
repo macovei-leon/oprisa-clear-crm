@@ -9,6 +9,7 @@ import { DatabasePage } from './pages/database/DatabasePage'
 import { TableViewer } from './pages/database/TableViewer'
 import { FlashcardsPage } from './pages/tasks/FlashcardsPage'
 import { RepetitiveFlashcardsPage } from './pages/tasks/RepetitiveFlashcardsPage'
+import { RepetitiveHistoryPage } from './pages/admin/RepetitiveHistoryPage'
 import { MainLayout } from './components/layout/MainLayout'
 
 function ProtectedRoute({ children, requiredRole }) {
@@ -55,6 +56,11 @@ function App() {
             <Route path="/admin" element={
               <ProtectedRoute requiredRole="admin">
                 <AdminPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/repetitive-history" element={
+              <ProtectedRoute requiredRole="admin">
+                <RepetitiveHistoryPage />
               </ProtectedRoute>
             } />
             <Route path="/database" element={

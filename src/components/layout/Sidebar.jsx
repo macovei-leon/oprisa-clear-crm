@@ -189,12 +189,24 @@ export const Sidebar = () => {
             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-6 px-3">Administrare</div>
             <NavLink 
               to="/admin" 
+              end
               className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
             >
               {({ isActive }) => (
                 <>
                   <ShieldAlert size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
                   Admin Panel
+                </>
+              )}
+            </NavLink>
+            <NavLink 
+              to="/admin/repetitive-history" 
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              {({ isActive }) => (
+                <>
+                  <ClipboardList size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
+                  Istoric Repetitiv
                 </>
               )}
             </NavLink>
