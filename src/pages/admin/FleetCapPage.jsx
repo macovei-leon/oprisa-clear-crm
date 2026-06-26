@@ -1,18 +1,19 @@
 import React from 'react';
-import { MainLayout } from '../../components/layout/MainLayout';
+import { Sidebar } from '../../components/layout/Sidebar';
 
 export function FleetCapPage() {
   return (
-    <MainLayout title="Fleet Optimization" subtitle="Driver Capacity Prediction & Staffing Auditor">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full" style={{ height: 'calc(100vh - 180px)' }}>
+    <div className="flex min-h-screen bg-slate-50 font-sans text-slate-900">
+      <Sidebar />
+      <main className="flex-1 h-screen overflow-hidden">
         <iframe 
           src="/fleetcap/index.html" 
           width="100%" 
           height="100%" 
-          style={{ border: 'none' }}
+          style={{ border: 'none', display: 'block' }}
           title="Fleet Cap Micro-Frontend"
         />
-      </div>
-    </MainLayout>
+      </main>
+    </div>
   );
 }
