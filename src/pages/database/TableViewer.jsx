@@ -405,6 +405,26 @@ export const TableViewer = () => {
     setMatchColumn('');
   };
 
+  const deleteTable = async () => {
+    if (!window.confirm(`Ești sigur că vrei să ștergi definitiv tabelul "${tableName}" și toate datele din el? Această acțiune este ireversibilă!`)) return;
+    try {
+      // 1. Delete from custom_tables registry
+      const { error: regErr } = await supabase.from('custom_tables').delete().eq('table_name', tableName);
+      if (regErr) throw regErr;
+      
+      // 2. Drop table using DDL
+      const dropSql = `DROP TABLE IF EXISTS public."${tableName}" CASCADE;\nNOTIFY pgrst, 'reload schema';`;
+      const { error: dropErr } = await supabase.rpc('execute_ddl', { query_text: dropSql });
+      if (dropErr) throw dropErr;
+      
+      alert('Tabelul a fost șters cu succes!');
+      navigate('/database');
+    } catch (err) {
+      console.error("Eroare la stergerea tabelului:", err);
+      alert("Eroare: " + err.message);
+    }
+  };
+
   const unassignedCount = useMemo(() => {
     return data.filter(r => r.crm_processed === false).length;
   }, [data]);
@@ -480,12 +500,20 @@ export const TableViewer = () => {
           )}
         </div>
 
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-        >
-          <Upload size={18} /> Încărcare Date / Upload Data
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={deleteTable}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-rose-100 text-rose-700 font-bold border border-rose-200 rounded-lg hover:bg-rose-200 transition-colors shadow-sm"
+          >
+            <Trash2 size={18} /> Șterge Tabel
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            <Upload size={18} /> Încărcare Date
+          </button>
+        </div>
       </div>
 
       {newlySyncedRowIds.length > 0 && (
