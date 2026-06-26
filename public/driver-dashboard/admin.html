@@ -19,13 +19,13 @@
         
         /* Premium CSS for Inputs and Buttons */
         h2 { margin-top: 0; margin-bottom: 1rem; font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
-        h3 { margin-top: 0; font-size: 1.1rem; color: #f3f4f6; font-weight: 500; }
+        h3 { margin-top: 0; font-size: 1.1rem; color: var(--text-primary); font-weight: 500; }
         .form-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
         label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
         
         input, select, textarea {
             width: 100%;
-            background: rgba(255, 255, 255, 0.03);
+            background: #ffffff;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 0.75rem 1rem;
@@ -34,6 +34,7 @@
             font-family: inherit;
             font-size: 0.95rem;
             transition: all 0.2s ease;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
         }
         input:focus, select:focus, textarea:focus {
             outline: none;
@@ -86,11 +87,11 @@
         }
         
         .card {
-            background: var(--bg-card);
+            background: #ffffff;
             border: 1px solid var(--border-color);
             border-radius: 16px;
             padding: 2rem;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
         }
         
         .test-email-container {
@@ -112,7 +113,7 @@
             border-bottom: 1px solid var(--border-color);
         }
         .stats-table th {
-            background: rgba(255, 255, 255, 0.02);
+            background: #f8fafc;
             color: var(--text-muted);
             font-size: 0.85rem;
             font-weight: 600;
@@ -152,13 +153,13 @@
                 </div>
 
                 <a class="nav-item active" href="/admin.html" id="admin-sidebar-link" style="border-top: 1px solid rgba(0, 0, 0, 0.05); margin-top: 0.5rem; padding-top: 0.5rem;">
-                    <i class="fa-solid fa-shield-halved" style="color: #f59e0b"></i>
-                    <span style="font-weight: 700; color: #f59e0b;">Administrare</span>
+                    <i class="fa-solid fa-shield-halved" style="color: #d97706"></i>
+                    <span style="font-weight: 700; color: #d97706;">Administrare</span>
                 </a>
             </nav>
             
-            <div id="user-profile-section" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--card-border); font-size: 0.85rem; color: var(--text-primary); display: flex; flex-direction: column; gap: 0.5rem; text-align: left;">
-                <button class="btn" onclick="window.location.href='./index.html'" style="background: transparent; border: 1px solid var(--card-border); padding: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); width: 100%; justify-content: flex-start; transition: all 0.2s;"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></button>
+            <div id="user-profile-section" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-primary); display: flex; flex-direction: column; gap: 0.5rem; text-align: left;">
+                <button class="btn" onclick="window.location.href='./index.html'" style="background: #ffffff; border: 1px solid var(--border-color); padding: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); width: 100%; justify-content: flex-start; transition: all 0.2s;"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></button>
             </div>
         </aside>
         
@@ -169,7 +170,7 @@
                         <h2 style="margin: 0;"><i class="fa-solid fa-envelope" style="color: var(--primary);"></i> Email Automation</h2>
                     </div>
                     
-                    <div style="background: rgba(59, 130, 246, 0.05); padding: 1.5rem; border: 1px solid var(--card-border); border-radius: 12px; margin-bottom: 2.5rem;">
+                    <div style="background: rgba(59, 130, 246, 0.05); padding: 1.5rem; border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 2.5rem;">
                         <h3>Global Settings</h3>
                         <form id="email-settings-form" style="display: flex; gap: 1.5rem; align-items: flex-start; flex-direction: column;">
                             <div style="display: flex; gap: 1.5rem; width: 100%; flex-wrap: wrap;">
@@ -233,7 +234,7 @@
                                 <textarea id="template-body" rows="8" placeholder="Hello {{name}}..."></textarea>
                             </div>
                             
-                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px dashed var(--border-color);">
+                            <div class="form-group" style="background: #ffffff; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border-color);">
                                 <label>PDF Attachment (Optional)</label>
                                 <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
                                     <input type="file" id="template-pdf" accept="application/pdf" style="padding: 0.5rem; flex: 1;">
@@ -290,7 +291,7 @@
                         
                         <div>
                             <h3 style="margin-bottom: 1.5rem;"><i class="fa-solid fa-list-check"></i> Recent Email Logs</h3>
-                            <div style="max-height: 600px; overflow-y: auto; background: rgba(0,0,0,0.1); border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div style="max-height: 600px; overflow-y: auto; background: #ffffff; border-radius: 8px; border: 1px solid var(--border-color);">
                                 <table class="stats-table">
                                     <thead>
                                         <tr>
