@@ -10,6 +10,7 @@ import { TableViewer } from './pages/database/TableViewer'
 import { FlashcardsPage } from './pages/tasks/FlashcardsPage'
 import { RepetitiveFlashcardsPage } from './pages/tasks/RepetitiveFlashcardsPage'
 import { RepetitiveHistoryPage } from './pages/admin/RepetitiveHistoryPage'
+import { FleetCapPage } from './pages/admin/FleetCapPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { MainLayout } from './components/layout/MainLayout'
 
@@ -52,6 +53,11 @@ function App() {
             <Route path="/admin/repetitive-history" element={
               <ProtectedRoute requiredRole="admin">
                 <RepetitiveHistoryPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/fleet-optimization" element={
+              <ProtectedRoute requiredRole="admin">
+                <FleetCapPage />
               </ProtectedRoute>
             } />
             <Route path="/database" element={

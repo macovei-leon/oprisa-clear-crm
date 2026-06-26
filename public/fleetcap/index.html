@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FleetCap</title>
+    <!-- Use local font awesome and fonts from parent if possible, but keep it isolated -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Local CSS -->
+    <link rel="stylesheet" href="./fleetcap.css">
+    <!-- SheetJS for Data Import -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        font-family: 'Outfit', sans-serif;
+      }
+      #view-fleetcap {
+        display: block !important;
+        position: relative;
+        height: 100vh;
+        overflow-y: auto;
+      }
+    </style>
+</head>
+<body>
+    <div class="tab-view" id="view-fleetcap">
+<div class="glow-bg"></div>
+  <div class="glow-bg-right"></div>
+
+  <header>
+    <div class="brand">
+      <h1>⚡ FLEETCAP</h1>
+      <p id="app-subtitle">Driver Capacity Prediction &amp; Staffing Auditor • May-June 2026</p>
+    </div>
+    <div class="controls">
+      <div class="control-group">
+        <span class="control-label" id="label-city">City</span>
+        <select id="city-selector"><option value="Augsburg">Augsburg</option><option value="Berlin">Berlin</option><option value="Bielefeld">Bielefeld</option><option value="Frankfurt">Frankfurt</option><option value="Freiburg">Freiburg</option><option value="Gütersloh">Gütersloh</option><option value="Heidelberg">Heidelberg</option><option value="Heilbronn">Heilbronn</option><option value="Ingolstadt">Ingolstadt</option><option value="Karlsruhe">Karlsruhe</option><option value="Leipzig">Leipzig</option><option value="München">München</option><option value="Nürnberg">Nürnberg</option><option value="Potsdam">Potsdam</option><option value="Regensburg">Regensburg</option><option value="Saarbrücken">Saarbrücken</option><option value="Ulm">Ulm</option><option value="Worms">Worms</option></select>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label" id="lang-label">Language</span>
+        <select id="lang-selector">
+          <option value="en" selected="">🇬🇧 EN</option>
+          <option value="ro">🇷🇴 RO</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Uploading/Success overlay (Global to FleetCap) -->
+  <div class="dropzone-overlay" id="dropzone-overlay" style="display: none; position: absolute; z-index: 2000;">
+    <div class="dropzone-spinner" id="dropzone-overlay-spinner"></div>
+    <div class="overlay-text" id="dropzone-overlay-text">Processing file...</div>
+  </div>
+
+  <!-- Warning Banner -->
+  <div class="banner" id="forecast-warning-banner" style="display: none;">
+    <span style="font-size: 20px;">⚠️</span>
+    <div id="banner-text">Warning Text</div>
+  </div>
+
+  <!-- Tab selector bar -->
+  <div class="tab-bar">
+    <button class="tab-btn" id="tab-forecast-btn" onclick="switchTab('forecast')">📊 Capacity &amp; Forecasting</button>
+    <button class="tab-btn" id="tab-cost-btn" onclick="switchTab('cost')">💸 Cost Structure &amp; Restructuring</button>
+    <button class="tab-btn" id="tab-plans-btn" onclick="switchTab('plans')">📋 City Action Plans</button>
+    <button class="tab-btn" id="tab-data-btn" onclick="switchTab('data')">📂 Data Import</button>
+  </div>
+
+  <!-- TAB 1: FORECAST & CAPACITY -->
+  <div class="tab-content" id="tab-forecast-content">
+    <!-- Summary Cards -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-header" id="metric-header-demand">Forecasted Orders (Demand)</div>
+        <div class="metric-value" id="stat-forecast-demand">8&nbsp;586</div>
+        <div class="metric-sub" id="stat-forecast-date-range">2026-05-25 to 2026-05-31</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header" id="metric-header-capacity">Estimated Capacity (Deliveries)</div>
+        <div class="metric-value" id="stat-estimated-capacity">6&nbsp;204</div>
+        <div class="metric-sub" id="stat-productivity-rate">At 2.00 deliveries/hr per active driver</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header" id="metric-header-surplus">Surplus / Shortage</div>
+        <div class="metric-value" id="stat-net-surplus">-2&nbsp;382</div>
+        <div class="metric-sub negative" id="stat-net-surplus-status">🔴 Staffing Deficit</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header" id="metric-header-hiring">Hiring &amp; Staff Deficit</div>
+        <div class="metric-value" id="stat-hiring-deficit">114 Drivers</div>
+        <div class="metric-sub" id="stat-hiring-sub">Deficit: <span style="color: var(--color-red-text); font-weight: 600;">2542 deliv</span> (1312.5 hrs)</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header" id="metric-header-peak">Max Driver Needed (Weekly Peak)</div>
+        <div class="metric-value" id="stat-max-drivers">100 Drivers</div>
+        <div class="metric-sub" id="stat-max-drivers-time">Peak slot: Monday at 18:30</div>
+      </div>
+
+      <div class="metric-card recommendation-card">
+        <div class="metric-header" id="metric-header-rec" style="color: #2563eb;">💡 Weekly Operations Recommendation</div>
+        <div class="metric-value" style="font-size: 16px; font-weight: 500; letter-spacing: 0; line-height: 1.45; margin-top: 8px; color: #1e293b;" id="stat-staffing-rec">🔴 <strong>Critical Shortage:</strong> Deficit of <strong>2&nbsp;382</strong> deliveries. There are <strong>230</strong> understaffed 30-minute intervals. Peak deficit occurs on <strong>Monday at 18:30</strong> (need <strong>+65</strong> drivers). We recommend shifting schedules or hiring flex drivers for <strong>Monday</strong> peaks.</div>
+      </div>
+    </div>
+
+    <!-- Calendar Table and Auditor Panel -->
+    <div class="dashboard-container">
+      <div class="grid-container">
+        <!-- Sub-controls inside the card -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div class="control-group">
+            <span class="control-label" id="label-week">Forecast Week</span>
+            <div class="week-selector" id="week-selector"><button class="week-btn active" data-index="0">W1 (25.05 - 31.05)</button><button class="week-btn" data-index="1">W2 (01.06 - 07.06)</button><button class="week-btn" data-index="2">W3 (08.06 - 14.06)</button><button class="week-btn" data-index="3">W4 (15.06 - 21.06)</button><button class="week-btn" data-index="4">W5 (22.06 - 28.06)</button></div>
+          </div>
+          <div class="control-group">
+            <span class="control-label" id="label-productivity">Productivity Baseline (orders/hr)</span>
+            <input type="number" id="productivity-input" value="2.00" step="0.05" min="0.1" max="10.0" style="width: 110px; font-family: inherit;">
+          </div>
+        </div>
+
+        <table id="calendar-grid">
+          <thead>
+            <tr id="grid-header-row"><th class="time-header">Time</th><th>Monday<br><span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">25/05</span><br><span style="font-size: 11px; font-weight: 600; color: var(--accent-color);">Peak: 100 drivers</span></th><th>Tuesday<br><span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">26/05</span><br><span style="font-size: 11px; font-weight: 600; color: var(--accent-color);">Peak: 62 drivers</span></th><th>Wednesday<br><span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">27/05</span><br><span style="font-size: 11px; font-weight: 600; color: var(--accent-color);">Peak: 63 drivers</span></th><th>Thursday<br><span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">28/05</span><br><span style="font-size: 11px; font-weight: 600; color: var(--accent-color);">Peak: 63 drivers</span></th><th>Friday<br><span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">29/05</span><br><span style="font-size: 11px; font-weight: 600; color: var(--accent-color);">Peak: 65 drivers</span></th><th>Saturday<br><span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">30/05</span><br><span style="font-size: 11px; font-weight: 600; color: var(--accent-color);">Peak: 57 drivers</span></th><th>Sunday<br><span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">31/05</span><br><span style="font-size: 11px; font-weight: 600; color: var(--accent-color);">Peak: 90 drivers</span></th></tr>
+          </thead>
+          <tbody id="grid-body"><tr><td class="time-cell">00:00</td><td><div id="Monday|00:00" class="slot-cell insufficient active-cell">-6</div></td><td><div id="Tuesday|00:00" class="slot-cell insufficient">-2</div></td><td><div id="Wednesday|00:00" class="slot-cell sufficient">+1</div></td><td><div id="Thursday|00:00" class="slot-cell sufficient">+5</div></td><td><div id="Friday|00:00" class="slot-cell insufficient">-4</div></td><td><div id="Saturday|00:00" class="slot-cell sufficient">0</div></td><td><div id="Sunday|00:00" class="slot-cell insufficient">-2</div></td></tr><tr><td class="time-cell">00:30</td><td><div id="Monday|00:30" class="slot-cell insufficient">-7</div></td><td><div id="Tuesday|00:30" class="slot-cell insufficient">-2</div></td><td><div id="Wednesday|00:30" class="slot-cell sufficient">+2</div></td><td><div id="Thursday|00:30" class="slot-cell sufficient">+4</div></td><td><div id="Friday|00:30" class="slot-cell insufficient">-4</div></td><td><div id="Saturday|00:30" class="slot-cell sufficient">+3</div></td><td><div id="Sunday|00:30" class="slot-cell sufficient">0</div></td></tr><tr><td class="time-cell">01:00</td><td><div id="Monday|01:00" class="slot-cell insufficient">-3</div></td><td><div id="Tuesday|01:00" class="slot-cell insufficient">-2</div></td><td><div id="Wednesday|01:00" class="slot-cell sufficient">+1</div></td><td><div id="Thursday|01:00" class="slot-cell sufficient">+3</div></td><td><div id="Friday|01:00" class="slot-cell insufficient">-4</div></td><td><div id="Saturday|01:00" class="slot-cell sufficient">+3</div></td><td><div id="Sunday|01:00" class="slot-cell sufficient">+2</div></td></tr><tr><td class="time-cell">01:30</td><td><div id="Monday|01:30" class="slot-cell insufficient">-2</div></td><td><div id="Tuesday|01:30" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|01:30" class="slot-cell sufficient">+2</div></td><td><div id="Thursday|01:30" class="slot-cell sufficient">+3</div></td><td><div id="Friday|01:30" class="slot-cell insufficient">-2</div></td><td><div id="Saturday|01:30" class="slot-cell sufficient">+3</div></td><td><div id="Sunday|01:30" class="slot-cell sufficient">+1</div></td></tr><tr><td class="time-cell">02:00</td><td><div id="Monday|02:00" class="slot-cell insufficient">-1</div></td><td><div id="Tuesday|02:00" class="slot-cell insufficient">-1</div></td><td><div id="Wednesday|02:00" class="slot-cell sufficient">+3</div></td><td><div id="Thursday|02:00" class="slot-cell sufficient">+4</div></td><td><div id="Friday|02:00" class="slot-cell insufficient">-1</div></td><td><div id="Saturday|02:00" class="slot-cell sufficient">+4</div></td><td><div id="Sunday|02:00" class="slot-cell sufficient">+2</div></td></tr><tr><td class="time-cell">02:30</td><td><div id="Monday|02:30" class="slot-cell insufficient">-1</div></td><td><div id="Tuesday|02:30" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|02:30" class="slot-cell sufficient">+3</div></td><td><div id="Thursday|02:30" class="slot-cell sufficient">+3</div></td><td><div id="Friday|02:30" class="slot-cell insufficient">-1</div></td><td><div id="Saturday|02:30" class="slot-cell sufficient">+2</div></td><td><div id="Sunday|02:30" class="slot-cell sufficient">0</div></td></tr><tr><td class="time-cell">03:00</td><td><div id="Monday|03:00" class="slot-cell sufficient">0</div></td><td><div id="Tuesday|03:00" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|03:00" class="slot-cell sufficient">+2</div></td><td><div id="Thursday|03:00" class="slot-cell sufficient">+3</div></td><td><div id="Friday|03:00" class="slot-cell sufficient">0</div></td><td><div id="Saturday|03:00" class="slot-cell sufficient">+3</div></td><td><div id="Sunday|03:00" class="slot-cell sufficient">+1</div></td></tr><tr><td class="time-cell">03:30</td><td><div id="Monday|03:30" class="slot-cell sufficient">0</div></td><td><div id="Tuesday|03:30" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|03:30" class="slot-cell sufficient">+2</div></td><td><div id="Thursday|03:30" class="slot-cell sufficient">+2</div></td><td><div id="Friday|03:30" class="slot-cell sufficient">0</div></td><td><div id="Saturday|03:30" class="slot-cell sufficient">+3</div></td><td><div id="Sunday|03:30" class="slot-cell sufficient">+2</div></td></tr><tr><td class="time-cell">04:00</td><td><div id="Monday|04:00" class="slot-cell insufficient">-1</div></td><td><div id="Tuesday|04:00" class="slot-cell sufficient">+1</div></td><td><div id="Wednesday|04:00" class="slot-cell sufficient">+3</div></td><td><div id="Thursday|04:00" class="slot-cell sufficient">+2</div></td><td><div id="Friday|04:00" class="slot-cell sufficient">+1</div></td><td><div id="Saturday|04:00" class="slot-cell sufficient">+1</div></td><td><div id="Sunday|04:00" class="slot-cell sufficient">+2</div></td></tr><tr><td class="time-cell">04:30</td><td><div id="Monday|04:30" class="slot-cell insufficient">-1</div></td><td><div id="Tuesday|04:30" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|04:30" class="slot-cell sufficient">+1</div></td><td><div id="Thursday|04:30" class="slot-cell sufficient">+1</div></td><td><div id="Friday|04:30" class="slot-cell sufficient">+2</div></td><td><div id="Saturday|04:30" class="slot-cell sufficient">+1</div></td><td><div id="Sunday|04:30" class="slot-cell sufficient">+1</div></td></tr><tr><td class="time-cell">05:00</td><td><div id="Monday|05:00" class="slot-cell sufficient">0</div></td><td><div id="Tuesday|05:00" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|05:00" class="slot-cell insufficient">-1</div></td><td><div id="Thursday|05:00" class="slot-cell sufficient">0</div></td><td><div id="Friday|05:00" class="slot-cell sufficient">0</div></td><td><div id="Saturday|05:00" class="slot-cell sufficient">+1</div></td><td><div id="Sunday|05:00" class="slot-cell sufficient">+2</div></td></tr><tr><td class="time-cell">05:30</td><td><div id="Monday|05:30" class="slot-cell sufficient">0</div></td><td><div id="Tuesday|05:30" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|05:30" class="slot-cell insufficient">-1</div></td><td><div id="Thursday|05:30" class="slot-cell insufficient">-1</div></td><td><div id="Friday|05:30" class="slot-cell insufficient">-1</div></td><td><div id="Saturday|05:30" class="slot-cell sufficient">0</div></td><td><div id="Sunday|05:30" class="slot-cell sufficient">0</div></td></tr><tr><td class="time-cell">06:00</td><td><div id="Monday|06:00" class="slot-cell insufficient">-1</div></td><td><div id="Tuesday|06:00" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|06:00" class="slot-cell insufficient">-1</div></td><td><div id="Thursday|06:00" class="slot-cell insufficient">-1</div></td><td><div id="Friday|06:00" class="slot-cell insufficient">-1</div></td><td><div id="Saturday|06:00" class="slot-cell insufficient">-1</div></td><td><div id="Sunday|06:00" class="slot-cell insufficient">-1</div></td></tr><tr><td class="time-cell">06:30</td><td><div id="Monday|06:30" class="slot-cell insufficient">-1</div></td><td><div id="Tuesday|06:30" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|06:30" class="slot-cell sufficient">0</div></td><td><div id="Thursday|06:30" class="slot-cell sufficient">0</div></td><td><div id="Friday|06:30" class="slot-cell sufficient">0</div></td><td><div id="Saturday|06:30" class="slot-cell sufficient">0</div></td><td><div id="Sunday|06:30" class="slot-cell insufficient">-1</div></td></tr><tr><td class="time-cell">07:00</td><td><div id="Monday|07:00" class="slot-cell insufficient">-1</div></td><td><div id="Tuesday|07:00" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|07:00" class="slot-cell sufficient">0</div></td><td><div id="Thursday|07:00" class="slot-cell sufficient">0</div></td><td><div id="Friday|07:00" class="slot-cell sufficient">0</div></td><td><div id="Saturday|07:00" class="slot-cell insufficient">-1</div></td><td><div id="Sunday|07:00" class="slot-cell insufficient">-1</div></td></tr><tr><td class="time-cell">07:30</td><td><div id="Monday|07:30" class="slot-cell sufficient">0</div></td><td><div id="Tuesday|07:30" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|07:30" class="slot-cell sufficient">0</div></td><td><div id="Thursday|07:30" class="slot-cell sufficient">0</div></td><td><div id="Friday|07:30" class="slot-cell sufficient">0</div></td><td><div id="Saturday|07:30" class="slot-cell sufficient">0</div></td><td><div id="Sunday|07:30" class="slot-cell sufficient">0</div></td></tr><tr><td class="time-cell">08:00</td><td><div id="Monday|08:00" class="slot-cell sufficient">0</div></td><td><div id="Tuesday|08:00" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|08:00" class="slot-cell sufficient">0</div></td><td><div id="Thursday|08:00" class="slot-cell sufficient">0</div></td><td><div id="Friday|08:00" class="slot-cell sufficient">0</div></td><td><div id="Saturday|08:00" class="slot-cell sufficient">0</div></td><td><div id="Sunday|08:00" class="slot-cell sufficient">0</div></td></tr><tr><td class="time-cell">08:30</td><td><div id="Monday|08:30" class="slot-cell insufficient">-2</div></td><td><div id="Tuesday|08:30" class="slot-cell insufficient">-2</div></td><td><div id="Wednesday|08:30" class="slot-cell insufficient">-2</div></td><td><div id="Thursday|08:30" class="slot-cell insufficient">-2</div></td><td><div id="Friday|08:30" class="slot-cell insufficient">-2</div></td><td><div id="Saturday|08:30" class="slot-cell insufficient">-2</div></td><td><div id="Sunday|08:30" class="slot-cell insufficient">-2</div></td></tr><tr><td class="time-cell">09:00</td><td><div id="Monday|09:00" class="slot-cell insufficient">-5</div></td><td><div id="Tuesday|09:00" class="slot-cell insufficient">-2</div></td><td><div id="Wednesday|09:00" class="slot-cell insufficient">-5</div></td><td><div id="Thursday|09:00" class="slot-cell insufficient">-4</div></td><td><div id="Friday|09:00" class="slot-cell insufficient">-3</div></td><td><div id="Saturday|09:00" class="slot-cell insufficient">-4</div></td><td><div id="Sunday|09:00" class="slot-cell insufficient">-5</div></td></tr><tr><td class="time-cell">09:30</td><td><div id="Monday|09:30" class="slot-cell insufficient">-3</div></td><td><div id="Tuesday|09:30" class="slot-cell insufficient">-1</div></td><td><div id="Wednesday|09:30" class="slot-cell insufficient">-3</div></td><td><div id="Thursday|09:30" class="slot-cell insufficient">-1</div></td><td><div id="Friday|09:30" class="slot-cell insufficient">-3</div></td><td><div id="Saturday|09:30" class="slot-cell insufficient">-4</div></td><td><div id="Sunday|09:30" class="slot-cell insufficient">-5</div></td></tr><tr><td class="time-cell">10:00</td><td><div id="Monday|10:00" class="slot-cell insufficient">-3</div></td><td><div id="Tuesday|10:00" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|10:00" class="slot-cell insufficient">-1</div></td><td><div id="Thursday|10:00" class="slot-cell sufficient">0</div></td><td><div id="Friday|10:00" class="slot-cell insufficient">-2</div></td><td><div id="Saturday|10:00" class="slot-cell insufficient">-3</div></td><td><div id="Sunday|10:00" class="slot-cell insufficient">-4</div></td></tr><tr><td class="time-cell">10:30</td><td><div id="Monday|10:30" class="slot-cell insufficient">-4</div></td><td><div id="Tuesday|10:30" class="slot-cell sufficient">+1</div></td><td><div id="Wednesday|10:30" class="slot-cell insufficient">-1</div></td><td><div id="Thursday|10:30" class="slot-cell sufficient">0</div></td><td><div id="Friday|10:30" class="slot-cell insufficient">-2</div></td><td><div id="Saturday|10:30" class="slot-cell insufficient">-5</div></td><td><div id="Sunday|10:30" class="slot-cell insufficient">-4</div></td></tr><tr><td class="time-cell">11:00</td><td><div id="Monday|11:00" class="slot-cell insufficient">-9</div></td><td><div id="Tuesday|11:00" class="slot-cell insufficient">-6</div></td><td><div id="Wednesday|11:00" class="slot-cell insufficient">-6</div></td><td><div id="Thursday|11:00" class="slot-cell insufficient">-6</div></td><td><div id="Friday|11:00" class="slot-cell insufficient">-7</div></td><td><div id="Saturday|11:00" class="slot-cell insufficient">-5</div></td><td><div id="Sunday|11:00" class="slot-cell insufficient">-9</div></td></tr><tr><td class="time-cell">11:30</td><td><div id="Monday|11:30" class="slot-cell insufficient">-13</div></td><td><div id="Tuesday|11:30" class="slot-cell insufficient">-14</div></td><td><div id="Wednesday|11:30" class="slot-cell insufficient">-9</div></td><td><div id="Thursday|11:30" class="slot-cell insufficient">-10</div></td><td><div id="Friday|11:30" class="slot-cell insufficient">-12</div></td><td><div id="Saturday|11:30" class="slot-cell insufficient">-8</div></td><td><div id="Sunday|11:30" class="slot-cell insufficient">-10</div></td></tr><tr><td class="time-cell">12:00</td><td><div id="Monday|12:00" class="slot-cell insufficient">-27</div></td><td><div id="Tuesday|12:00" class="slot-cell insufficient">-19</div></td><td><div id="Wednesday|12:00" class="slot-cell insufficient">-18</div></td><td><div id="Thursday|12:00" class="slot-cell insufficient">-16</div></td><td><div id="Friday|12:00" class="slot-cell insufficient">-15</div></td><td><div id="Saturday|12:00" class="slot-cell insufficient">-12</div></td><td><div id="Sunday|12:00" class="slot-cell insufficient">-21</div></td></tr><tr><td class="time-cell">12:30</td><td><div id="Monday|12:30" class="slot-cell insufficient">-25</div></td><td><div id="Tuesday|12:30" class="slot-cell insufficient">-10</div></td><td><div id="Wednesday|12:30" class="slot-cell insufficient">-10</div></td><td><div id="Thursday|12:30" class="slot-cell insufficient">-9</div></td><td><div id="Friday|12:30" class="slot-cell insufficient">-13</div></td><td><div id="Saturday|12:30" class="slot-cell insufficient">-6</div></td><td><div id="Sunday|12:30" class="slot-cell insufficient">-17</div></td></tr><tr><td class="time-cell">13:00</td><td><div id="Monday|13:00" class="slot-cell insufficient">-28</div></td><td><div id="Tuesday|13:00" class="slot-cell insufficient">-8</div></td><td><div id="Wednesday|13:00" class="slot-cell insufficient">-6</div></td><td><div id="Thursday|13:00" class="slot-cell insufficient">-9</div></td><td><div id="Friday|13:00" class="slot-cell insufficient">-10</div></td><td><div id="Saturday|13:00" class="slot-cell insufficient">-3</div></td><td><div id="Sunday|13:00" class="slot-cell insufficient">-17</div></td></tr><tr><td class="time-cell">13:30</td><td><div id="Monday|13:30" class="slot-cell insufficient">-27</div></td><td><div id="Tuesday|13:30" class="slot-cell insufficient">-8</div></td><td><div id="Wednesday|13:30" class="slot-cell insufficient">-4</div></td><td><div id="Thursday|13:30" class="slot-cell insufficient">-4</div></td><td><div id="Friday|13:30" class="slot-cell insufficient">-9</div></td><td><div id="Saturday|13:30" class="slot-cell insufficient">-7</div></td><td><div id="Sunday|13:30" class="slot-cell insufficient">-17</div></td></tr><tr><td class="time-cell">14:00</td><td><div id="Monday|14:00" class="slot-cell insufficient">-29</div></td><td><div id="Tuesday|14:00" class="slot-cell insufficient">-9</div></td><td><div id="Wednesday|14:00" class="slot-cell insufficient">-2</div></td><td><div id="Thursday|14:00" class="slot-cell insufficient">-6</div></td><td><div id="Friday|14:00" class="slot-cell insufficient">-11</div></td><td><div id="Saturday|14:00" class="slot-cell insufficient">-7</div></td><td><div id="Sunday|14:00" class="slot-cell insufficient">-16</div></td></tr><tr><td class="time-cell">14:30</td><td><div id="Monday|14:30" class="slot-cell insufficient">-27</div></td><td><div id="Tuesday|14:30" class="slot-cell insufficient">-6</div></td><td><div id="Wednesday|14:30" class="slot-cell insufficient">-7</div></td><td><div id="Thursday|14:30" class="slot-cell insufficient">-5</div></td><td><div id="Friday|14:30" class="slot-cell insufficient">-12</div></td><td><div id="Saturday|14:30" class="slot-cell insufficient">-8</div></td><td><div id="Sunday|14:30" class="slot-cell insufficient">-13</div></td></tr><tr><td class="time-cell">15:00</td><td><div id="Monday|15:00" class="slot-cell insufficient">-30</div></td><td><div id="Tuesday|15:00" class="slot-cell insufficient">-6</div></td><td><div id="Wednesday|15:00" class="slot-cell insufficient">-9</div></td><td><div id="Thursday|15:00" class="slot-cell insufficient">-7</div></td><td><div id="Friday|15:00" class="slot-cell insufficient">-13</div></td><td><div id="Saturday|15:00" class="slot-cell insufficient">-7</div></td><td><div id="Sunday|15:00" class="slot-cell insufficient">-18</div></td></tr><tr><td class="time-cell">15:30</td><td><div id="Monday|15:30" class="slot-cell insufficient">-33</div></td><td><div id="Tuesday|15:30" class="slot-cell insufficient">-10</div></td><td><div id="Wednesday|15:30" class="slot-cell insufficient">-5</div></td><td><div id="Thursday|15:30" class="slot-cell insufficient">-10</div></td><td><div id="Friday|15:30" class="slot-cell insufficient">-11</div></td><td><div id="Saturday|15:30" class="slot-cell insufficient">-9</div></td><td><div id="Sunday|15:30" class="slot-cell insufficient">-20</div></td></tr><tr><td class="time-cell">16:00</td><td><div id="Monday|16:00" class="slot-cell insufficient">-36</div></td><td><div id="Tuesday|16:00" class="slot-cell insufficient">-12</div></td><td><div id="Wednesday|16:00" class="slot-cell insufficient">-8</div></td><td><div id="Thursday|16:00" class="slot-cell insufficient">-7</div></td><td><div id="Friday|16:00" class="slot-cell insufficient">-9</div></td><td><div id="Saturday|16:00" class="slot-cell insufficient">-6</div></td><td><div id="Sunday|16:00" class="slot-cell insufficient">-23</div></td></tr><tr><td class="time-cell">16:30</td><td><div id="Monday|16:30" class="slot-cell insufficient">-35</div></td><td><div id="Tuesday|16:30" class="slot-cell insufficient">-11</div></td><td><div id="Wednesday|16:30" class="slot-cell insufficient">-7</div></td><td><div id="Thursday|16:30" class="slot-cell insufficient">-5</div></td><td><div id="Friday|16:30" class="slot-cell insufficient">-7</div></td><td><div id="Saturday|16:30" class="slot-cell insufficient">-8</div></td><td><div id="Sunday|16:30" class="slot-cell insufficient">-23</div></td></tr><tr><td class="time-cell">17:00</td><td><div id="Monday|17:00" class="slot-cell insufficient">-48</div></td><td><div id="Tuesday|17:00" class="slot-cell insufficient">-8</div></td><td><div id="Wednesday|17:00" class="slot-cell insufficient">-11</div></td><td><div id="Thursday|17:00" class="slot-cell insufficient">-9</div></td><td><div id="Friday|17:00" class="slot-cell insufficient">-7</div></td><td><div id="Saturday|17:00" class="slot-cell insufficient">-13</div></td><td><div id="Sunday|17:00" class="slot-cell insufficient">-32</div></td></tr><tr><td class="time-cell">17:30</td><td><div id="Monday|17:30" class="slot-cell insufficient">-51</div></td><td><div id="Tuesday|17:30" class="slot-cell insufficient">-7</div></td><td><div id="Wednesday|17:30" class="slot-cell insufficient">-12</div></td><td><div id="Thursday|17:30" class="slot-cell insufficient">-5</div></td><td><div id="Friday|17:30" class="slot-cell insufficient">-8</div></td><td><div id="Saturday|17:30" class="slot-cell insufficient">-12</div></td><td><div id="Sunday|17:30" class="slot-cell insufficient">-30</div></td></tr><tr><td class="time-cell">18:00</td><td><div id="Monday|18:00" class="slot-cell insufficient">-62</div></td><td><div id="Tuesday|18:00" class="slot-cell insufficient">-11</div></td><td><div id="Wednesday|18:00" class="slot-cell insufficient">-17</div></td><td><div id="Thursday|18:00" class="slot-cell insufficient">-11</div></td><td><div id="Friday|18:00" class="slot-cell insufficient">-14</div></td><td><div id="Saturday|18:00" class="slot-cell insufficient">-12</div></td><td><div id="Sunday|18:00" class="slot-cell insufficient">-39</div></td></tr><tr><td class="time-cell">18:30</td><td><div id="Monday|18:30" class="slot-cell insufficient">-65</div></td><td><div id="Tuesday|18:30" class="slot-cell insufficient">-12</div></td><td><div id="Wednesday|18:30" class="slot-cell insufficient">-15</div></td><td><div id="Thursday|18:30" class="slot-cell insufficient">-11</div></td><td><div id="Friday|18:30" class="slot-cell insufficient">-15</div></td><td><div id="Saturday|18:30" class="slot-cell insufficient">-11</div></td><td><div id="Sunday|18:30" class="slot-cell insufficient">-44</div></td></tr><tr><td class="time-cell">19:00</td><td><div id="Monday|19:00" class="slot-cell insufficient">-62</div></td><td><div id="Tuesday|19:00" class="slot-cell insufficient">-9</div></td><td><div id="Wednesday|19:00" class="slot-cell insufficient">-16</div></td><td><div id="Thursday|19:00" class="slot-cell insufficient">-12</div></td><td><div id="Friday|19:00" class="slot-cell insufficient">-15</div></td><td><div id="Saturday|19:00" class="slot-cell insufficient">-12</div></td><td><div id="Sunday|19:00" class="slot-cell insufficient">-38</div></td></tr><tr><td class="time-cell">19:30</td><td><div id="Monday|19:30" class="slot-cell insufficient">-63</div></td><td><div id="Tuesday|19:30" class="slot-cell insufficient">-13</div></td><td><div id="Wednesday|19:30" class="slot-cell insufficient">-14</div></td><td><div id="Thursday|19:30" class="slot-cell insufficient">-12</div></td><td><div id="Friday|19:30" class="slot-cell insufficient">-14</div></td><td><div id="Saturday|19:30" class="slot-cell insufficient">-15</div></td><td><div id="Sunday|19:30" class="slot-cell insufficient">-36</div></td></tr><tr><td class="time-cell">20:00</td><td><div id="Monday|20:00" class="slot-cell insufficient">-56</div></td><td><div id="Tuesday|20:00" class="slot-cell insufficient">-19</div></td><td><div id="Wednesday|20:00" class="slot-cell insufficient">-18</div></td><td><div id="Thursday|20:00" class="slot-cell insufficient">-12</div></td><td><div id="Friday|20:00" class="slot-cell insufficient">-16</div></td><td><div id="Saturday|20:00" class="slot-cell insufficient">-16</div></td><td><div id="Sunday|20:00" class="slot-cell insufficient">-32</div></td></tr><tr><td class="time-cell">20:30</td><td><div id="Monday|20:30" class="slot-cell insufficient">-46</div></td><td><div id="Tuesday|20:30" class="slot-cell insufficient">-18</div></td><td><div id="Wednesday|20:30" class="slot-cell insufficient">-21</div></td><td><div id="Thursday|20:30" class="slot-cell insufficient">-9</div></td><td><div id="Friday|20:30" class="slot-cell insufficient">-16</div></td><td><div id="Saturday|20:30" class="slot-cell insufficient">-17</div></td><td><div id="Sunday|20:30" class="slot-cell insufficient">-23</div></td></tr><tr><td class="time-cell">21:00</td><td><div id="Monday|21:00" class="slot-cell insufficient">-28</div></td><td><div id="Tuesday|21:00" class="slot-cell insufficient">-7</div></td><td><div id="Wednesday|21:00" class="slot-cell insufficient">-9</div></td><td><div id="Thursday|21:00" class="slot-cell sufficient">0</div></td><td><div id="Friday|21:00" class="slot-cell insufficient">-7</div></td><td><div id="Saturday|21:00" class="slot-cell insufficient">-8</div></td><td><div id="Sunday|21:00" class="slot-cell insufficient">-10</div></td></tr><tr><td class="time-cell">21:30</td><td><div id="Monday|21:30" class="slot-cell insufficient">-27</div></td><td><div id="Tuesday|21:30" class="slot-cell insufficient">-9</div></td><td><div id="Wednesday|21:30" class="slot-cell insufficient">-2</div></td><td><div id="Thursday|21:30" class="slot-cell sufficient">+5</div></td><td><div id="Friday|21:30" class="slot-cell insufficient">-3</div></td><td><div id="Saturday|21:30" class="slot-cell insufficient">-6</div></td><td><div id="Sunday|21:30" class="slot-cell insufficient">-9</div></td></tr><tr><td class="time-cell">22:00</td><td><div id="Monday|22:00" class="slot-cell insufficient">-14</div></td><td><div id="Tuesday|22:00" class="slot-cell insufficient">-4</div></td><td><div id="Wednesday|22:00" class="slot-cell sufficient">+4</div></td><td><div id="Thursday|22:00" class="slot-cell sufficient">+3</div></td><td><div id="Friday|22:00" class="slot-cell insufficient">-5</div></td><td><div id="Saturday|22:00" class="slot-cell sufficient">0</div></td><td><div id="Sunday|22:00" class="slot-cell sufficient">0</div></td></tr><tr><td class="time-cell">22:30</td><td><div id="Monday|22:30" class="slot-cell insufficient">-11</div></td><td><div id="Tuesday|22:30" class="slot-cell sufficient">+1</div></td><td><div id="Wednesday|22:30" class="slot-cell sufficient">+7</div></td><td><div id="Thursday|22:30" class="slot-cell sufficient">+3</div></td><td><div id="Friday|22:30" class="slot-cell insufficient">-5</div></td><td><div id="Saturday|22:30" class="slot-cell insufficient">-1</div></td><td><div id="Sunday|22:30" class="slot-cell sufficient">0</div></td></tr><tr><td class="time-cell">23:00</td><td><div id="Monday|23:00" class="slot-cell insufficient">-7</div></td><td><div id="Tuesday|23:00" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|23:00" class="slot-cell sufficient">+5</div></td><td><div id="Thursday|23:00" class="slot-cell sufficient">+3</div></td><td><div id="Friday|23:00" class="slot-cell sufficient">0</div></td><td><div id="Saturday|23:00" class="slot-cell insufficient">-1</div></td><td><div id="Sunday|23:00" class="slot-cell insufficient">-1</div></td></tr><tr><td class="time-cell">23:30</td><td><div id="Monday|23:30" class="slot-cell insufficient">-8</div></td><td><div id="Tuesday|23:30" class="slot-cell sufficient">0</div></td><td><div id="Wednesday|23:30" class="slot-cell sufficient">+4</div></td><td><div id="Thursday|23:30" class="slot-cell sufficient">+1</div></td><td><div id="Friday|23:30" class="slot-cell insufficient">-1</div></td><td><div id="Saturday|23:30" class="slot-cell insufficient">-3</div></td><td><div id="Sunday|23:30" class="slot-cell insufficient">-2</div></td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- Auditing Side-Drawer Panel -->
+      <div class="auditor-panel" id="auditor-panel">
+        <!-- Default state -->
+        <div class="placeholder-panel" id="panel-placeholder" style="display: none;">
+          <div class="placeholder-icon">📊</div>
+          <h3>Select a Time Slot</h3>
+          <p>Click any cell in the calendar grid to view detailed calculations, mathematical formulas, and historical audit logs.</p>
+        </div>
+
+        <!-- Detail contents -->
+        <div class="panel-content" id="panel-content" style="display: block;">
+          <div class="panel-header">
+            <div>
+              <h2 id="panel-title-time">Monday at 00:00</h2>
+              <span id="panel-title-date" style="font-size: 13px; color: var(--text-muted);">Forecast Date: 2026-05-25</span>
+            </div>
+            <button class="close-panel-btn" id="close-panel-btn">×</button>
+          </div>
+
+          <div>
+            <div class="panel-section-title" id="panel-sec-metrics">Operational metrics</div>
+            <div class="detail-row">
+              <span class="detail-label" id="label-val-demand">Forecasted Demand (June)</span>
+              <span class="detail-val highlight" id="panel-val-demand">17 deliveries</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label" id="label-val-historical">Historical Completions (May)</span>
+              <span class="detail-val" id="panel-val-historical-completions">12.5 deliveries (May avg)</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label" id="label-val-active">Estimated Active Drivers</span>
+              <span class="detail-val highlight" id="panel-val-active-drivers">11.75 active</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label" id="label-val-capacity">Total Delivery Capacity</span>
+              <span class="detail-val" id="panel-val-capacity">11.75 deliveries</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label" id="label-val-balance">Capacity Net Balance</span>
+              <span class="detail-val highlight red" id="panel-val-balance">-5.25 deliveries (shortage)</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label" id="label-val-drivers-needed">Drivers Needed</span>
+              <span class="detail-val" id="panel-val-drivers-needed">6 additional</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label" id="label-val-utilization">Capacity Utilization</span>
+              <span class="detail-val highlight" id="panel-val-utilization">144.68%</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="panel-section-title" id="panel-sec-math">Mathematical audit path</div>
+            <div class="math-box" id="panel-math-box"><div class="math-formula">1. Estimated Capacity (C)</div>C = Active Drivers (N) × Productivity Rate (P_30)<br>C = 11.75 × (2 / 2)<br>C = 11.75 × 1.00<br><strong>C = 11.75 deliveries</strong><br><br><div class="math-formula">2. Net Balance (S)</div>S = Capacity (C) - Demand (D)<br>S = 11.75 - 17<br><strong>S = -5.25 deliveries</strong><br><br><div class="math-formula">3. Driver Audit</div>Drivers Needed = |S| / P_30<br>Needed = 5.25 / 1.00 = 5.25<br><div class="math-result">Result: -6 drivers needed</div></div>
+          </div>
+
+          <div>
+            <div class="panel-section-title" id="panel-sec-explanation">Explanation</div>
+            <div class="explanation-box" id="panel-explanation-text">We expect <strong>17</strong> deliveries. However, historical May data suggests only <strong>11.8</strong> active drivers will be on shift, giving a maximum delivery capacity of <strong>11.8</strong> orders. This results in an estimated shortage of <strong>5.3</strong> deliveries. To prevent delayed orders, we recommend scheduling at least <strong>6</strong> additional driver(s) for this 30-minute block.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly Hiring Plan Card -->
+    <div class="hierarchy-card" id="weekly-hiring-plan-card" style="margin-top: 24px; background: var(--card-bg); border: 1px solid var(--card-border); backdrop-filter: blur(12px); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+      <div class="checklist-title" id="forecast-lbl-hiring-plan-title" style="margin-bottom: 8px;">Weekly Recruitment &amp; Hiring Plan (June 2026)</div>
+      <div style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;" id="forecast-lbl-hiring-plan-sub">The following table shows the exact number of concurrent drivers needed in addition to the historical capacity to cover 100% of forecast peaks for each week.</div>
+      <table class="hierarchy-table">
+        <thead>
+          <tr>
+            <th id="forecast-th-hp-week" style="text-align: left; padding: 8px 12px; width: 120px;">Week</th>
+            <th id="forecast-th-hp-dates" style="text-align: left; padding: 8px 12px; width: 220px;">Date Range</th>
+            <th id="forecast-th-hp-peak" style="text-align: center; padding: 8px 12px; width: 180px;">Peak Drivers Needed</th>
+            <th id="forecast-th-hp-contract" style="text-align: left; padding: 8px 12px;">Target Contract Type</th>
+          </tr>
+        </thead>
+        <tbody id="forecast-hiring-plan-body"><tr>
+          <td><strong>Week 1</strong></td>
+          <td style="font-family: var(--font-mono);">2026-05-25 to 2026-05-31</td>
+          <td style="font-family: var(--font-mono); font-weight: 600; text-align: center; color: var(--color-red-text);">
+            +114
+          </td>
+          <td style="font-weight: 500;">Werkstudent / Seasonal on e-bike (Min. 80% E-Bike)</td>
+        </tr><tr>
+          <td><strong>Week 2</strong></td>
+          <td style="font-family: var(--font-mono);">2026-06-01 to 2026-06-07</td>
+          <td style="font-family: var(--font-mono); font-weight: 600; text-align: center; color: var(--color-red-text);">
+            +112
+          </td>
+          <td style="font-weight: 500;">Werkstudent / Seasonal on e-bike (Min. 80% E-Bike)</td>
+        </tr><tr>
+          <td><strong>Week 3</strong></td>
+          <td style="font-family: var(--font-mono);">2026-06-08 to 2026-06-14</td>
+          <td style="font-family: var(--font-mono); font-weight: 600; text-align: center; color: var(--color-red-text);">
+            +147
+          </td>
+          <td style="font-weight: 500;">Werkstudent / Seasonal on e-bike (Min. 80% E-Bike)</td>
+        </tr><tr>
+          <td><strong>Week 4</strong></td>
+          <td style="font-family: var(--font-mono);">2026-06-15 to 2026-06-21</td>
+          <td style="font-family: var(--font-mono); font-weight: 600; text-align: center; color: var(--color-red-text);">
+            +189
+          </td>
+          <td style="font-weight: 500;">Werkstudent / Seasonal on e-bike (Min. 80% E-Bike)</td>
+        </tr><tr>
+          <td><strong>Week 5</strong></td>
+          <td style="font-family: var(--font-mono);">2026-06-22 to 2026-06-28</td>
+          <td style="font-family: var(--font-mono); font-weight: 600; text-align: center; color: var(--color-red-text);">
+            +199
+          </td>
+          <td style="font-weight: 500;">Werkstudent / Seasonal on e-bike (Min. 80% E-Bike)</td>
+        </tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 2: COST & RESTRICTURING -->
+  <div class="tab-content" id="tab-cost-content">
+    <!-- Analysis Scope Toggle -->
+    <div style="display: flex; gap: 12px; margin-bottom: 16px; background: var(--card-bg); border: 1px solid var(--card-border); padding: 10px 16px; border-radius: 12px; align-items: center; box-shadow: 0 2px 12px rgba(0,0,0,0.03);">
+      <span style="font-weight: 600; font-size: 13.5px;" id="cost-lbl-view-scope">Simulation Scope:</span>
+      <div style="display: flex; gap: 8px; background: rgba(0,0,0,0.04); padding: 4px; border-radius: 8px;">
+        <button id="scope-btn-city" class="active" onclick="setScope('city')" style="border: none; background: var(--accent-color); color: white; padding: 6px 16px; border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.2s;">City Level</button>
+        <button id="scope-btn-global" onclick="setScope('global')" style="border: none; background: transparent; color: var(--text-muted); padding: 6px 16px; border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Global Fleet</button>
+      </div>
+    </div>
+
+    <div class="cost-tab-layout">
+      <!-- Sidebar Control Panel -->
+      <div class="cost-sidebar">
+        <div class="panel-section-title" id="cost-label-controls">Simulation controls</div>
+        
+        <div class="sim-form-group">
+          <label id="cost-label-policy">Mileage Capping Policy (Contract Drivers)</label>
+          <select id="cost-policy-selector" onchange="runCostSimulation()">
+            <option value="standard" selected="">Standard (Pay all Km)</option>
+            <option value="policy-a">Plan A (No Km in Red)</option>
+            <option value="policy-b">Plan B (Cap Km to Margin)</option>
+          </select>
+          <div id="policy-explanation-text" class="explanation-box" style="margin-top: 8px; font-size: 12.5px; border-left-color: rgb(245, 158, 11); background: rgba(245, 158, 11, 0.04); display: block;">We pay 100% of recorded mileage compensation to all drivers, regardless of individual trip profitability.</div>
+        </div>
+
+        <div class="sim-form-group">
+          <label id="cost-label-commission">Revenue Share Model</label>
+          <select id="cost-commission-selector" onchange="runCostSimulation()">
+            <option value="flat-8" selected="">Flat Percentage Share</option>
+            <option value="tiered">Progressive Tiers</option>
+          </select>
+          
+          <div id="flat-inputs-container" style="margin-top: 8px; display: block;">
+            <div class="sim-input-row">
+              <span id="lbl-flat-share">Flat Share %</span>
+              <input type="number" id="input-flat-rate" value="8.0" step="0.5" min="0.0" max="100.0" oninput="runCostSimulation()">
+            </div>
+          </div>
+          
+          <div id="progressive-inputs-container" style="margin-top: 8px; display: none;">
+            <div class="sim-input-row">
+              <span id="lbl-prog-t1">Umsatz &lt; 500 EUR</span>
+              <input type="number" id="input-prog-t1" value="8.0" step="0.5" min="0.0" max="100.0" oninput="runCostSimulation()">
+            </div>
+            <div class="sim-input-row">
+              <span id="lbl-prog-t2">Umsatz 500-1500 EUR</span>
+              <input type="number" id="input-prog-t2" value="10.0" step="0.5" min="0.0" max="100.0" oninput="runCostSimulation()">
+            </div>
+            <div class="sim-input-row">
+              <span id="lbl-prog-t3">Umsatz 1500-3000 EUR</span>
+              <input type="number" id="input-prog-t3" value="12.0" step="0.5" min="0.0" max="100.0" oninput="runCostSimulation()">
+            </div>
+            <div class="sim-input-row">
+              <span id="lbl-prog-t4">Umsatz 3000-5000 EUR</span>
+              <input type="number" id="input-prog-t4" value="14.0" step="0.5" min="0.0" max="100.0" oninput="runCostSimulation()">
+            </div>
+            <div class="sim-input-row">
+              <span id="lbl-prog-t5">Umsatz 5000-8000 EUR</span>
+              <input type="number" id="input-prog-t5" value="15.0" step="0.5" min="0.0" max="100.0" oninput="runCostSimulation()">
+            </div>
+            <div class="sim-input-row">
+              <span id="lbl-prog-t6">Umsatz &gt; 8000 EUR</span>
+              <input type="number" id="input-prog-t6" value="16.0" step="0.5" min="0.0" max="100.0" oninput="runCostSimulation()">
+            </div>
+          </div>
+        </div>
+
+        <hr style="border: 1px solid rgba(0,0,0,0.06);">
+
+        <div class="panel-section-title" id="cost-label-summary">City aggregates</div>
+        
+        <div class="detail-row">
+          <span class="detail-label" id="cost-lbl-hours">Total Active Hours</span>
+          <span class="detail-val" id="cost-val-hours">35&nbsp;651 h</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label" id="cost-lbl-tph">Average Trips/Hr</span>
+          <span class="detail-val" id="cost-val-tph">2.02</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label" id="cost-lbl-kph">Average Km/Hr</span>
+          <span class="detail-val" id="cost-val-kph">9.72</span>
+        </div>
+      </div>
+
+      <!-- Main Cost Analytics -->
+      <div class="cost-main">
+        <!-- KPI Cards Grid -->
+        <div class="metrics-grid" style="margin-bottom: 0;">
+          <div class="metric-card">
+            <div class="metric-header" id="cost-lbl-avg-cost">Avg Cost per Employee/Hour</div>
+            <div class="metric-value" id="cost-val-avg-cost">25.52 EUR/h</div>
+            <div class="metric-sub negative" id="cost-val-avg-cost-status">⚠️ Exceeds cap by 3.02 EUR/h</div>
+          </div>
+          
+          <div class="metric-card">
+            <div class="metric-header" id="cost-lbl-target">Restructuring Target</div>
+            <div class="metric-value" style="color: #2563eb;">22.50 EUR</div>
+            <div class="metric-sub" id="cost-lbl-target-sub">Maximum limit/hour</div>
+          </div>
+
+          <div class="metric-card" style="background: linear-gradient(135deg, #f0fdf4 0%, #f0fdf4 100%); border-color: rgba(72,187,120,0.15); display: flex; flex-direction: column; justify-content: space-between; min-height: 160px;">
+            <div>
+              <div class="metric-header" id="cost-lbl-profit">Simulated Net Margin (Capped)</div>
+              <div class="metric-value negative" id="cost-val-profit" style="color: #166534; font-size: 24px; margin-bottom: 8px;">-22&nbsp;577,60 EUR</div>
+            </div>
+            
+            <div id="cost-val-savings" style="display: none;">Mileage Paid: <strong>67&nbsp;433 EUR</strong> • Revenue Margin: <strong>44&nbsp;855 EUR</strong><br>Direct Mileage Savings: <strong>0 EUR</strong> vs standard contract.</div>
+
+            <div class="sim-details-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 8px; margin-top: auto;">
+              <div class="sim-sub-item">
+                <span class="sim-sub-label" id="lbl-sim-sub-paid" style="font-size: 10px; color: var(--text-muted); display: block; text-transform: uppercase; font-weight: 600; text-align: left;">Mileage Paid</span>
+                <span class="sim-sub-val" id="val-sim-sub-paid" style="font-size: 12px; font-weight: 700; color: var(--text-main); display: block; text-align: left; margin-top: 2px;">67&nbsp;433 EUR</span>
+              </div>
+              <div class="sim-sub-item">
+                <span class="sim-sub-label" id="lbl-sim-sub-rev" style="font-size: 10px; color: var(--text-muted); display: block; text-transform: uppercase; font-weight: 600; text-align: left;">Revenue Margin</span>
+                <span class="sim-sub-val" id="val-sim-sub-rev" style="font-size: 12px; font-weight: 700; color: var(--text-main); display: block; text-align: left; margin-top: 2px;">44&nbsp;855 EUR</span>
+              </div>
+              <div class="sim-sub-item" style="grid-column: span 2; display: flex; justify-content: space-between; align-items: center; background: rgba(37,99,235,0.06); padding: 4px 8px; border-radius: 4px; margin-top: 6px;">
+                <span class="sim-sub-label" id="lbl-sim-sub-savings" style="font-size: 11px; font-weight: 600; color: var(--accent-color);">Mileage Savings</span>
+                <span class="sim-sub-val" id="val-sim-sub-savings" style="font-size: 11px; font-weight: 700; color: var(--accent-color);">0 EUR</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cost Bars Visual Chart -->
+        <div class="cost-chart-container">
+          <div class="cost-chart-title">
+            <span id="cost-lbl-chart-title">Contract &amp; Vehicle Cost per Hour Comparison</span>
+            <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);" id="cost-lbl-limit-info">Target: ≤ 22.50 EUR (Solid Line)</span>
+          </div>
+          <div id="cost-bars-list"><div class="cost-bar-row">
+          <div class="cost-bar-labels">
+            <span class="cost-bar-name">Werkstudent + Bicycle <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">(5012 h)</span></span>
+            <span class="cost-bar-val">21.55 EUR/h • <span class="green" style="font-weight:600;">Compliant</span></span>
+          </div>
+          <div class="cost-bar-track">
+            <div class="cost-bar-fill compliant" style="width: 67.35451046776288%;"></div>
+            <div class="cost-limit-marker" style="left: 70.3125%;"></div>
+          </div>
+        </div><div class="cost-bar-row">
+          <div class="cost-bar-labels">
+            <span class="cost-bar-name">Werkstudent + Car <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">(6 h)</span></span>
+            <span class="cost-bar-val">22.78 EUR/h • <span class="red" style="font-weight:600;">Non-Compliant</span></span>
+          </div>
+          <div class="cost-bar-track">
+            <div class="cost-bar-fill exceeds" style="width: 71.19843750000001%;"></div>
+            <div class="cost-limit-marker" style="left: 70.3125%;"></div>
+          </div>
+        </div><div class="cost-bar-row">
+          <div class="cost-bar-labels">
+            <span class="cost-bar-name">Teilzeit / TZ + Bicycle <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">(6852 h)</span></span>
+            <span class="cost-bar-val">23.50 EUR/h • <span class="red" style="font-weight:600;">Non-Compliant</span></span>
+          </div>
+          <div class="cost-bar-track">
+            <div class="cost-bar-fill exceeds" style="width: 73.4358022044142%;"></div>
+            <div class="cost-limit-marker" style="left: 70.3125%;"></div>
+          </div>
+        </div><div class="cost-bar-row">
+          <div class="cost-bar-labels">
+            <span class="cost-bar-name">Minijob + Bicycle <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">(2159 h)</span></span>
+            <span class="cost-bar-val">25.05 EUR/h • <span class="red" style="font-weight:600;">Non-Compliant</span></span>
+          </div>
+          <div class="cost-bar-track">
+            <div class="cost-bar-fill exceeds" style="width: 78.29087391340008%;"></div>
+            <div class="cost-limit-marker" style="left: 70.3125%;"></div>
+          </div>
+        </div><div class="cost-bar-row">
+          <div class="cost-bar-labels">
+            <span class="cost-bar-name">Teilzeit / TZ + Car <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">(19912 h)</span></span>
+            <span class="cost-bar-val">27.02 EUR/h • <span class="red" style="font-weight:600;">Non-Compliant</span></span>
+          </div>
+          <div class="cost-bar-track">
+            <div class="cost-bar-fill exceeds" style="width: 84.43040990974119%;"></div>
+            <div class="cost-limit-marker" style="left: 70.3125%;"></div>
+          </div>
+        </div><div class="cost-bar-row">
+          <div class="cost-bar-labels">
+            <span class="cost-bar-name">Minijob + Car <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">(1710 h)</span></span>
+            <span class="cost-bar-val">28.34 EUR/h • <span class="red" style="font-weight:600;">Non-Compliant</span></span>
+          </div>
+          <div class="cost-bar-track">
+            <div class="cost-bar-fill exceeds" style="width: 88.56437283121443%;"></div>
+            <div class="cost-limit-marker" style="left: 70.3125%;"></div>
+          </div>
+        </div></div>
+        </div>
+
+        <!-- Restructuring Plan specific to City -->
+        <div class="checklist-container">
+          <div class="checklist-title" id="cost-lbl-plan-title">Fleet Restructuring Action Plan</div>
+          <div id="cost-action-list"><div class="checklist-item">
+          <input type="checkbox" class="checklist-checkbox" checked="">
+          <span class="checklist-text"><strong>Eliminate Minijobs:</strong> Firing or converting all Minijob couriers (costing &gt; 25 EUR/h) to Werkstudent on Bicycle.</span>
+        </div><div class="checklist-item">
+          <input type="checkbox" class="checklist-checkbox" checked="">
+          <span class="checklist-text"><strong>Bicycle Shift (Congested center):</strong> Since Berlin suffers from heavy traffic and parking delays, e-bikes are faster. Target a ratio of <strong>80% e-bikes / 20% cars</strong>.</span>
+        </div><div class="checklist-item">
+          <input type="checkbox" class="checklist-checkbox" checked="">
+          <span class="checklist-text"><strong>Summer Peak Preparation:</strong> Demand grows by <strong>+61.7% (W1: 8.5k -&gt; W5: 13.8k)</strong> in week 5. Hire exclusively seasonal students (Kurzfristig, tax ~3%) and Werkstudenten on e-bikes.</span>
+        </div></div>
+        </div>
+
+        <!-- Active Fleet Contract Breakdown (May 2026) -->
+        <div class="hierarchy-card" id="active-fleet-breakdown-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+            <div class="checklist-title" id="cost-lbl-breakdown-title" style="margin-bottom: 0;">Active Fleet Contract Breakdown (May 2026)</div>
+            <div style="display: flex; gap: 8px; background: rgba(0,0,0,0.04); padding: 4px; border-radius: 8px;" class="toggle-container">
+              <button id="btn-breakdown-city" class="toggle-btn active" onclick="changeBreakdownView('city')" style="border: none; background: var(--accent-color); color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Current City</button>
+              <button id="btn-breakdown-global" class="toggle-btn" onclick="changeBreakdownView('global')" style="border: none; background: transparent; color: var(--text-muted); padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Global Fleet</button>
+            </div>
+          </div>
+          <div id="cost-lbl-breakdown-sub" style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">Globally, the fleet consists of <strong>1,312</strong> active couriers in May, of which <strong>1,227 (93.8%)</strong> work under non-compliant contracts (Teilzeit and Minijob).</div>
+          <table class="hierarchy-table">
+            <thead>
+              <tr>
+                <th id="cost-th-brk-contract" style="text-align: left; padding: 8px 12px;">Contract Type</th>
+                <th id="cost-th-brk-vehicle" style="text-align: left; padding: 8px 12px;">Vehicle</th>
+                <th id="cost-th-brk-count" style="text-align: left; padding: 8px 12px;">Active Couriers</th>
+                <th id="cost-th-brk-pct" style="text-align: left; padding: 8px 12px;">Share of Hours</th>
+                <th id="cost-th-brk-status" style="text-align: left; padding: 8px 12px;">Compliance Status</th>
+                <th id="cost-th-brk-action" style="text-align: left; padding: 8px 12px;">Operational Action</th>
+              </tr>
+            </thead>
+            <tbody id="cost-breakdown-body"><tr>
+          <td><strong>Teilzeit / TZ</strong></td>
+          <td>Car</td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">73</td>
+          <td style="font-family: var(--font-mono);">55.9% <span style="font-size: 11px; color: var(--text-muted);">(19&nbsp;912h)</span></td>
+          <td><span class="status-badge orange">Non-Compliant <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(27.02€/h)</span></span></td>
+          <td style="font-weight: 500;">Freeze hiring / Transition</td>
+        </tr><tr>
+          <td><strong>Teilzeit / TZ</strong></td>
+          <td>Bicycle</td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">35</td>
+          <td style="font-family: var(--font-mono);">19.2% <span style="font-size: 11px; color: var(--text-muted);">(6&nbsp;852h)</span></td>
+          <td><span class="status-badge orange">Non-Compliant <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(23.50€/h)</span></span></td>
+          <td style="font-weight: 500;">Freeze hiring / Transition</td>
+        </tr><tr>
+          <td><strong>Werkstudent</strong></td>
+          <td>Bicycle</td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">16</td>
+          <td style="font-family: var(--font-mono);">14.1% <span style="font-size: 11px; color: var(--text-muted);">(5&nbsp;012h)</span></td>
+          <td><span class="status-badge green">Compliant <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(21.55€/h)</span></span></td>
+          <td style="font-weight: 500;">Retain &amp; Scale Up</td>
+        </tr><tr>
+          <td><strong>Minijob</strong></td>
+          <td>Bicycle</td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">14</td>
+          <td style="font-family: var(--font-mono);">6.1% <span style="font-size: 11px; color: var(--text-muted);">(2&nbsp;159h)</span></td>
+          <td><span class="status-badge orange">Non-Compliant <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(25.05€/h)</span></span></td>
+          <td style="font-weight: 500;">Complete Elimination</td>
+        </tr><tr>
+          <td><strong>Minijob</strong></td>
+          <td>Car</td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">26</td>
+          <td style="font-family: var(--font-mono);">4.8% <span style="font-size: 11px; color: var(--text-muted);">(1&nbsp;710h)</span></td>
+          <td><span class="status-badge orange">Non-Compliant <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(28.34€/h)</span></span></td>
+          <td style="font-weight: 500;">Complete Elimination</td>
+        </tr><tr>
+          <td><strong>Werkstudent</strong></td>
+          <td>Car</td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">13</td>
+          <td style="font-family: var(--font-mono);">0.0% <span style="font-size: 11px; color: var(--text-muted);">(6h)</span></td>
+          <td><span class="status-badge orange">Non-Compliant <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(22.78€/h)</span></span></td>
+          <td style="font-weight: 500;">Convert to Bicycle / Cap Km</td>
+        </tr></tbody>
+          </table>
+        </div>
+
+        <!-- Hierarchy of Rationality -->
+        <div class="hierarchy-card">
+          <div class="checklist-title" id="cost-lbl-hierarchy-title">Hierarchy of Hiring Rationality</div>
+          <table class="hierarchy-table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">Poz</th>
+                <th id="cost-th-contract">Contract type</th>
+                <th id="cost-th-vehicle">Vehicle</th>
+                <th id="cost-th-tax">Tax Rate</th>
+                <th id="cost-th-est-cost">Est. Cost/Hour</th>
+                <th id="cost-th-status">Status (Cap 22.50)</th>
+              </tr>
+            </thead>
+            <tbody id="cost-hierarchy-body"><tr>
+          <td><strong>1</strong></td>
+          <td>Seasonal Student (Kurzfristig)</td>
+          <td>Bicycle</td>
+          <td style="font-family: var(--font-mono);">3.00%</td>
+          <td style="font-family: var(--font-mono); font-weight: 500;">16.50 - 17.50 EUR/h</td>
+          <td><span class="status-badge green">Optimal</span></td>
+        </tr><tr>
+          <td><strong>2</strong></td>
+          <td>Seasonal Student (Kurzfristig)</td>
+          <td>Car</td>
+          <td style="font-family: var(--font-mono);">3.00%</td>
+          <td style="font-family: var(--font-mono); font-weight: 500;">19.00 - 20.50 EUR/h</td>
+          <td><span class="status-badge green">Optimal</span></td>
+        </tr><tr>
+          <td><strong>3</strong></td>
+          <td>Werkstudent</td>
+          <td>Bicycle</td>
+          <td style="font-family: var(--font-mono);">31.89%</td>
+          <td style="font-family: var(--font-mono); font-weight: 500;">21.00 - 22.00 EUR/h</td>
+          <td><span class="status-badge green">Compliant</span></td>
+        </tr><tr>
+          <td><strong>4</strong></td>
+          <td>Werkstudent</td>
+          <td>Car</td>
+          <td style="font-family: var(--font-mono);">31.89%</td>
+          <td style="font-family: var(--font-mono); font-weight: 500;">23.00 - 25.00 EUR/h</td>
+          <td><span class="status-badge orange">Non-Compliant</span></td>
+        </tr><tr>
+          <td><strong>5</strong></td>
+          <td>Teilzeit / TZ</td>
+          <td>Bicycle</td>
+          <td style="font-family: var(--font-mono);">43.09%</td>
+          <td style="font-family: var(--font-mono); font-weight: 500;">23.50 - 24.50 EUR/h</td>
+          <td><span class="status-badge orange">Non-Compliant</span></td>
+        </tr><tr>
+          <td><strong>6</strong></td>
+          <td>Teilzeit / TZ</td>
+          <td>Car</td>
+          <td style="font-family: var(--font-mono);">43.09%</td>
+          <td style="font-family: var(--font-mono); font-weight: 500;">26.50 - 28.00 EUR/h</td>
+          <td><span class="status-badge orange">Non-Compliant</span></td>
+        </tr><tr>
+          <td><strong>7</strong></td>
+          <td>Minijob</td>
+          <td>Bicycle</td>
+          <td style="font-family: var(--font-mono);">52.39%</td>
+          <td style="font-family: var(--font-mono); font-weight: 500;">24.50 - 25.50 EUR/h</td>
+          <td><span class="status-badge red">Eliminate</span></td>
+        </tr><tr>
+          <td><strong>8</strong></td>
+          <td>Minijob</td>
+          <td>Car</td>
+          <td style="font-family: var(--font-mono);">52.39%</td>
+          <td style="font-family: var(--font-mono); font-weight: 500;">27.50 - 29.50 EUR/h</td>
+          <td><span class="status-badge red">Eliminate</span></td>
+        </tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: CITY ACTION PLANS -->
+  <div class="tab-content active" id="tab-plans-content">
+    <!-- Row 1: Financial Impact & Summer Recruitment Timeline -->
+    <div style="display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px;">
+      <!-- Financial Impact Card -->
+      <div class="metric-card" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--accent-color); padding-bottom: 8px;">
+          <div class="checklist-title" id="plans-lbl-financial-title" style="margin-bottom: 0; font-size: 18px; font-weight: 700; color: var(--text-main);">💰 Financial Restructuring Target &amp; Impact</div>
+          <div style="font-size: 13px; font-weight: 700; background: var(--color-green-bg); color: var(--color-green-text); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--color-green-border);" id="plans-lbl-savings-target">Target: ≤ 22.50 EUR/h (Limit)</div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; align-items: center;">
+          <!-- Visual Target Bar & Stats -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600;">
+              <span>Current Avg Cost: <span id="plans-val-current-cost-label" style="color: var(--color-red-text); font-weight: 700;">25.52 EUR/h</span></span>
+              <span>Target Limit: <span style="color: var(--color-green-text); font-weight: 700;">22.50 EUR/h</span></span>
+            </div>
+            <!-- Progress Bar -->
+            <div style="height: 14px; background: var(--color-red-bg); border-radius: 7px; position: relative; border: 1px solid var(--color-red-border); overflow: hidden; display: flex;">
+              <div id="plans-bar-cost-fill" style="height: 100%; background: var(--color-green-border); border-radius: 6px; width: 88.1661%; transition: width 0.4s;"></div>
+            </div>
+            <div id="plans-lbl-cost-overflow" style="font-size: 12px; font-weight: 700; color: var(--color-red-text); text-align: right; margin-top: -4px;">+3.02 EUR/h above limit</div>
+
+            <!-- Performance Stats Grid -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px;">
+              <div style="background: rgba(0,0,0,0.015); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--card-border);">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;" id="plans-lbl-active-hours">Total Active Hours</div>
+                <div id="plans-val-active-hours" style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-top: 2px;">35&nbsp;650,99 h</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.015); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--card-border);">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;" id="plans-lbl-tph">Average Trips/Hr</div>
+                <div id="plans-val-tph" style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-top: 2px;">2.02</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.015); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--card-border);">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;" id="plans-lbl-kph">Average Km/Hr</div>
+                <div id="plans-val-kph" style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-top: 2px;">9.72 km/h</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Monthly Savings Banner -->
+          <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2); height: 100%;">
+            <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.95;" id="plans-lbl-savings">Estimated Monthly Savings</div>
+            <div id="plans-val-savings-amt" style="font-size: 32px; font-weight: 800; margin-top: 6px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">+107&nbsp;666 EUR</div>
+            <div style="font-size: 11px; opacity: 0.85; margin-top: 4px;" id="plans-lbl-savings-desc">if ≤ 22.50 EUR/h target is met</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Recruitment & Hiring Targets -->
+      <div class="metric-card" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+        <div class="checklist-title" id="plans-lbl-recruitment-title" style="margin-bottom: 6px; font-size: 18px; font-weight: 700; color: var(--text-main); border-bottom: 2px solid var(--accent-color); padding-bottom: 8px;">📈 Summer Recruitment &amp; Weekly Hiring Targets (June 2026)</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;" id="plans-lbl-recruitment-sub">The required concurrent couriers to hire to cover peak shortages:</div>
+        
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;" id="plans-timeline-grid"><div style="background: rgba(0, 0, 0, 0.01); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.01) 0px 2px 8px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                Week 1
+              </div>
+              <div style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); line-height: 1;">
+                2026-05-25 to 2026-05-31
+              </div>
+              <div style="font-size: 24px; font-weight: 800; color: var(--color-red-text); margin: 4px 0;">+114</div>
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-main); line-height: 1.2;">Werkstudent on E-Bike (Min. 80% E-Bike)</div>
+            </div><div style="background: rgba(0, 0, 0, 0.01); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.01) 0px 2px 8px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                Week 2
+              </div>
+              <div style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); line-height: 1;">
+                2026-06-01 to 2026-06-07
+              </div>
+              <div style="font-size: 24px; font-weight: 800; color: var(--color-red-text); margin: 4px 0;">+112</div>
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-main); line-height: 1.2;">Werkstudent on E-Bike (Min. 80% E-Bike)</div>
+            </div><div style="background: rgba(0, 0, 0, 0.01); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.01) 0px 2px 8px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                Week 3
+              </div>
+              <div style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); line-height: 1;">
+                2026-06-08 to 2026-06-14
+              </div>
+              <div style="font-size: 24px; font-weight: 800; color: var(--color-red-text); margin: 4px 0;">+147</div>
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-main); line-height: 1.2;">Werkstudent on E-Bike (Min. 80% E-Bike)</div>
+            </div><div style="background: rgba(0, 0, 0, 0.01); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.01) 0px 2px 8px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                Week 4
+              </div>
+              <div style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); line-height: 1;">
+                2026-06-15 to 2026-06-21
+              </div>
+              <div style="font-size: 24px; font-weight: 800; color: var(--color-red-text); margin: 4px 0;">+189</div>
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-main); line-height: 1.2;">Werkstudent on E-Bike (Min. 80% E-Bike)</div>
+            </div><div style="background: rgba(0, 0, 0, 0.01); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.01) 0px 2px 8px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                Week 5
+              </div>
+              <div style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); line-height: 1;">
+                2026-06-22 to 2026-06-28
+              </div>
+              <div style="font-size: 24px; font-weight: 800; color: var(--color-red-text); margin: 4px 0;">+199</div>
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-main); line-height: 1.2;">Werkstudent on E-Bike (Min. 80% E-Bike)</div>
+            </div></div>
+
+        <!-- Non-Additive Hiring Explanation Note -->
+        <div style="background: rgba(33, 150, 243, 0.05); border: 1px solid rgba(33, 150, 243, 0.2); border-radius: 12px; padding: 16px; margin-top: 16px; display: flex; gap: 12px; align-items: flex-start;">
+          <span style="font-size: 20px; line-height: 1;">💡</span>
+          <div style="font-size: 13.5px; line-height: 1.5; color: var(--text-main);">
+            <strong style="display: block; margin-bottom: 4px; color: #1e88e5;" id="plans-lbl-note-title">💡 How to read these hiring targets (Non-Additive):</strong>
+            <span id="plans-lbl-note-body" style="color: var(--text-muted);">These numbers represent the peak concurrent deficit for each week. They are <strong>cumulative (up to), not additive (new)</strong>. For example, if Week 1 requires +65 couriers and Week 2 requires +100, you do <strong>not</strong> hire 165. You hire 65 in Week 1, and then hire 35 more in Week 2 to reach the peak of 100 active couriers. If a subsequent week requires fewer (e.g. +50), your existing pool is fully sufficient.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Contract Structure Mix & Action Checklist -->
+    <div class="cost-tab-layout">
+      <!-- Left Column: Sidebar -->
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 24px;">
+        <div class="metric-card" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column;">
+          <div class="checklist-title" id="plans-lbl-mix-title" style="margin-bottom: 16px; font-size: 18px; font-weight: 700; color: var(--text-main); border-bottom: 2px solid var(--accent-color); padding-bottom: 8px;">🚗 Current Contract &amp; Vehicle Structure</div>
+          <div id="plans-mix-list" style="display: flex; flex-direction: column; gap: 12px;"><div class="checklist-item" style="background: rgba(0, 0, 0, 0.016); padding: 8px 12px; border-radius: 8px; border-left: 4px solid var(--accent-color); font-size: 13.5px;"><span style="font-family: var(--font-mono);">`Minijob` + `Bicycle`: 2159.0 h (6.1%) | Cost: 25.05 EUR/h | TPH: 2.02 | KPH: 6.61</span></div><div class="checklist-item" style="background: rgba(0, 0, 0, 0.016); padding: 8px 12px; border-radius: 8px; border-left: 4px solid var(--accent-color); font-size: 13.5px;"><span style="font-family: var(--font-mono);">`Minijob` + `Car`: 1710.0 h (4.8%) | Cost: 28.34 EUR/h | TPH: 1.95 | KPH: 11.07</span></div><div class="checklist-item" style="background: rgba(0, 0, 0, 0.016); padding: 8px 12px; border-radius: 8px; border-left: 4px solid var(--accent-color); font-size: 13.5px;"><span style="font-family: var(--font-mono);">`TZ` + `Bicycle`: 6852.0 h (19.2%) | Cost: 23.50 EUR/h | TPH: 1.93 | KPH: 6.53</span></div><div class="checklist-item" style="background: rgba(0, 0, 0, 0.016); padding: 8px 12px; border-radius: 8px; border-left: 4px solid var(--accent-color); font-size: 13.5px;"><span style="font-family: var(--font-mono);">`TZ` + `Car`: 19912.0 h (55.9%) | Cost: 27.02 EUR/h | TPH: 2.04 | KPH: 11.94</span></div><div class="checklist-item" style="background: rgba(0, 0, 0, 0.016); padding: 8px 12px; border-radius: 8px; border-left: 4px solid var(--accent-color); font-size: 13.5px;"><span style="font-family: var(--font-mono);">`Werkstundent` + `Bicycle`: 5012.0 h (14.1%) | Cost: 21.55 EUR/h | TPH: 2.06 | KPH: 6.16</span></div><div class="checklist-item" style="background: rgba(0, 0, 0, 0.016); padding: 8px 12px; border-radius: 8px; border-left: 4px solid var(--accent-color); font-size: 13.5px;"><span style="font-family: var(--font-mono);">`Werkstundent` + `Car`: 6.0 h (0.0%) | Cost: 22.78 EUR/h | TPH: 1.17 | KPH: 6.98</span></div></div>
+        </div>
+      </div>
+
+      <!-- Right Column: Action Plan & Reductions -->
+      <div style="flex: 1.2; display: flex; flex-direction: column; gap: 24px;">
+        
+        <div class="metric-card" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+          <div class="checklist-title" id="plans-lbl-steps-title" style="margin-bottom: 16px; font-size: 18px; font-weight: 700; color: var(--text-main); border-bottom: 2px solid var(--accent-color); padding-bottom: 8px;">🛠️ Restructuring Action Plan ("What to do &amp; How to fix it")</div>
+          <div style="margin-bottom: 16px; font-size: 13.5px; color: var(--text-muted); line-height: 1.5;" id="plans-lbl-steps-subtitle">Follow the checklist below to optimize the fleet capacity, eliminate non-compliant contract models, and achieve the target hourly cost of ≤ 22.50 EUR/hour.</div>
+          <div class="checklist-container" id="plans-steps-container" style="border: none; padding: 0; background: transparent; display: flex; flex-direction: column; gap: 16px;"><div class="checklist-item" style="align-items: flex-start; gap: 12px;">
+          <input type="checkbox" class="checklist-checkbox" id="plans-checkbox-0" style="margin-top: 4px;" checked="">
+          <div class="checklist-text" style="display: flex; flex-direction: column; gap: 4px;">
+            <strong style="color: var(--text-main); font-size: 14.5px;">1. Eliminate Minijobs</strong>
+            <span style="color: var(--text-muted); font-size: 13px; line-height: 1.4;">Fire or convert all Minijob couriers (costing &gt; 25 EUR/h) to Werkstudent on Bicycle.</span>
+          </div>
+        </div><div class="checklist-item" style="align-items: flex-start; gap: 12px;">
+          <input type="checkbox" class="checklist-checkbox" id="plans-checkbox-1" style="margin-top: 4px;" checked="">
+          <div class="checklist-text" style="display: flex; flex-direction: column; gap: 4px;">
+            <strong style="color: var(--text-main); font-size: 14.5px;">2. Teilzeit (TZ) Restructuring</strong>
+            <span style="color: var(--text-muted); font-size: 13px; line-height: 1.4;">Freeze TZ hiring. Transition existing TZ car couriers to Werkstudent on Bicycle or apply strict mileage capping (Plan B).</span>
+          </div>
+        </div><div class="checklist-item" style="align-items: flex-start; gap: 12px;">
+          <input type="checkbox" class="checklist-checkbox" id="plans-checkbox-2" style="margin-top: 4px;" checked="">
+          <div class="checklist-text" style="display: flex; flex-direction: column; gap: 4px;">
+            <strong style="color: var(--text-main); font-size: 14.5px;">3. Bicycle Shift (Congested Center)</strong>
+            <span style="color: var(--text-muted); font-size: 13px; line-height: 1.4;">Since the city suffers from heavy traffic and parking delays, e-bikes are faster. Target a ratio of 80% e-bikes / 20% cars.</span>
+          </div>
+        </div><div class="checklist-item" style="align-items: flex-start; gap: 12px;">
+          <input type="checkbox" class="checklist-checkbox" id="plans-checkbox-3" style="margin-top: 4px;" checked="">
+          <div class="checklist-text" style="display: flex; flex-direction: column; gap: 4px;">
+            <strong style="color: var(--text-main); font-size: 14.5px;">4. Summer Peak Recruitment</strong>
+            <span style="color: var(--text-muted); font-size: 13px; line-height: 1.4;">Cover the June capacity deficit by hiring permanent Werkstudenten and seasonal students (Kurzfristig) on e-bikes, targeting hourly costs of ~17.00 - 21.00 EUR.</span>
+          </div>
+        </div></div>
+        </div>
+
+        <!-- Actionable Reductions (Moved to Right Column so it's wide and directly below Action Plan) -->
+        <div class="metric-card" style="background: var(--card-bg); border: 1px solid var(--color-red-border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(220, 38, 38, 0.1); border-left: 6px solid var(--color-red-border);">
+          <div class="checklist-title" id="plans-lbl-reductions-title" style="margin-bottom: 12px; font-size: 22px; font-weight: 800; color: var(--color-red-text); border-bottom: 2px solid rgba(220, 38, 38, 0.2); padding-bottom: 8px;">🛑 Actionable Courier Reductions &amp; Transitions</div>
+          <div style="font-size: 15px; color: var(--text-muted); margin-bottom: 24px;" id="plans-lbl-reductions-sub">Dismiss inefficient contracts and transition drivers to E-bikes to achieve cost compliance.</div>
+          <div id="plans-reductions-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;"><div class="checklist-item" style="background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.15); padding: 10px 14px; border-radius: 8px; font-size: 13.5px; display: flex; gap: 10px; align-items: center;"><span style="font-size: 16px;">❌</span><span style="color: var(--text-main);"><strong>Dismiss/Transition Minijob (Bicycle)</strong>: Remove <strong><span style="font-size: 32px; font-weight: 900; color: #e11d48; margin: 0 8px; vertical-align: middle; background: #ffe4e6; padding: 2px 12px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 4px rgba(225, 29, 72, 0.2);">14</span></strong> active couriers (cost exceeds 25 EUR/h).</span></div><div class="checklist-item" style="background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.15); padding: 10px 14px; border-radius: 8px; font-size: 13.5px; display: flex; gap: 10px; align-items: center;"><span style="font-size: 16px;">❌</span><span style="color: var(--text-main);"><strong>Dismiss/Transition Minijob (Car)</strong>: Remove <strong><span style="font-size: 32px; font-weight: 900; color: #e11d48; margin: 0 8px; vertical-align: middle; background: #ffe4e6; padding: 2px 12px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 4px rgba(225, 29, 72, 0.2);">26</span></strong> active couriers (cost exceeds 25 EUR/h).</span></div><div class="checklist-item" style="background: rgba(245, 158, 11, 0.03); border: 1px solid rgba(245, 158, 11, 0.15); padding: 10px 14px; border-radius: 8px; font-size: 13.5px; display: flex; gap: 10px; align-items: center;"><span style="font-size: 16px;">⚠️</span><span style="color: var(--text-main);"><strong>Reduce/Transition Teilzeit (Bicycle)</strong>: Transition <strong><span style="font-size: 32px; font-weight: 900; color: #e11d48; margin: 0 8px; vertical-align: middle; background: #ffe4e6; padding: 2px 12px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 4px rgba(225, 29, 72, 0.2);">35</span></strong> couriers to Werkstudent contracts to reach ≤ 22.50 EUR/h.</span></div><div class="checklist-item" style="background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.15); padding: 10px 14px; border-radius: 8px; font-size: 13.5px; display: flex; gap: 10px; align-items: center;"><span style="font-size: 16px;">❌</span><span style="color: var(--text-main);"><strong>Transition Teilzeit on Car</strong>: Transition or lay off <strong><span style="font-size: 32px; font-weight: 900; color: #e11d48; margin: 0 8px; vertical-align: middle; background: #ffe4e6; padding: 2px 12px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 4px rgba(225, 29, 72, 0.2);">73</span></strong> couriers from Car to E-bike (mileage cost exceeds compliance).</span></div><div class="checklist-item" style="background: rgba(245, 158, 11, 0.03); border: 1px solid rgba(245, 158, 11, 0.15); padding: 10px 14px; border-radius: 8px; font-size: 13.5px; display: flex; gap: 10px; align-items: center;"><span style="font-size: 16px;">⚠️</span><span style="color: var(--text-main);"><strong>Transition Werkstudent on Car</strong>: Transition <strong><span style="font-size: 32px; font-weight: 900; color: #e11d48; margin: 0 8px; vertical-align: middle; background: #ffe4e6; padding: 2px 12px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 4px rgba(225, 29, 72, 0.2);">13</span></strong> couriers from Car to E-bike to lower mileage expenses.</span></div></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: DATA IMPORT -->
+  <div class="tab-content" id="tab-data-content">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 24px;">
+      
+      <!-- Dropzone 1: Forecast -->
+      <div class="fleetcap-dropzone-container" id="forecast-dropzone">
+        <div class="dropzone-inner">
+          <div class="dropzone-icon">
+            <i class="fa-solid fa-chart-line"></i>
+          </div>
+          <div class="dropzone-text">
+            <span class="dropzone-title" id="forecast-dropzone-title-text">Upload Forecast Data</span>
+            <span class="dropzone-sub" id="forecast-dropzone-sub-text">Drag & drop order forecast spreadsheet (.xlsx)</span>
+          </div>
+        </div>
+        <input type="file" id="forecast-file-input" style="display: none;" accept=".xlsx,.xls">
+      </div>
+
+      <!-- Dropzone 2: Driver Activity -->
+      <div class="fleetcap-dropzone-container" id="activity-dropzone">
+        <div class="dropzone-inner">
+          <div class="dropzone-icon">
+            <i class="fa-solid fa-truck-ramp-box"></i>
+          </div>
+          <div class="dropzone-text">
+            <span class="dropzone-title" id="activity-dropzone-title-text">Upload Driver Activity logs</span>
+            <span class="dropzone-sub" id="activity-dropzone-sub-text">Drag & drop Fluxer trip activity (.xlsx, .csv)</span>
+          </div>
+        </div>
+        <input type="file" id="activity-file-input" style="display: none;" accept=".xlsx,.xls,.csv">
+      </div>
+
+      <!-- Dropzone 3: Employees -->
+      <div class="fleetcap-dropzone-container" id="employees-dropzone">
+        <div class="dropzone-inner">
+          <div class="dropzone-icon">
+            <i class="fa-solid fa-users-gear"></i>
+          </div>
+          <div class="dropzone-text">
+            <span class="dropzone-title" id="employees-dropzone-title-text">Upload Employees database</span>
+            <span class="dropzone-sub" id="employees-dropzone-sub-text">Drag & drop staff database (.xlsx)</span>
+          </div>
+        </div>
+        <input type="file" id="employees-file-input" style="display: none;" accept=".xlsx,.xls">
+      </div>
+
+    </div>
+  </div>
+
+            </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const supabaseUrl = 'https://odgtubiqvxcszsfifjfd.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kZ3R1Ymlxdnhjc3pzZmlmamZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5NjA5NDksImV4cCI6MjA5NzUzNjk0OX0.qKXx5hsrG5nJu2bfeu6RZeBWKhcpRfY077eygekXy50';
+      window.supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+    </script>
+    <!-- Local JS -->
+    <script src="./fleetcap.js"></script>
+    <script>
+      // Make sure switchTab works initially
+      if (typeof switchTab === 'function') {
+        switchTab('forecast');
+      }
+    </script>
+</body>
+</html>

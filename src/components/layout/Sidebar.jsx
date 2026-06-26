@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
-import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight } from 'lucide-react';
+import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap } from 'lucide-react';
 
 export const Sidebar = () => {
   const { profile, signOut } = useAuth();
@@ -207,6 +207,17 @@ export const Sidebar = () => {
                 <>
                   <ClipboardList size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
                   Istoric Repetitiv
+                </>
+              )}
+            </NavLink>
+            <NavLink 
+              to="/admin/fleet-optimization" 
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              {({ isActive }) => (
+                <>
+                  <Zap size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
+                  Fleet Optimization
                 </>
               )}
             </NavLink>
