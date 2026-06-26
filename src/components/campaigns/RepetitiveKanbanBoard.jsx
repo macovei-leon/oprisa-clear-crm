@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { FlashcardModal } from './FlashcardModal';
-import { Activity, Clock, CheckCircle2, FolderClosed } from 'lucide-react';
+import { Activity, Clock, CheckCircle2, FolderClosed, Trash2 } from 'lucide-react';
 
 export const RepetitiveKanbanBoard = ({ flow }) => {
   const { profile } = useAuth();
@@ -102,6 +102,19 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
     } catch (err) {
       console.error(err);
       alert('Eroare la actualizarea sarcinii: ' + err.message);
+    }
+  };
+
+  const handleDeleteTask = async (e, taskId) => {
+    e.stopPropagation();
+    if (!window.confirm("Ești sigur că vrei să ștergi acest card din acest flux repetitiv? Acțiunea este ireversibilă.")) return;
+    try {
+      const { error } = await supabase.from('crm_repetitive_tasks').delete().eq('id', taskId);
+      if (error) throw error;
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+    } catch (err) {
+      console.error(err);
+      alert('Eroare la ștergerea cardului: ' + err.message);
     }
   };
 
@@ -227,8 +240,17 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
                       <span className="font-black text-slate-800 line-clamp-1 text-base">{titleStr}</span>
                     </div>
                     {isMissing && (
-                      <div className="mb-2 bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center w-fit">
-                        🚨 Exclus din baza de date
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center w-fit">
+                          🚨 Exclus din baza de date
+                        </div>
+                        <button 
+                          onClick={(e) => handleDeleteTask(e, task.id)}
+                          className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Șterge card din flux"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     )}
                     
