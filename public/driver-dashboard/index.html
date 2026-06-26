@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Attendance & Timeline Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Embedded Styles for premium dark mode glassmorphic UI -->
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="../fleetcap/fleetcap.css">
+    <!-- Include XLSX library for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Top Header -->
+        <header>
+            <div class="header-title">
+                <h1>Driver Absence Timeline Dashboard</h1>
+                <p>Specific timelines of shift hours vs. worked activity (Last 5 Days)</p>
+            </div>
+            <div class="quick-actions">
+                <button id="btn-admin-panel" class="sort-btn" style="display:none; color:var(--accent-amber);" onclick="window.location.href='/admin.html'">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> Admin Panel
+                </button>
+                <button id="btn-help-toggle" class="sort-btn">
+                    <i class="fa-solid fa-circle-question"></i> How it works
+                </button>
+                <button onclick="downloadFilteredExcel()" class="sort-btn" style="text-decoration:none;">
+                    <i class="fa-solid fa-file-excel"></i> Download Excel
+                </button>
+                <button id="btn-logout" class="sort-btn" style="color:var(--accent-coral);" onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Help Explanation Banner -->
+        <div id="help-banner" class="help-banner" style="display: none;">
+            <div class="help-banner-header">
+                <div class="help-banner-title">
+                    <i class="fa-solid fa-circle-info" style="color:var(--primary)"></i>
+                    Dashboard Guide & Timeline Legend
+                </div>
+                <button class="help-banner-close" id="btn-help-close">&times;</button>
+            </div>
+            <div class="help-banner-content">
+                <div class="help-banner-left">
+                    <p><strong>Timeline Calculation:</strong> This system processes 72 consecutive hours representing 3 days (June 19, 20, and 21, 2026). It parses scheduled shifts, availability, forecast leaves, and GPS/activity logs.</p>
+                    <p style="margin-top:0.5rem;"><strong>How Missed Shifts are Flagged:</strong> The parser compares scheduled shift windows against GPS active logs. If a driver has a scheduled shift but no activity logs overlap with that shift, it is flagged as a <strong>Missed Shift Violation</strong> (drawn in <span style="color:#ef4444; font-weight:600;">Red</span>).</p>
+                    <p style="margin-top:0.5rem;"><strong>Driver Attendance Status:</strong></p>
+                    <ul style="margin-left: 1.25rem; margin-top: 0.25rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                        <li><span class="status-badge active" style="padding:0.1rem 0.4rem; font-size:0.7rem; display:inline-block; width:75px; text-align:center;">OK</span> Worked all scheduled shifts.</li>
+                        <li><span class="status-badge absent" style="padding:0.1rem 0.4rem; font-size:0.7rem; display:inline-block; width:75px; text-align:center;">ABSENT</span> Missed at least one shift in the 3-day period.</li>
+                        <li><span class="status-badge fireable" style="padding:0.1rem 0.4rem; font-size:0.7rem; display:inline-block; width:75px; text-align:center;">FIREABLE</span> Missed scheduled shifts on <strong>all 3 days consecutively</strong>.</li>
+                    </ul>
+                </div>
+                <div class="help-banner-right">
+                    <p style="font-weight:600; color:#fff; margin-bottom:0.4rem;">Color Indicators (Top/Bottom tracks):</p>
+                    <div class="help-legend-grid">
+                        <div class="help-legend-item">
+                            <div class="help-legend-color" style="background:#3b82f6;"></div>
+                            <span>Scheduled Shift (Top)</span>
+                        </div>
+                        <div class="help-legend-item">
+                            <div class="help-legend-color" style="background:#22c55e;"></div>
+                            <span>Active Driving (Worked)</span>
+                        </div>
+                        <div class="help-legend-item">
+                            <div class="help-legend-color" style="background:#fbbf24;"></div>
+                            <span>Active Breaks (Yellow)</span>
+                        </div>
+                        <div class="help-legend-item">
+                            <div class="help-legend-color" style="background:#f97316;"></div>
+                            <span>Long Breaks (Orange)</span>
+                        </div>
+                        <div class="help-legend-item">
+                            <div class="help-legend-color" style="background:#a855f7;"></div>
+                            <span>Leave / Vacation (Purple)</span>
+                        </div>
+                        <div class="help-legend-item">
+                            <div class="help-legend-color" style="background:#ef4444;"></div>
+                            <span>Missed Shift (Red)</span>
+                        </div>
+                        <div class="help-legend-item" style="grid-column: span 2;">
+                            <div class="help-legend-color" style="background:rgba(148, 163, 184, 0.12); border: 1px solid rgba(255,255,255,0.05);"></div>
+                            <span>Inactive / Off-Duty (Muted Gray)</span>
+                        </div>
+                    </div>
+                    <p style="margin-top:0.5rem; font-size:0.8rem; font-style:italic;">*Note: Click on any colored segment in the timeline view to inspect precise times and durations.*</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Blocks -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon primary">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-drivers">0</div>
+                    <div class="stat-label">Total Drivers</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon emerald">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-ok">0</div>
+                    <div class="stat-label">Active & OK</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border-color: rgba(245, 158, 11, 0.25);">
+                <div class="stat-icon amber" style="background-color:rgba(245, 158, 11, 0.12); color: #f59e0b;">
+                    <i class="fa-solid fa-user-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-late">0</div>
+                    <div class="stat-label">Started Late</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border-color: rgba(239, 68, 68, 0.25);">
+                <div class="stat-icon coral" style="background-color:rgba(239, 68, 68, 0.12); color: #ef4444;">
+                    <i class="fa-solid fa-user-minus"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-gaps">0</div>
+                    <div class="stat-label">Left Early/Gaps</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border-color: rgba(239, 68, 68, 0.2);">
+                <div class="stat-icon coral" style="background-color:rgba(239, 68, 68, 0.1); color: #f43f5e;">
+                    <i class="fa-solid fa-user-xmark"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-no-shifts">0</div>
+                    <div class="stat-label">No Shifts</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border-color: rgba(220, 38, 38, 0.4);" data-filter="Absent">
+                <div class="stat-icon red" style="background-color:rgba(220, 38, 38, 0.15); color: #dc2626;">
+                    <i class="fa-solid fa-user-slash"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-absent">0</div>
+                    <div class="stat-label">Absent</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border-color: rgba(245, 158, 11, 0.3);">
+                <div class="stat-icon amber" style="background-color:rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <i class="fa-solid fa-fire"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-fireable">0</div>
+                    <div class="stat-label">Fireable (3 Days)</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border-color: rgba(168, 85, 247, 0.3);">
+                <div class="stat-icon purple" style="background-color:rgba(168, 85, 247, 0.15); color: #a855f7;">
+                    <i class="fa-solid fa-umbrella-beach"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-concediu">0</div>
+                    <div class="stat-label">People with Concediu</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="controls-panel">
+            <div class="search-row">
+                <div class="search-wrapper">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="search-input" class="search-input" placeholder="Search by name, ID (PN)...">
+                </div>
+                <button id="sort-btn-shifts" class="sort-btn">
+                    <i class="fa-solid fa-arrow-down-9-1"></i> Sort by Absences
+                </button>
+            </div>
+            <div class="filters-row">
+                <div class="filter-group">
+                    <label class="filter-label">Source Project</label>
+                    <select id="filter-project" class="filter-select">
+                        <option value="all">All Projects</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Attendance status</label>
+                    <select id="filter-attendance" class="filter-select">
+                        <option value="all">All Drivers</option>
+                        <option value="OK">OK (Active & On-time)</option>
+                        <option value="No Shifts">No Shifts</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Concediu">Concediu</option>
+                        <option value="Started Late">Started Late</option>
+                        <option value="Left Early / Big Gaps">Left Early / Big Gaps</option>
+                        <option value="fireable">Fireable (Missed 3 days in a row)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Company</label>
+                    <select id="filter-company" class="filter-select">
+                        <option value="all">All Companies</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Contract Type</label>
+                    <div id="filter-contract-type" class="filter-checkbox-group" style="max-height: 100px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                        <!-- Checkboxes injected here -->
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">City</label>
+                    <select id="filter-city" class="filter-select">
+                        <option value="all">All Cities</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="driver-tabs" id="workflow-tabs">
+            <button class="driver-tab active" onclick="switchTab('To Call')">To Call <span id="count-tocall" class="badge">0</span></button>
+            <button class="driver-tab" onclick="switchTab('In Progress')">In Progress <span id="count-inprogress" class="badge">0</span></button>
+            <button class="driver-tab" onclick="switchTab('Finished')">Finished <span id="count-finished" class="badge">0</span></button>
+        </div>
+
+        <!-- Drivers Grid -->
+        <div class="drivers-grid" id="drivers-grid">
+            <!-- Dynamic cards rendered here -->
+        </div>
+    </div>
+
+    <!-- Modal for details timeline -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <h2 id="modal-driver-name">Driver Details</h2>
+                </div>
+                <button class="modal-close-btn" id="modal-close-btn">&times;</button>
+            </div>
+
+            <!-- Daily Action Tracking Header -->
+            <div id="daily-action-bar" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--primary); padding: 1rem; border-radius: 8px; margin: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display:flex; align-items:center; gap: 0.5rem;">
+                    <i class="fa-solid fa-list-check" style="color:var(--primary); font-size:1.2rem;"></i>
+                    <div style="font-weight:600;">Today's Progress</div>
+                </div>
+                <div style="display:flex; gap: 0.5rem;" id="daily-action-buttons">
+                    <button class="sort-btn" id="btn-action-tocall" onclick="setDriverAction('To Call')" style="background: #374151;">To Call</button>
+                    <button class="sort-btn" id="btn-action-inprogress" onclick="setDriverAction('In Progress')" style="background: #374151;">In Progress</button>
+                    <button class="sort-btn" id="btn-action-finished" onclick="setDriverAction('Finished')" style="background: #374151;">Finished</button>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <div class="modal-driver-info">
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Driver ID (PN)</span>
+                        <span class="modal-info-val" id="modal-driver-pn">-</span>
+                    </div>
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Phone</span>
+                        <span class="modal-info-val" id="modal-driver-phone">-</span>
+                    </div>
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Email</span>
+                        <span class="modal-info-val" id="modal-driver-email">-</span>
+                    </div>
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Status</span>
+                        <span class="modal-info-val" id="modal-driver-status">-</span>
+                    </div>
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Company</span>
+                        <span class="modal-info-val" id="modal-driver-company">-</span>
+                    </div>
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Cities</span>
+                        <span class="modal-info-val" id="modal-driver-cities">-</span>
+                    </div>
+                    <div class="modal-info-item">
+                        <span class="modal-info-label">Contract Type</span>
+                        <span class="modal-info-val" id="modal-driver-contract">-</span>
+                    </div>
+                </div>
+
+                <div class="modal-shifts-title" style="margin-top: 1rem;">
+                    <i class="fa-solid fa-chart-gantt" style="color:var(--accent-emerald)"></i>
+                    Interactive Visual Timeline (Click segments for details)
+                </div>
+                <div id="modal-visual-timeline-container" style="width: 100%; margin-bottom: 0.5rem;">
+                    <!-- Rendered dynamically -->
+                </div>
+ 
+                <div class="modal-shifts-title">
+                    <i class="fa-solid fa-calendar-days" style="color:var(--primary)"></i>
+                    Scheduled Shifts (HTML Timeline)
+                </div>
+                <div class="modal-shifts-list" id="modal-timeline-shifts">
+                    <!-- Rendered dynamically -->
+                </div>
+
+                <div class="modal-shifts-title" style="margin-top:1rem;" id="modal-disponibilitate-title">
+                    <i class="fa-solid fa-thumbs-up" style="color:#2dd4bf"></i>
+                    Availability (Disponibilitate)
+                </div>
+                <div class="modal-shifts-list" id="modal-timeline-disponibilitate">
+                    <!-- Rendered dynamically -->
+                </div>
+
+                <div class="modal-shifts-title" style="margin-top:1rem;" id="modal-forecast-title">
+                    <i class="fa-solid fa-umbrella" style="color:#8b5cf6"></i>
+                    Forecast Scheduled Leave (Forecast)
+                </div>
+                <div class="modal-shifts-list" id="modal-timeline-forecast">
+                    <!-- Rendered dynamically -->
+                </div>
+
+                <div class="modal-shifts-title" style="margin-top:1rem;">
+                    <i class="fa-solid fa-person-running" style="color:var(--accent-emerald)"></i>
+                    Worked Activity & Absence timeline
+                </div>
+                <div class="modal-shifts-list" id="modal-timeline-activities">
+                    <!-- Rendered dynamically -->
+                </div>
+
+                <div class="modal-shifts-title" style="margin-top:1rem;">
+                    <i class="fa-solid fa-circle-exclamation" style="color:var(--accent-coral)"></i>
+                    Missed Shift Violation Alerts
+                </div>
+                <div class="modal-shifts-list" id="modal-timeline-tasks">
+                    <!-- Rendered dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifier -->
+    <div class="toast" id="toast">
+        <i class="fa-solid fa-circle-check" style="color:var(--accent-emerald)"></i>
+        <span id="toast-message">Copied to clipboard!</span>
+    </div>
+
+    <!-- Segment tooltip element -->
+    <div id="segment-tooltip" class="segment-tooltip" style="display: none; position: absolute; z-index: 10000;"></div>
+
+    <!-- Segment tooltip element -->
+    <div id="segment-tooltip" class="segment-tooltip" style="display: none; position: absolute; z-index: 10000;"></div>
+
+    <!-- Logic Script -->
+    <script>
+        const supabaseUrl = 'https://odgtubiqvxcszsfifjfd.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kZ3R1Ymlxdnhjc3pzZmlmamZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5NjA5NDksImV4cCI6MjA5NzUzNjk0OX0.qKXx5hsrG5nJu2bfeu6RZeBWKhcpRfY077eygekXy50';
+        window.supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        let allDrivers = [];
+        let dailyStatuses = {}; // pn -> status
+        let displayLimit = 30;
+        let sortByShifts = false;
+        let activeDriverPn = null;
+        let currentUserRole = null;
+        let currentTab = 'To Call';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // In iframe, auth is handled by the parent React app.
+                // We'll just assume admin for the dashboard logic if needed.
+                currentUserRole = 'admin';
+                document.getElementById('btn-admin-panel').style.display = 'none';
+
+                // Fetch today's statuses from Supabase
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const { data: rows, error: statusError } = await window.supabase
+                    .from('driver_daily_actions')
+                    .select('driver_pn, status')
+                    .gte('created_at', today.toISOString())
+                    .order('created_at', { ascending: false });
+
+                if (!statusError && rows) {
+                    rows.forEach(row => {
+                        if (!dailyStatuses[row.driver_pn]) {
+                            dailyStatuses[row.driver_pn] = row.status;
+                        }
+                    });
+                }
+
+                // Load assigned data from Supabase
+                const { data, error } = await window.supabase
+                    .from('driver_dashboard_data')
+                    .select('data')
+                    .eq('id', 'default')
+                    .single();
+
+                if (error) throw error;
+                
+                allDrivers = data.data;
+                initDashboard();
+            } catch (err) {
+                console.error("Failed to load driver data:", err);
+                document.getElementById('drivers-grid').innerHTML = `
+                    <div class="no-results">
+                        <i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-coral)"></i>
+                        <h3>Data Loading Error</h3>
+                        <p>Could not load the driver timeline database. Please verify your connection.</p>
+                    </div>
+                `;
+            }
+        });
+
+        async function logout() {
+            // Logout handled by parent React app, or just redirect to login
+            window.parent.location.href = '/login';
+        }
+
+        function initDashboard() {
+            populateFilterOptions();
+            renderStats();
+            renderCards(getActiveDriversState());
+            setupEventListeners();
+        }
+
+        function populateFilterOptions() {
+            const companies = new Set();
+            const cities = new Set();
+            const projects = new Set();
+            const contractTypes = new Set();
+            
+            allDrivers.forEach(d => {
+                if (d.companies) d.companies.forEach(c => { if (c) companies.add(c.trim()); });
+                if (d.cities) d.cities.forEach(c => { if (c) cities.add(c.trim()); });
+                if (d.projects) d.projects.forEach(p => { if (p) projects.add(p.trim()); });
+                if (d.contractType) contractTypes.add(d.contractType.trim());
+            });
+
+            const companySelect = document.getElementById('filter-company');
+            Array.from(companies).sort().forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                companySelect.appendChild(opt);
+            });
+
+            const citySelect = document.getElementById('filter-city');
+            Array.from(cities).sort().forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                citySelect.appendChild(opt);
+            });
+
+            const projectSelect = document.getElementById('filter-project');
+            Array.from(projects).sort().forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                projectSelect.appendChild(opt);
+            });
+
+            const contractContainer = document.getElementById('filter-contract-type');
+            Array.from(contractTypes).sort().forEach(c => {
+                if (!c) return;
+                const label = document.createElement('label');
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '0.5rem';
+                label.style.fontSize = '0.85rem';
+                label.style.cursor = 'pointer';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = c;
+                cb.className = 'contract-type-cb';
+                cb.addEventListener('change', () => {
+                    displayLimit = 30;
+                    renderCards(getActiveDriversState());
+                });
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(c));
+                contractContainer.appendChild(label);
+            });
+        }
+
+        function renderStats() {
+            const total = allDrivers.length;
+            const ok = allDrivers.filter(d => d.status === 'OK').length;
+            const late = allDrivers.filter(d => d.status === 'Started Late').length;
+            const gaps = allDrivers.filter(d => d.status === 'Left Early / Big Gaps').length;
+            const noActivate = allDrivers.filter(d => d.status === 'No Shifts').length;
+            const absentCount = allDrivers.filter(d => d.status === 'Absent').length;
+            const concediuCount = allDrivers.filter(d => d.status === 'Concediu').length;
+            const fireable = allDrivers.filter(d => d.missedThreeDaysInARow).length;
+
+            document.getElementById('stat-total-drivers').textContent = total;
+            document.getElementById('stat-total-ok').textContent = ok;
+            document.getElementById('stat-total-late').textContent = late;
+            document.getElementById('stat-total-gaps').textContent = gaps;
+            document.getElementById('stat-total-no-shifts').textContent = noActivate;
+            document.getElementById('stat-total-absent').textContent = absentCount;
+            document.getElementById('stat-total-concediu').textContent = concediuCount;
+            document.getElementById('stat-total-fireable').textContent = fireable;
+        }
+
+        function generateVisualTimeline(d, isModal = false) {
+            const days = [
+                { label: 'Jun 19', start: 0, end: 24 },
+                { label: 'Jun 20', start: 24, end: 48 },
+                { label: 'Jun 21', start: 48, end: 72 },
+                { label: 'Jun 22', start: 72, end: 96 },
+                { label: 'Jun 23', start: 96, end: 120 }
+            ];
+
+            const hasShifts = d.timelineShifts && d.timelineShifts.some(s => s.type === 'HR App Shift');
+            const hasActivities = d.timelineActivities && d.timelineActivities.some(act => act.type !== 'Inactive');
+            const hasMissed = d.missedShiftsRaw && d.missedShiftsRaw.length > 0;
+
+            if (!hasShifts && !hasActivities && !hasMissed) {
+                if (isModal) {
+                    return `
+                        <div class="card-timeline-container" style="justify-content:center; align-items:center; min-height:120px; background:rgba(255, 255, 255, 0.02); border-radius:12px; border:1px dashed var(--border-color); padding:2rem; margin-top:0.75rem; width:100%;">
+                            <div style="text-align:center; color:var(--text-secondary); font-size:0.95rem;">
+                                <i class="fa-solid fa-calendar-minus" style="font-size:2rem; margin-bottom:0.75rem; color:var(--text-muted); display:block;"></i>
+                                No scheduled shifts, worked activities, or leave logs were recorded for this driver during the 5-day window (June 19 - June 23, 2026).
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="card-timeline-container" style="justify-content:center; align-items:center; min-height:100px; background:rgba(255, 255, 255, 0.02); border-radius:10px; border:1px dashed var(--border-color); padding:1rem; margin-top:0.75rem;">
+                            <div style="text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                                <i class="fa-solid fa-calendar-minus" style="font-size:1.5rem; margin-bottom:0.5rem; color:var(--text-muted); display:block;"></i>
+                                No scheduled shifts or activities recorded for this period.
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            let html = '<div class="card-timeline-container" style="gap: ' + (isModal ? '0.75rem' : '0.4rem') + ';">';
+
+            days.forEach(day => {
+                const gridLines = `
+                    <div style="position:absolute; left:25%; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.06); z-index:2; pointer-events:none;"></div>
+                    <div style="position:absolute; left:50%; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.06); z-index:2; pointer-events:none;"></div>
+                    <div style="position:absolute; left:75%; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.06); z-index:2; pointer-events:none;"></div>
+                `;
+
+                // 1. Top track: Scheduled Shifts (Blue)
+                let schedSegmentsHtml = '';
+                if (d.timelineShifts) {
+                    d.timelineShifts.forEach(s => {
+                        if (s.type === 'HR App Shift') {
+                            const overlapStart = Math.max(s.startHour, day.start);
+                            const overlapEnd = Math.min(s.endHour, day.end);
+                            if (overlapEnd > overlapStart) {
+                                const leftPct = ((overlapStart - day.start) / 24) * 100;
+                                const widthPct = Math.max(((overlapEnd - overlapStart) / 24) * 100, 0.8);
+                                const color = '#3b82f6';
+                                
+                                const durHours = overlapEnd - overlapStart;
+                                const durationStr = durHours.toFixed(1) + " hrs";
+                                const formattedTime = s.start.split(' ')[1] + " - " + s.end.split(' ')[1];
+                                
+                                schedSegmentsHtml += `
+                                    <div class="timeline-bar-segment" 
+                                         style="left:${leftPct}%; width:${widthPct}%; background:${color}; top:0; height:${isModal ? '10px' : '6px'}; border-radius:1px; cursor:pointer;" 
+                                         data-category="Scheduled Shift"
+                                         data-type="${s.type}"
+                                         data-start="${s.start}"
+                                         data-end="${s.end}"
+                                         data-duration="${durationStr} (${formattedTime})"
+                                         title="${s.type}: ${s.start} - ${s.end} (${durationStr})">
+                                    </div>
+                                `;
+                            }
+                        }
+                    });
+                }
+
+                // 2. Bottom track: Actual Activities (Green, Red, Purple, Yellow, Muted Gray)
+                let actSegmentsHtml = '';
+                
+                if (d.timelineActivities) {
+                    d.timelineActivities.forEach(act => {
+                        const overlapStart = Math.max(act.startHour, day.start);
+                        const overlapEnd = Math.min(act.endHour, day.end);
+                        if (overlapEnd > overlapStart) {
+                            const leftPct = ((overlapStart - day.start) / 24) * 100;
+                            const widthPct = Math.max(((overlapEnd - overlapStart) / 24) * 100, 0.8);
+                            
+                            const durHours = overlapEnd - overlapStart;
+                            const durationStr = durHours >= 1 ? durHours.toFixed(1) + " hrs" : Math.round(durHours * 60) + " mins";
+                            const formattedTime = act.start.split(' ')[1] + " - " + act.end.split(' ')[1];
+                            
+                            if (act.type === 'Active') {
+                                actSegmentsHtml += `
+                                    <div class="timeline-bar-segment" 
+                                         style="left:${leftPct}%; width:${widthPct}%; background:#22c55e; bottom:0; height:${isModal ? '22px' : '12px'}; border-radius:2px; z-index: 2; cursor:pointer;" 
+                                         data-category="Activity"
+                                         data-type="Active (Worked)"
+                                         data-start="${act.start}"
+                                         data-end="${act.end}"
+                                         data-duration="${durationStr} (${formattedTime})"
+                                         title="Worked: ${act.start} - ${act.end} (${durationStr})">
+                                    </div>
+                                `;
+                            } else if (act.type === 'Break') {
+                                actSegmentsHtml += `
+                                    <div class="timeline-bar-segment" 
+                                         style="left:${leftPct}%; width:${widthPct}%; background:#fbbf24; bottom:0; height:${isModal ? '22px' : '12px'}; border-radius:2px; z-index: 2; cursor:pointer;" 
+                                         data-category="Activity"
+                                         data-type="Break"
+                                         data-start="${act.start}"
+                                         data-end="${act.end}"
+                                         data-duration="${durationStr} (${formattedTime})"
+                                         title="Break: ${act.start} - ${act.end} (${durationStr})">
+                                    </div>
+                                `;
+                            } else if (act.type === 'Missing') {
+                                actSegmentsHtml += `
+                                    <div class="timeline-bar-segment" 
+                                         style="left:${leftPct}%; width:${widthPct}%; background:#ef4444; bottom:0; height:${isModal ? '22px' : '12px'}; border-radius:2px; z-index: 2; cursor:pointer;" 
+                                         data-category="Activity"
+                                         data-type="Missing (Unexcused Absence)"
+                                         data-start="${act.start}"
+                                         data-end="${act.end}"
+                                         data-duration="${durationStr} (${formattedTime})"
+                                         title="Missing: ${act.start} - ${act.end} (${durationStr})">
+                                    </div>
+                                `;
+                            } else if (act.type.startsWith('Leave')) {
+                                actSegmentsHtml += `
+                                    <div class="timeline-bar-segment" 
+                                         style="left:${leftPct}%; width:${widthPct}%; background:${act.color || '#a855f7'}; bottom:0; height:${isModal ? '22px' : '12px'}; border-radius:2px; z-index: 2; cursor:pointer;" 
+                                         data-category="Activity"
+                                         data-type="${act.type}"
+                                         data-start="${act.start}"
+                                         data-end="${act.end}"
+                                         data-duration="${durationStr} (${formattedTime})"
+                                         title="${act.type}: ${act.start} - ${act.end} (${durationStr})">
+                                    </div>
+                                `;
+                            } else if (act.type === 'Inactive') {
+                                actSegmentsHtml += `
+                                    <div class="timeline-bar-segment" 
+                                         style="left:${leftPct}%; width:${widthPct}%; background:rgba(148, 163, 184, 0.15); bottom:0; height:${isModal ? '22px' : '12px'}; border-radius:2px; z-index: 2; cursor:pointer;" 
+                                         data-category="Activity"
+                                         data-type="Inactive (Off-Duty)"
+                                         data-start="${act.start}"
+                                         data-end="${act.end}"
+                                         data-duration="${durationStr} (${formattedTime})"
+                                         title="Off-Duty: ${act.start} - ${act.end} (${durationStr})">
+                                    </div>
+                                `;
+                            }
+                        }
+                    });
+                }
+
+                // Draw missed shift segments (Red)
+                if (d.missedShiftsRaw) {
+                    d.missedShiftsRaw.forEach(m => {
+                        const overlapStart = Math.max(m.startHour, day.start);
+                        const overlapEnd = Math.min(m.endHour, day.end);
+                        if (overlapEnd > overlapStart) {
+                            const leftPct = ((overlapStart - day.start) / 24) * 100;
+                            const widthPct = Math.max(((overlapEnd - overlapStart) / 24) * 100, 0.8);
+                            
+                            const durHours = overlapEnd - overlapStart;
+                            const durationStr = durHours >= 1 ? durHours.toFixed(1) + " hrs" : Math.round(durHours * 60) + " mins";
+                            const formattedTime = m.start.split(' ')[1] + " - " + m.end.split(' ')[1];
+                            
+                            actSegmentsHtml += `
+                                <div class="timeline-bar-segment" 
+                                     style="left:${leftPct}%; width:${widthPct}%; background:#ef4444; bottom:0; height:${isModal ? '22px' : '12px'}; border-radius:2px; z-index: 1; cursor:pointer;" 
+                                     data-category="Missed Shift"
+                                     data-type="Missed Shift Violation"
+                                     data-start="${m.start}"
+                                     data-end="${m.end}"
+                                     data-duration="${durationStr} (${formattedTime})"
+                                     title="MISSED SHIFT: ${m.start} - ${m.end} (${durationStr})">
+                                </div>
+                            `;
+                        }
+                    });
+                }
+
+                html += `
+                    <div class="day-timeline-row">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span class="day-timeline-label" style="width: ${isModal ? '70px' : '50px'}; font-size: ${isModal ? '0.9rem' : '0.75rem'};">${day.label}</span>
+                            <div style="flex:1; display:flex; flex-direction:column; gap:0.15rem;">
+                                <div class="day-timeline-track" style="height: ${isModal ? '32px' : '18px'};">
+                                    ${gridLines}
+                                    <div class="sub-track-scheduled" style="height: ${isModal ? '10px' : '6px'}; border-bottom-width: ${isModal ? '2px' : '1px'};">
+                                        ${schedSegmentsHtml}
+                                    </div>
+                                    <div class="sub-track-activity" style="height: ${isModal ? '22px' : '12px'};">
+                                        ${actSegmentsHtml}
+                                    </div>
+                                </div>
+                                <div class="day-timeline-time-labels" style="height: ${isModal ? '16px' : '12px'}; font-size: ${isModal ? '0.7rem' : '0.6rem'};">
+                                    <span style="left:0%;">00</span>
+                                    <span style="left:25%; transform:translateX(-50%);">06</span>
+                                    <span style="left:50%; transform:translateX(-50%);">12</span>
+                                    <span style="left:75%; transform:translateX(-50%);">18</span>
+                                    <span style="right:0%; transform:translateX(50%);">24</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderCards(drivers) {
+            updateTabCounts(); // Update counts whenever cards are rendered
+            const grid = document.getElementById('drivers-grid');
+            grid.innerHTML = '';
+
+            if (drivers.length === 0) {
+                grid.innerHTML = `
+                    <div class="no-results">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <h3>No Drivers Found</h3>
+                        <p>No drivers match the selected search terms or filters.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const visibleDrivers = drivers.slice(0, displayLimit);
+
+            visibleDrivers.forEach((d, idx) => {
+                const card = document.createElement('div');
+                
+                let cardStatusClass = 'active';
+                let statusLabel = 'OK';
+                let leftBorderColor = 'var(--accent-emerald)';
+                let missedText = 'No Violations';
+                
+                if (d.missedThreeDaysInARow) {
+                    cardStatusClass = 'fireable';
+                    statusLabel = 'FIREABLE';
+                    leftBorderColor = 'var(--accent-amber)';
+                    missedText = `${d.missedShifts.length} Violation${d.missedShifts.length > 1 ? 's' : ''} (Missed 3 Days)`;
+                } else if (d.status === 'No Shifts') {
+                    cardStatusClass = 'absent';
+                    statusLabel = 'NO SHIFTS';
+                    leftBorderColor = 'var(--accent-coral)';
+                    missedText = 'No Shifts / 0 Hours Worked';
+                } else if (d.status === 'Absent') {
+                    cardStatusClass = 'absent';
+                    statusLabel = 'ABSENT';
+                    leftBorderColor = '#dc2626';
+                    missedText = 'Scheduled Shifts Missed (0 Hours Worked)';
+                } else if (d.status === 'Left Early / Big Gaps') {
+                    cardStatusClass = 'absent';
+                    statusLabel = 'LEFT EARLY / GAPS';
+                    leftBorderColor = 'var(--accent-coral)';
+                    missedText = `${d.missedShifts.length} Shift Violation${d.missedShifts.length > 1 ? 's' : ''}`;
+                } else if (d.status === 'Started Late') {
+                    cardStatusClass = 'fireable';
+                    statusLabel = 'STARTED LATE';
+                    leftBorderColor = 'var(--accent-amber)';
+                    missedText = `${d.missedShifts.length} Lateness Violation${d.missedShifts.length > 1 ? 's' : ''}`;
+                } else if (d.status === 'Concediu') {
+                    cardStatusClass = 'active'; // We can reuse active styling but change color below
+                    statusLabel = 'CONCEDIU';
+                    leftBorderColor = '#a855f7'; // Purple for leave
+                    missedText = 'On Leave / Concediu';
+                }
+
+                card.className = 'driver-card';
+                card.style.borderLeft = `4px solid ${leftBorderColor}`;
+                card.style.cursor = 'pointer';
+                
+                // Add event listener to open driver modal when clicking the card itself
+                card.addEventListener('click', (e) => {
+                    // Prevent opening modal if clicking a button, link, or visual timeline segment
+                    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.timeline-bar-segment')) {
+                        return;
+                    }
+                    openDriverModal(allDrivers.indexOf(d));
+                });
+                
+                const pnDisplay = d.pn ? `PN: ${d.pn}` : 'No ID';
+                const sourceBadges = d.projects.map(p => `<span class="project-badge">${p}</span>`).join(' ');
+                
+                const timelineHTML = generateVisualTimeline(d, false);
+
+                let statusPill = '';
+                if (currentUserRole === 'worker') {
+                    const todayStatus = dailyStatuses[d.pn] || 'To Call';
+                    let pillColor = '#6b7280'; // To Call default
+                    if (todayStatus === 'In Progress') pillColor = '#f59e0b';
+                    if (todayStatus === 'Finished') pillColor = '#22c55e';
+                    statusPill = `<span style="background:${pillColor}22; color:${pillColor}; padding:0.15rem 0.5rem; border-radius:12px; font-size:0.75rem; border:1px solid ${pillColor}44; margin-left:0.5rem;">${todayStatus}</span>`;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="driver-card-header">
+                            <div>
+                                <span class="driver-name">${d.name} ${statusPill} ${d.hasConcediu ? '<span style="background:rgba(168, 85, 247, 0.15); color:#a855f7; padding:0.15rem 0.5rem; border-radius:12px; font-size:0.75rem; border:1px solid rgba(168, 85, 247, 0.3); margin-left:0.5rem;" title="Has logged Concediu"><i class="fa-solid fa-umbrella-beach"></i> Also Concediu</span>' : ''}</span>
+                                <span class="driver-pn">${pnDisplay}</span>
+                            </div>
+                            <span class="status-badge ${cardStatusClass}">${statusLabel}</span>
+                        </div>
+                        <div class="project-badges">
+                            ${sourceBadges}
+                        </div>
+                        
+                        ${timelineHTML}
+
+                        <div class="driver-details">
+                            <div class="detail-item">
+                                <i class="fa-solid fa-phone"></i>
+                                <span>${d.phone ? `<a href="tel:${d.phone}">${d.phone}</a>` : '<span style="color:var(--text-muted)">No Phone</span>'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fa-solid fa-building"></i>
+                                <span>${d.companies.join(', ') || '<span style="color:var(--text-muted)">No Company</span>'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="missed-count-badge" style="color: ${leftBorderColor}; background: ${leftBorderColor}14; border-color: ${leftBorderColor}26;">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>${missedText}</span>
+                        </div>
+                        <div style="display:flex; gap:0.4rem;">
+                            <button class="btn-view" onclick="openDriverModal(${allDrivers.indexOf(d)})">
+                                <i class="fa-solid fa-clock-rotate-left"></i> Timeline
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            if (drivers.length > displayLimit) {
+                const loadBtnContainer = document.createElement('div');
+                loadBtnContainer.style.gridColumn = '1 / -1';
+                loadBtnContainer.style.display = 'flex';
+                loadBtnContainer.style.justifyContent = 'center';
+                loadBtnContainer.style.marginTop = '2rem';
+                
+                const loadBtn = document.createElement('button');
+                loadBtn.className = 'sort-btn';
+                loadBtn.style.padding = '0.8rem 2rem';
+                loadBtn.style.fontWeight = '600';
+                loadBtn.innerHTML = `<i class="fa-solid fa-chevron-down"></i> Load More (${drivers.length - displayLimit} remaining)`;
+                loadBtn.addEventListener('click', () => {
+                    displayLimit += 30;
+                    renderCards(drivers);
+                });
+                
+                loadBtnContainer.appendChild(loadBtn);
+                grid.appendChild(loadBtnContainer);
+            }
+        }
+
+        function getActiveDriversState() {
+            const searchInput = document.getElementById('search-input').value.toLowerCase().trim();
+            const filterProject = document.getElementById('filter-project').value;
+            const filterAttendance = document.getElementById('filter-attendance').value;
+            const filterCompany = document.getElementById('filter-company').value;
+            const filterCity = document.getElementById('filter-city').value;
+            const checkedContracts = Array.from(document.querySelectorAll('.contract-type-cb:checked')).map(cb => cb.value);
+
+            let filtered = allDrivers.filter(d => {
+                const searchMatch = !searchInput || 
+                    d.name.toLowerCase().includes(searchInput) || 
+                    d.pn.toLowerCase().includes(searchInput);
+                const projectMatch = filterProject === 'all' || d.projects.includes(filterProject);
+                
+                let attendanceMatch = true;
+                if (filterAttendance !== 'all') {
+                    if (filterAttendance === 'fireable') {
+                        attendanceMatch = d.missedThreeDaysInARow === true;
+                    } else {
+                        attendanceMatch = d.status === filterAttendance;
+                    }
+                }
+                
+                const companyMatch = filterCompany === 'all' || d.companies.includes(filterCompany);
+                const cityMatch = filterCity === 'all' || d.cities.includes(filterCity);
+
+                // Filter by Tab (To Call, In Progress, Finished)
+                const todayStatus = dailyStatuses[d.pn] || 'To Call';
+                const tabMatch = todayStatus === currentTab;
+
+                const contractMatch = checkedContracts.length === 0 || checkedContracts.includes(d.contractType);
+
+                return searchMatch && projectMatch && attendanceMatch && companyMatch && cityMatch && tabMatch && contractMatch;
+            });
+
+            if (sortByShifts) {
+                filtered.sort((a, b) => b.missedShifts.length - a.missedShifts.length);
+            } else {
+                filtered.sort((a, b) => a.name.localeCompare(b.name));
+            }
+            return filtered;
+        }
+
+        function showSegmentTooltip(segment, event) {
+            const category = segment.getAttribute('data-category');
+            const type = segment.getAttribute('data-type');
+            const start = segment.getAttribute('data-start');
+            const end = segment.getAttribute('data-end');
+            const duration = segment.getAttribute('data-duration');
+
+            const tooltip = document.getElementById('segment-tooltip');
+            if (!tooltip) return;
+            
+            let icon = '<i class="fa-solid fa-clock"></i>';
+            let themeColor = 'var(--primary)';
+            if (category === 'Scheduled Shift') {
+                icon = '<i class="fa-solid fa-calendar-days" style="color:#60a5fa"></i>';
+                themeColor = '#60a5fa';
+            } else if (category === 'Activity') {
+                if (type.includes('Active')) {
+                    icon = '<i class="fa-solid fa-person-running" style="color:var(--accent-emerald)"></i>';
+                    themeColor = 'var(--accent-emerald)';
+                } else if (type === 'Break') {
+                    icon = '<i class="fa-solid fa-mug-hot" style="color:var(--accent-amber)"></i>';
+                    themeColor = 'var(--accent-amber)';
+                } else if (type.includes('Inactive')) {
+                    icon = '<i class="fa-solid fa-moon" style="color:#94a3b8"></i>';
+                    themeColor = '#94a3b8';
+                } else {
+                    icon = '<i class="fa-solid fa-plane-departure" style="color:#c084fc"></i>';
+                    themeColor = '#c084fc';
+                }
+            } else if (category === 'Missed Shift') {
+                icon = '<i class="fa-solid fa-circle-exclamation" style="color:var(--accent-coral)"></i>';
+                themeColor = 'var(--accent-coral)';
+            }
+
+            tooltip.innerHTML = `
+                <div class="segment-tooltip-header">
+                    ${icon}
+                    <span style="color:${themeColor}; font-weight:700;">${category}</span>
+                    <button class="segment-tooltip-close" onclick="hideSegmentTooltip()">&times;</button>
+                </div>
+                <div class="segment-tooltip-row">
+                    <span class="segment-tooltip-label">Type:</span>
+                    <span class="segment-tooltip-value">${type}</span>
+                </div>
+                <div class="segment-tooltip-row">
+                    <span class="segment-tooltip-label">Start:</span>
+                    <span class="segment-tooltip-value">${start}</span>
+                </div>
+                <div class="segment-tooltip-row">
+                    <span class="segment-tooltip-label">End:</span>
+                    <span class="segment-tooltip-value">${end}</span>
+                </div>
+                <div class="segment-tooltip-row">
+                    <span class="segment-tooltip-label">Duration:</span>
+                    <span class="segment-tooltip-value">${duration}</span>
+                </div>
+            `;
+
+            tooltip.style.display = 'block';
+            
+            const tooltipWidth = tooltip.offsetWidth || 280;
+            const tooltipHeight = tooltip.offsetHeight || 160;
+            
+            let left = event.pageX + 10;
+            let top = event.pageY + 10;
+            
+            if (left + tooltipWidth > window.innerWidth + window.pageXOffset) {
+                left = event.pageX - tooltipWidth - 10;
+            }
+            if (top + tooltipHeight > window.innerHeight + window.pageYOffset) {
+                top = event.pageY - tooltipHeight - 10;
+            }
+            
+            if (left < 10) left = 10;
+            if (top < 10) top = 10;
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+        }
+
+        function hideSegmentTooltip() {
+            const tooltip = document.getElementById('segment-tooltip');
+            if (tooltip) tooltip.style.display = 'none';
+        }
+
+        function setupEventListeners() {
+            const searchInput = document.getElementById('search-input');
+            const filterProject = document.getElementById('filter-project');
+            const filterAttendance = document.getElementById('filter-attendance');
+            const filterCompany = document.getElementById('filter-company');
+            const filterCity = document.getElementById('filter-city');
+            const sortBtnShifts = document.getElementById('sort-btn-shifts');
+
+            const performFilter = () => {
+                displayLimit = 30;
+                renderCards(getActiveDriversState());
+            };
+
+            searchInput.addEventListener('input', performFilter);
+            filterProject.addEventListener('change', performFilter);
+            filterAttendance.addEventListener('change', performFilter);
+            filterCompany.addEventListener('change', performFilter);
+            filterCity.addEventListener('change', performFilter);
+            
+            sortBtnShifts.addEventListener('click', () => {
+                sortByShifts = !sortByShifts;
+                if (sortByShifts) {
+                    sortBtnShifts.classList.add('active');
+                    sortBtnShifts.innerHTML = `<i class="fa-solid fa-arrow-down-9-1"></i> Sorted by Absences`;
+                } else {
+                    sortBtnShifts.classList.remove('active');
+                    sortBtnShifts.innerHTML = `<i class="fa-solid fa-arrow-down-9-1"></i> Sort by Absences`;
+                }
+                performFilter();
+            });
+
+            // Collapsible Help Banner listeners
+            const helpToggle = document.getElementById('btn-help-toggle');
+            const helpClose = document.getElementById('btn-help-close');
+            const helpBanner = document.getElementById('help-banner');
+
+            helpToggle.addEventListener('click', () => {
+                if (helpBanner.style.display === 'none') {
+                    helpBanner.style.display = 'flex';
+                    helpToggle.classList.add('active');
+                } else {
+                    helpBanner.style.display = 'none';
+                    helpToggle.classList.remove('active');
+                }
+            });
+
+            helpClose.addEventListener('click', () => {
+                helpBanner.style.display = 'none';
+                helpToggle.classList.remove('active');
+            });
+
+            // Close tooltip on clicking outside segment
+            document.addEventListener('click', (e) => {
+                const segment = e.target.closest('.timeline-bar-segment');
+                if (segment) {
+                    e.stopPropagation();
+                    showSegmentTooltip(segment, e);
+                } else {
+                    hideSegmentTooltip();
+                }
+            });
+
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            // Update UI tabs
+            const tabs = document.querySelectorAll('.driver-tab');
+            tabs.forEach(tab => {
+                if (tab.textContent.includes(tabName)) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Re-render
+            displayLimit = 30;
+            renderCards(getActiveDriversState());
+        }
+
+        function updateTabCounts() {
+            let toCall = 0;
+            let inProg = 0;
+            let finished = 0;
+            
+            // We want to count based on the current SEARCH filters, so we apply all filters EXCEPT the tab filter.
+            // But to keep it simple, we just count based on allDrivers
+            allDrivers.forEach(d => {
+                const s = dailyStatuses[d.pn] || 'To Call';
+                if (s === 'To Call') toCall++;
+                else if (s === 'In Progress') inProg++;
+                else if (s === 'Finished') finished++;
+            });
+            
+            document.getElementById('count-tocall').textContent = toCall;
+            document.getElementById('count-inprogress').textContent = inProg;
+            document.getElementById('count-finished').textContent = finished;
+        }
+
+        function updateActionButtons(status) {
+            const toCall = document.getElementById('btn-action-tocall');
+            const inProg = document.getElementById('btn-action-inprogress');
+            const finished = document.getElementById('btn-action-finished');
+
+            // Reset
+            toCall.style.background = '#374151'; toCall.style.color = 'white';
+            inProg.style.background = '#374151'; inProg.style.color = 'white';
+            finished.style.background = '#374151'; finished.style.color = 'white';
+
+            if (status === 'To Call') {
+                toCall.style.background = 'var(--primary)';
+            } else if (status === 'In Progress') {
+                inProg.style.background = '#f59e0b';
+            } else if (status === 'Finished') {
+                finished.style.background = '#22c55e';
+            }
+        }
+
+        async function setDriverAction(status) {
+            if (!activeDriverPn) return;
+
+            try {
+                const { error } = await window.supabase.from('driver_daily_actions').insert([{
+                    driver_pn: activeDriverPn,
+                    status: status
+                }]);
+
+                if (!error) {
+                    dailyStatuses[activeDriverPn] = status;
+                    updateActionButtons(status);
+                    renderCards(getActiveDriversState()); // refresh UI pill
+                    console.log(`Marked as ${status}`);
+                } else {
+                    alert('Failed to update status');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network error');
+            }
+        }
+
+        // Close modal
+        document.getElementById('modal-close-btn').addEventListener('click', closeDriverModal);
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-overlay') closeDriverModal();
+        });
+
+        function closeDriverModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        function openDriverModal(index) {
+            const d = allDrivers[index];
+            activeDriverPn = d.pn;
+
+            document.getElementById('modal-driver-name').textContent = d.name;
+            document.getElementById('modal-driver-pn').textContent = d.pn || 'N/A';
+            document.getElementById('modal-driver-phone').innerHTML = d.phone ? `<a href="tel:${d.phone}">${d.phone}</a>` : 'N/A';
+            document.getElementById('modal-driver-email').innerHTML = d.email ? `<a href="mailto:${d.email}">${d.email}</a>` : 'N/A';
+            document.getElementById('modal-driver-status').textContent = d.status || 'N/A';
+            document.getElementById('modal-driver-company').textContent = d.companies.join(', ') || 'N/A';
+            document.getElementById('modal-driver-cities').textContent = d.cities.join(', ') || 'N/A';
+            document.getElementById('modal-driver-contract').textContent = d.contractType || 'N/A';
+
+            // Render visual timeline inside the modal (isModal = true)
+            const modalTimelineContainer = document.getElementById('modal-visual-timeline-container');
+            modalTimelineContainer.innerHTML = generateVisualTimeline(d, true);
+
+            // 1. Render timelineShifts
+            const shiftList = document.getElementById('modal-timeline-shifts');
+            shiftList.innerHTML = '';
+            if (d.timelineShifts && d.timelineShifts.length > 0) {
+                d.timelineShifts.forEach(s => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-shift-item';
+                    const isLegal = s.type.includes('Legal');
+                    item.style.borderLeftColor = isLegal ? '#1e293b' : '#3b82f6';
+                    item.innerHTML = `
+                        <span class="modal-shift-source" style="color: ${isLegal ? '#94a3b8' : '#60a5fa'}">${s.type}</span>
+                        <span class="modal-shift-time">${s.start} - ${s.end}</span>
+                    `;
+                    shiftList.appendChild(item);
+                });
+            } else {
+                shiftList.innerHTML = '<div style="color:var(--text-muted); font-size:0.9rem;">No scheduled shifts found.</div>';
+            }
+
+            // 2. Render Disponibilitate
+            const dispList = document.getElementById('modal-timeline-disponibilitate');
+            const dispTitle = document.getElementById('modal-disponibilitate-title');
+            dispList.innerHTML = '';
+            if (d.disponibilitate && d.disponibilitate.length > 0) {
+                dispTitle.style.display = 'flex';
+                dispList.style.display = 'flex';
+                d.disponibilitate.forEach(disp => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-shift-item';
+                    item.style.borderLeftColor = 'rgba(20, 184, 166, 0.5)';
+                    item.style.background = 'rgba(20, 184, 166, 0.03)';
+                    item.innerHTML = `
+                        <span class="modal-shift-source" style="color: #2dd4bf">Availability (Disponibilitate)</span>
+                        <span class="modal-shift-time">${disp.start} - ${disp.end}</span>
+                    `;
+                    dispList.appendChild(item);
+                });
+            } else {
+                dispTitle.style.display = 'none';
+                dispList.style.display = 'none';
+            }
+
+            // 3. Render Forecast
+            const foreList = document.getElementById('modal-timeline-forecast');
+            const foreTitle = document.getElementById('modal-forecast-title');
+            foreList.innerHTML = '';
+            if (d.forecast && d.forecast.length > 0) {
+                foreTitle.style.display = 'flex';
+                foreList.style.display = 'flex';
+                d.forecast.forEach(fore => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-shift-item';
+                    item.style.borderLeftColor = '#8b5cf6';
+                    item.style.background = 'rgba(139, 92, 246, 0.03)';
+                    item.innerHTML = `
+                        <span class="modal-shift-source" style="color: #a78bfa">Forecast Leave / Vacation</span>
+                        <span class="modal-shift-time">${fore.start} - ${fore.end}</span>
+                    `;
+                    foreList.appendChild(item);
+                });
+            } else {
+                foreTitle.style.display = 'none';
+                foreList.style.display = 'none';
+            }
+
+            // 4. Render timelineActivities
+            const actList = document.getElementById('modal-timeline-activities');
+            actList.innerHTML = '';
+            if (d.timelineActivities && d.timelineActivities.length > 0) {
+                d.timelineActivities.forEach(act => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-shift-item';
+                    
+                    let titleColor = 'var(--text-secondary)';
+                    let borderCol = 'rgba(255,255,255,0.08)';
+                    let bgCol = 'rgba(255,255,255,0.02)';
+                    
+                    if (act.type === 'Active') {
+                        titleColor = 'var(--accent-emerald)';
+                        borderCol = 'rgba(16, 185, 129, 0.2)';
+                        bgCol = 'rgba(16, 185, 129, 0.03)';
+                    } else if (act.type === 'Inactive') {
+                        titleColor = 'var(--text-muted)';
+                        borderCol = 'rgba(107, 114, 128, 0.15)';
+                        bgCol = 'rgba(107, 114, 128, 0.02)';
+                    } else if (act.type === 'Break') {
+                        titleColor = 'var(--accent-amber)';
+                        borderCol = 'rgba(245, 158, 11, 0.2)';
+                        bgCol = 'rgba(245, 158, 11, 0.03)';
+                    } else if (act.type === 'Missing') {
+                        titleColor = 'var(--accent-coral)';
+                        borderCol = 'rgba(239, 68, 68, 0.2)';
+                        bgCol = 'rgba(239, 68, 68, 0.03)';
+                    } else if (act.type.startsWith('Leave')) {
+                        titleColor = '#a78bfa';
+                        borderCol = 'rgba(167, 139, 250, 0.2)';
+                        bgCol = 'rgba(167, 139, 250, 0.03)';
+                    }
+                    
+                    item.style.borderLeftColor = borderCol;
+                    item.style.background = bgCol;
+                    
+                    item.innerHTML = `
+                        <span class="modal-shift-source" style="color: ${titleColor}">${act.type}</span>
+                        <span class="modal-shift-time">${act.start} - ${act.end}</span>
+                    `;
+                    actList.appendChild(item);
+                });
+            } else {
+                actList.innerHTML = '<div style="color:var(--text-muted); font-size:0.9rem;">No activity log found.</div>';
+            }
+
+            // 5. Render Missed Shifts Tasks
+            const taskList = document.getElementById('modal-timeline-tasks');
+            taskList.innerHTML = '';
+            if (d.missedShifts && d.missedShifts.length > 0) {
+                d.missedShifts.forEach(shiftStr => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-shift-item';
+                    item.style.borderLeftColor = 'var(--accent-coral)';
+                    item.style.background = 'rgba(239, 68, 68, 0.03)';
+                    
+                    const projMatch = shiftStr.match(/^\[([^\]]+)\]/);
+                    const project = projMatch ? projMatch[1] : 'Timeline Alert';
+                    let detailsText = shiftStr.replace(/^\[[^\]]+\]\s*/, '');
+                    
+                    item.innerHTML = `
+                        <span class="modal-shift-source" style="color: var(--accent-coral)">${project}</span>
+                        <span class="modal-shift-details" style="color: #fff; font-weight: 500;">${detailsText}</span>
+                    `;
+                    taskList.appendChild(item);
+                });
+            } else {
+                taskList.innerHTML = '<div style="color:var(--accent-emerald); font-size:0.9rem; font-weight: 600;"><i class="fa-solid fa-circle-check"></i> No missed shift alerts for this driver.</div>';
+            }
+
+            document.getElementById('modal-overlay').classList.add('active');
+        }
+
+        function closeDriverModal() {
+            document.getElementById('modal-overlay').classList.remove('active');
+        }
+
+        function downloadFilteredExcel() {
+            const drivers = getActiveDriversState();
+            const data = drivers.map(d => ({
+                'Driver Name': d.name || '',
+                'Phone': d.phone || '',
+                'Email': d.email || '',
+                'Driver ID (PN)': d.pn || '',
+                'Contract Type': d.contractType || '',
+                'Companies': (d.companies || []).join(', '),
+                'Cities': (d.cities || []).join(', '),
+                'Status': d.status || '',
+                'Source Projects': (d.projects || []).join(', '),
+                'Missed Shifts Count': d.missedShifts.length,
+                'Missed 3 Days In A Row': d.missedThreeDaysInARow ? 'YES' : 'NO',
+                'Scheduled Shifts': d.timelineShifts ? d.timelineShifts.map(s => `[${s.type}] ${s.start} - ${s.end}`).join(' | ') : '',
+                'Worked Activity & Leaves': d.timelineActivities ? d.timelineActivities.filter(a => a.type !== 'Inactive').map(a => `[${a.type}] ${a.start} - ${a.end}`).join(' | ') : '',
+                'Missed Shifts Details': d.missedShifts.join(' | ')
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Filtered Drivers");
+            XLSX.writeFile(wb, "filtered_drivers.xlsx");
+        }
+    </script>
+</body>
+</html>

@@ -221,6 +221,17 @@ export const Sidebar = () => {
                 </>
               )}
             </NavLink>
+            <NavLink 
+              to="/admin/driver-dashboard" 
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              {({ isActive }) => (
+                <>
+                  <Users size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
+                  Driver Dashboard
+                </>
+              )}
+            </NavLink>
           </>
         )}
       </nav>

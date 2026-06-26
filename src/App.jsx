@@ -11,6 +11,7 @@ import { FlashcardsPage } from './pages/tasks/FlashcardsPage'
 import { RepetitiveFlashcardsPage } from './pages/tasks/RepetitiveFlashcardsPage'
 import { RepetitiveHistoryPage } from './pages/admin/RepetitiveHistoryPage'
 import { FleetCapPage } from './pages/admin/FleetCapPage'
+import { DriverDashboardPage } from './pages/admin/DriverDashboardPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { MainLayout } from './components/layout/MainLayout'
 
@@ -58,6 +59,11 @@ function App() {
             <Route path="/admin/fleet-optimization" element={
               <ProtectedRoute requiredRole="admin">
                 <FleetCapPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/driver-dashboard" element={
+              <ProtectedRoute requiredRole="admin">
+                <DriverDashboardPage />
               </ProtectedRoute>
             } />
             <Route path="/database" element={
