@@ -490,6 +490,14 @@ app.post('/api/admin/process-timeline', uploadJson.single('jsonFile'), async (re
     try {
         const tableName = req.body.tableName;
         if (!tableName) return res.status(400).json({ error: 'Table name required', success: false });
+
+
+app.get('/api/admin/tables', async (req, res) => {
+    const { data, error } = await supabase.from('custom_tables').select('table_name, title_ro').order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: 'Database error' });
+    res.json(data);
+});
+
         if (!req.file) return res.status(400).json({ error: 'JSON file required', success: false });
         
         console.log(`Processing timeline data using table: ${tableName}...`);

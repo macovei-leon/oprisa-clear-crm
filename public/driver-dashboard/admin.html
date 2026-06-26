@@ -6,623 +6,589 @@
     <title>Admin Panel - Driver Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="./style.css">
-    <link rel="stylesheet" href="../fleetcap/fleetcap.css">
-    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 700: '#334155', 800: '#1e293b' },
+                        emerald: { 50: '#ecfdf5', 500: '#10b981', 600: '#059669' },
+                        amber: { 50: '#fffbeb', 500: '#f59e0b', 600: '#d97706' }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        .admin-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 2rem;
-            align-items: start;
-        }
-        
-        /* Premium CSS for Inputs and Buttons */
-        h2 { margin-top: 0; margin-bottom: 1rem; font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
-        h3 { margin-top: 0; font-size: 1.1rem; color: var(--text-primary); font-weight: 500; }
-        .form-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
-        label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-        
-        input, select, textarea {
-            width: 100%;
+        body { background-color: #f8fafc; }
+        .glass-card {
             background: #ffffff;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-            color: var(--text-primary);
-            box-sizing: border-box;
-            font-family: inherit;
-            font-size: 0.95rem;
-            transition: all 0.2s ease;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
-        }
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: rgba(59, 130, 246, 0.05);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        }
-        
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 0.75rem 1.5rem;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 0.95rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
-            filter: brightness(1.1);
-        }
-        
-        .btn-secondary {
-            background: #4b5563;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 0.75rem 1.5rem;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 0.95rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-        .btn-secondary:hover {
-            background: #6b7280;
-        }
-        
-        .card {
-            background: #ffffff;
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 2rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            transition: all 0.2s ease;
         }
-        
-        .test-email-container {
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px dashed var(--border-color);
-        }
-        
-        /* Stats Table (from earlier) */
-        .stats-table {
+        .form-input {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 1rem;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            color: #1e293b;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
         }
-        .stats-table th, .stats-table td {
-            padding: 0.85rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
+        .form-input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
         }
-        .stats-table th {
-            background: #f8fafc;
-            color: var(--text-muted);
-            font-size: 0.85rem;
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
-        .stats-table th:first-child { border-top-left-radius: 8px; }
-        .stats-table th:last-child { border-top-right-radius: 8px; }
+        .btn-primary { background: #4f46e5; color: white; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3); background: #4338ca; }
+        .btn-secondary { background: #e2e8f0; color: #334155; }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .btn-success { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3); background: #059669; }
+        .btn-warning { background: #f59e0b; color: white; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2); }
+        .btn-warning:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(245, 158, 11, 0.3); background: #d97706; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        
+        .label-text { font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; display: block; }
+        
+        /* Custom Checkbox */
+        .custom-checkbox input:checked + div {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .custom-checkbox input:checked + div svg {
+            display: block;
+        }
     </style>
 </head>
-<body>
-    <div class="container">
-        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
-            <div class="header-title">
-                <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700;">Email Automation Admin</h1>
-                <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.95rem;">Manage email rules, templates, and logs</p>
-            </div>
-            <div class="quick-actions">
-                <button class="btn-secondary" style="padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" onclick="window.location.href='./index.html'">
-                    <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
-                </button>
-            </div>
-        </header>
+<body class="text-slate-800 antialiased pb-20">
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+    
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 pb-6 border-b border-slate-200">
+        <div>
+            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-600 tracking-tight">Admin Control Center</h1>
+            <p class="text-slate-500 mt-1">Manage timeline data sources, automated rules, and email templates</p>
+        </div>
+        <button onclick="window.location.href='./index.html'" class="btn btn-secondary mt-4 sm:mt-0">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </button>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        <main class="main-content">
-            <div class="admin-grid" style="max-width: 100%; padding: 0;">
-                <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                        <h2 style="margin: 0;"><i class="fa-solid fa-envelope" style="color: var(--primary);"></i> Email Automation</h2>
+        <!-- Left Column (Data Setup + Global Email Settings) -->
+        <div class="lg:col-span-5 space-y-8">
+            
+            <!-- Data Sources & Processing -->
+            <div class="glass-card p-6 border-t-4 border-t-indigo-500">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                        <i class="fa-solid fa-database text-lg"></i>
                     </div>
-                    
-                    <div style="background: rgba(59, 130, 246, 0.05); padding: 1.5rem; border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 2.5rem;">
-                        <h3>Global Settings</h3>
-                        <form id="email-settings-form" style="display: flex; gap: 1.5rem; align-items: flex-start; flex-direction: column;">
-                            <div style="display: flex; gap: 1.5rem; width: 100%; flex-wrap: wrap;">
-                                <div class="form-group" style="margin-bottom: 0; min-width: 200px;">
-                                    <label>Enable Automated Emails</label>
-                                    <select id="email-enabled">
-                                        <option value="true">Enabled</option>
-                                        <option value="false">Disabled</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin-bottom: 0; min-width: 200px;">
-                                    <label>Schedule (Cron format)</label>
-                                    <input type="text" id="email-cron" value="0 9 * * *">
-                                </div>
-                                <div class="form-group" style="margin-bottom: 0; width: 120px;">
-                                    <label>From PN (Rule)</label>
-                                    <input type="number" id="email-pn-start" placeholder="e.g. 1000">
-                                </div>
-                                <div class="form-group" style="margin-bottom: 0; width: 120px;">
-                                    <label>To PN (Rule)</label>
-                                    <input type="number" id="email-pn-end" placeholder="e.g. 2000">
-                                </div>
-                            </div>
-
-                <div class="card" style="margin-top: 2rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                        <h2 style="margin: 0;"><i class="fa-solid fa-server" style="color: var(--primary);"></i> Data Sources & Processing</h2>
-                    </div>
-                    
-                    <div style="background: rgba(59, 130, 246, 0.05); padding: 1.5rem; border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 1.5rem;">
-                        <h3>Timeline Data Setup</h3>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Upload the raw JSON tracking data and select the driver table to recalculate the timeline dashboard.</p>
-                        
-                        <form id="timeline-process-form" style="display: flex; gap: 1.5rem; align-items: flex-start; flex-direction: column;">
-                            <div style="display: flex; gap: 1.5rem; width: 100%; flex-wrap: wrap;">
-                                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
-                                    <label>Driver Info Table (Angajati)</label>
-                                    <input type="text" id="driver-table-name" value="angajati" placeholder="e.g., angajati">
-                                </div>
-                            </div>
-                            
-                            <div class="form-group" style="background: #ffffff; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border-color); width: 100%;">
-                                <label>Raw JSON Data File (samedataasinhtmlbutinjson.json)</label>
-                                <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
-                                    <input type="file" id="timeline-json-file" accept=".json" style="padding: 0.5rem; flex: 1;">
-                                </div>
-                            </div>
-
-                            <div style="display: flex; gap: 1rem; margin-top: 0.5rem; width: 100%;">
-                                <button type="submit" id="btn-process-timeline" class="btn-primary" style="width: 100%; background: #f59e0b;"><i class="fa-solid fa-gears"></i> Upload & Process Timeline Data</button>
-                            </div>
-                            <div id="process-status" style="font-size: 0.85rem; color: var(--text-primary); margin-top: 0.5rem; display: none;"></div>
-                        </form>
-                    </div>
+                    <h2 class="text-xl font-bold">Data Processing</h2>
                 </div>
-
-                            
-                            <div class="form-group" style="width: 100%; margin-bottom: 0;">
-                                <label style="margin-bottom: 0.5rem; display: block;">Send to Categories (Automated Rule)</label>
-                                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                    <label style="display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="email-category" value="Started Late" checked> Started Late</label>
-                                    <label style="display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="email-category" value="Left Early / Big Gaps" checked> Left Early / Big Gaps</label>
-                                    <label style="display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="email-category" value="No Shifts" checked> No Shifts</label>
-                                    <label style="display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="email-category" value="Absent" checked> Absent</label>
-                                </div>
-                            </div>
-
-                            <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
-                                <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
-                                <button type="button" class="btn-secondary" onclick="testEmailJob()" style="background: var(--accent-amber);"><i class="fa-solid fa-bolt"></i> Run Full Automated Job Now</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 3rem;">
+                
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                    <form id="timeline-process-form" class="space-y-5">
                         <div>
-                            <h3 style="margin-bottom: 1.5rem;"><i class="fa-solid fa-pen-to-square"></i> Edit Templates</h3>
-                            <div class="form-group">
-                                <label>Category</label>
-                                <select id="template-category" onchange="loadSelectedTemplate()">
-                                    <option value="Test">Test (For Testing Only)</option>
-                                    <option value="Started Late">Started Late</option>
-                                    <option value="Left Early / Big Gaps">Left Early / Big Gaps</option>
-                                    <option value="No Shifts">No Shifts</option>
-                                    <option value="Absent">Absent</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Subject</label>
-                                <input type="text" id="template-subject" placeholder="Email Subject">
-                            </div>
-                            <div class="form-group">
-                                <label>Body (Use {{name}}, {{pn}}, {{details}} - HTML Supported)</label>
-                                <textarea id="template-body" rows="8" placeholder="Hello {{name}}..."></textarea>
-                            </div>
-                            
-                            <div class="form-group" style="background: #ffffff; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border-color);">
-                                <label>PDF Attachment (Optional)</label>
-                                <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
-                                    <input type="file" id="template-pdf" accept="application/pdf" style="padding: 0.5rem; flex: 1;">
-                                    <button onclick="uploadPdf()" class="btn-secondary" style="white-space: nowrap;"><i class="fa-solid fa-upload"></i> Upload</button>
-                                    <button onclick="deletePdf()" class="btn-secondary" style="background: #ef4444; white-space: nowrap;"><i class="fa-solid fa-trash"></i></button>
-                                </div>
-                                <span id="pdf-status" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: block;">Checking attachment...</span>
-                            </div>
-
-                            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-                                <button onclick="saveTemplate()" class="btn-primary" style="flex: 1; background: #10b981;">
-                                    <i class="fa-solid fa-check"></i> Save Template
-                                </button>
-                                <button onclick="loadDefaultHTML()" class="btn-secondary" style="flex: 1;">
-                                    <i class="fa-solid fa-code"></i> Load Nice HTML Design
-                                </button>
-                            </div>
-                            
-                            <div class="test-email-container">
-                                <h3><i class="fa-solid fa-paper-plane"></i> Send Test Email</h3>
-                                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Enter an email address below to send the current Subject and Body as a test.</p>
-                                <div class="form-group">
-                                    <label>Target Email</label>
-                                    <input type="email" id="test-email-target" placeholder="your@email.com" value="ture@oprisa.de">
-                                </div>
-                                <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label>Simulate Data for PN (Optional)</label>
-                                    <input type="text" id="test-email-pn" placeholder="e.g. 1234">
-                                    <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">If empty, dummy data will be used for {{name}}, {{pn}} and {{details}}</span>
-                                </div>
-                                <button onclick="sendSingleTestEmail(event)" class="btn-primary" style="width: 100%;">
-                                    <i class="fa-solid fa-paper-plane"></i> Send Test Now
-                                </button>
-                            </div>
-                            
-                            <div class="test-email-container" style="border-top-color: rgba(245, 158, 11, 0.3);">
-                                <h3><i class="fa-solid fa-users"></i> Mass Send to PN Range</h3>
-                                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Sends the currently selected template to all drivers within this PN range.</p>
-                                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                        <label>From PN</label>
-                                        <input type="number" id="range-from-pn" placeholder="e.g. 1000">
-                                    </div>
-                                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                        <label>To PN</label>
-                                        <input type="number" id="range-to-pn" placeholder="e.g. 1500">
-                                    </div>
-                                </div>
-                                <button onclick="sendToRange(event)" class="btn-primary" style="width: 100%; background: #f59e0b;">
-                                    <i class="fa-solid fa-paper-plane"></i> Send to Range
-                                </button>
-                            </div>
+                            <label class="label-text">Driver Info Table (Supabase)</label>
+                            <select id="driver-table-name" class="form-input">
+                                <option value="">Loading tables...</option>
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Select the table that contains employee contacts.</p>
                         </div>
                         
                         <div>
-                            <h3 style="margin-bottom: 1.5rem;"><i class="fa-solid fa-list-check"></i> Recent Email Logs</h3>
-                            <div style="max-height: 600px; overflow-y: auto; background: #ffffff; border-radius: 8px; border: 1px solid var(--border-color);">
-                                <table class="stats-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Driver PN</th>
-                                            <th>Category</th>
-                                            <th>Status</th>
-                                            <th>Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="email-logs-body">
-                                    </tbody>
-                                </table>
+                            <label class="label-text">Raw JSON Tracking File</label>
+                            <div class="border-2 border-dashed border-indigo-200 rounded-lg p-4 bg-white text-center hover:bg-indigo-50 transition-colors relative">
+                                <input type="file" id="timeline-json-file" accept=".json" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                <i class="fa-solid fa-file-arrow-up text-3xl text-indigo-400 mb-2"></i>
+                                <p class="font-medium text-slate-700">Click to upload JSON</p>
+                                <p class="text-xs text-slate-500 mt-1" id="file-name-display">No file selected</p>
                             </div>
                         </div>
-                    </div>
+
+                        <button type="submit" id="btn-process-timeline" class="btn btn-warning w-full">
+                            <i class="fa-solid fa-gears"></i> Process Timeline Data
+                        </button>
+                        <div id="process-status" class="text-sm mt-3 hidden p-3 rounded-lg bg-white border border-slate-200"></div>
+                    </form>
                 </div>
             </div>
 
-            <script>
-                let emailTemplates = [];
-
-                async function init() {
-                    try {
-                        
-                        }
-                    }
-                }
-
-                async function loadEmailTemplates() {
-                    const res = await fetch('/api/admin/email-templates');
-                    if (res.ok) {
-                        emailTemplates = await res.json();
-                        loadSelectedTemplate();
-                    }
-                }
-
-                function loadSelectedTemplate() {
-                    const category = document.getElementById('template-category').value;
-                    const t = emailTemplates.find(x => x.category === category);
-                    document.getElementById('template-subject').value = t ? t.subject : '';
-                    document.getElementById('template-body').value = t ? t.body : '';
-                    checkPdf();
-                }
-
-                async function checkPdf() {
-                    const category = document.getElementById('template-category').value;
-                    document.getElementById('pdf-status').textContent = 'Checking...';
-                    try {
-                        const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            document.getElementById('pdf-status').innerHTML = data.exists ? '<span style="color:#22c55e"><i class="fa-solid fa-file-pdf"></i> PDF attached for this category</span>' : 'No PDF attached for this category';
-                        }
-                    } catch (err) {
-                        document.getElementById('pdf-status').textContent = 'Error checking PDF';
-                    }
-                }
-
-                async function uploadPdf() {
-                    const fileInput = document.getElementById('template-pdf');
-                    if (!fileInput.files.length) return alert('Please select a PDF file first');
-                    const category = document.getElementById('template-category').value;
-                    
-                    const formData = new FormData();
-                    formData.append('pdf', fileInput.files[0]);
-                    
-                    document.getElementById('pdf-status').textContent = 'Uploading...';
-                    try {
-                        const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`, {
-                            method: 'POST',
-                            body: formData
-                        });
-                        if (res.ok) {
-                            alert('PDF uploaded successfully!');
-                            fileInput.value = '';
-                            checkPdf();
-                        } else {
-                            alert('Upload failed');
-                            checkPdf();
-                        }
-                    } catch (err) {
-                        alert('Upload error');
-                        checkPdf();
-                    }
-                }
-
-                async function deletePdf() {
-                    const category = document.getElementById('template-category').value;
-                    if (!confirm('Delete the attached PDF?')) return;
-                    try {
-                        const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`, {
-                            method: 'DELETE'
-                        });
-                        if (res.ok) {
-                            alert('PDF deleted');
-                            checkPdf();
-                        }
-                    } catch (err) {
-                        alert('Delete error');
-                    }
-                }
-
-                async function loadEmailLogs() {
-                    const res = await fetch('/api/admin/email-logs');
-                    if (res.ok) {
-                        const logs = await res.json();
-                        const tbody = document.getElementById('email-logs-body');
-                        tbody.innerHTML = '';
-                        logs.forEach(l => {
-                            const tr = document.createElement('tr');
-                            tr.innerHTML = `
-                                <td>${l.driver_pn}</td>
-                                <td>${l.category}</td>
-                                <td style="color:${l.status.includes('Success') ? '#22c55e' : '#ef4444'}">${l.status}</td>
-                                <td>${new Date(l.sent_at).toLocaleString()}</td>
-                            `;
-                            tbody.appendChild(tr);
-                        });
-                    }
-                }
-
-                document.getElementById('email-settings-form').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const is_enabled = document.getElementById('email-enabled').value === 'true';
-                    const cron_schedule = document.getElementById('email-cron').value;
-                    const pn_range_start = document.getElementById('email-pn-start').value;
-                    const pn_range_end = document.getElementById('email-pn-end').value;
-                    
-                    const allowed_categories = Array.from(document.querySelectorAll('input[name="email-category"]:checked')).map(cb => cb.value);
-
-                    const res = await fetch('/api/admin/email-settings', {
-                        method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ is_enabled, cron_schedule, pn_range_start, pn_range_end, allowed_categories })
-                    });
-                    if (res.ok) alert('Email settings saved!');
-                });
-
-                async function saveTemplate() {
-                    const category = document.getElementById('template-category').value;
-                    const subject = document.getElementById('template-subject').value;
-                    const body = document.getElementById('template-body').value;
-                    const res = await fetch('/api/admin/email-templates', {
-                        method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ category, subject, body })
-                    });
-                    if (res.ok) {
-                        alert('Template saved!');
-                        loadEmailTemplates();
-                    }
-                }
-
-                async function testEmailJob() {
-                    if (!confirm('This will immediately trigger the daily email job in the background (sends to ALL filtered drivers). Are you sure?')) return;
-                    const res = await fetch('/api/admin/test-email', { method: 'POST' });
-                    if (res.ok) {
-                        alert('Email job triggered! Check logs in a minute.');
-                        setTimeout(loadEmailLogs, 3000);
-                    }
-                }
+            <!-- Email Automation Settings -->
+            <div class="glass-card p-6 border-t-4 border-t-emerald-500">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                        <i class="fa-solid fa-robot text-lg"></i>
+                    </div>
+                    <h2 class="text-xl font-bold">Automation Rules</h2>
+                </div>
                 
-                async function sendSingleTestEmail(event) {
-                    const toEmail = document.getElementById('test-email-target').value;
-                    const subject = document.getElementById('template-subject').value;
-                    const body = document.getElementById('template-body').value;
-                    const testPn = document.getElementById('test-email-pn').value;
+                <form id="email-settings-form" class="space-y-5">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="label-text">Status</label>
+                            <select id="email-enabled" class="form-input">
+                                <option value="true">Enabled (Active)</option>
+                                <option value="false">Disabled (Paused)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label-text">Cron Schedule</label>
+                            <input type="text" id="email-cron" class="form-input" value="0 9 * * *">
+                        </div>
+                    </div>
                     
-                    if (!toEmail || !subject || !body) {
-                        alert("Please fill in a target email, subject, and body.");
-                        return;
-                    }
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="label-text">From PN (Optional)</label>
+                            <input type="number" id="email-pn-start" class="form-input" placeholder="e.g. 1000">
+                        </div>
+                        <div>
+                            <label class="label-text">To PN (Optional)</label>
+                            <input type="number" id="email-pn-end" class="form-input" placeholder="e.g. 2000">
+                        </div>
+                    </div>
                     
-                    const btn = event.currentTarget;
-                    const originalHtml = btn.innerHTML;
-                    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sending...';
-                    btn.disabled = true;
-                    
-                    try {
-                        const res = await fetch('/api/admin/send-single-test', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ 
-                                toEmail, 
-                                subject, 
-                                body, 
-                                testPn, 
-                                category: document.getElementById('template-category').value 
-                            })
-                        });
-                        
-                        const data = await res.json();
-                        if (res.ok && data.success) {
-                            alert("Test email sent successfully to " + toEmail);
-                        } else {
-                            alert("Failed to send test email: " + (data.error || "Unknown error"));
-                        }
-                    } catch (err) {
-                        alert("Error: " + err.message);
-                    } finally {
-                        btn.innerHTML = originalHtml;
-                        btn.disabled = false;
-                    }
-                }
+                    <div>
+                        <label class="label-text">Trigger Categories</label>
+                        <div class="grid grid-cols-2 gap-3 mt-2">
+                            <label class="custom-checkbox flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" name="email-category" value="Started Late" class="hidden" checked>
+                                <div class="w-5 h-5 rounded border border-slate-300 flex items-center justify-center bg-white transition-colors">
+                                    <svg class="hidden w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <span class="text-sm font-medium text-slate-700">Started Late</span>
+                            </label>
+                            <label class="custom-checkbox flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" name="email-category" value="Left Early / Big Gaps" class="hidden" checked>
+                                <div class="w-5 h-5 rounded border border-slate-300 flex items-center justify-center bg-white transition-colors">
+                                    <svg class="hidden w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <span class="text-sm font-medium text-slate-700">Left Early / Gaps</span>
+                            </label>
+                            <label class="custom-checkbox flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" name="email-category" value="No Shifts" class="hidden" checked>
+                                <div class="w-5 h-5 rounded border border-slate-300 flex items-center justify-center bg-white transition-colors">
+                                    <svg class="hidden w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <span class="text-sm font-medium text-slate-700">No Shifts</span>
+                            </label>
+                            <label class="custom-checkbox flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" name="email-category" value="Absent" class="hidden" checked>
+                                <div class="w-5 h-5 rounded border border-slate-300 flex items-center justify-center bg-white transition-colors">
+                                    <svg class="hidden w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <span class="text-sm font-medium text-slate-700">Absent</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-2 border-t border-slate-100">
+                        <button type="submit" class="btn btn-primary flex-1">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Rules
+                        </button>
+                        <button type="button" class="btn btn-warning flex-1" onclick="testEmailJob()">
+                            <i class="fa-solid fa-bolt"></i> Run Now
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+
+        <!-- Right Column (Templates & Logs) -->
+        <div class="lg:col-span-7 space-y-8">
+            
+            <!-- Email Templates -->
+            <div class="glass-card p-6 border-t-4 border-t-amber-500">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                        <i class="fa-solid fa-pen-nib text-lg"></i>
+                    </div>
+                    <h2 class="text-xl font-bold">Email Templates</h2>
+                </div>
                 
-                function loadDefaultHTML() {
-                    if (!confirm('This will overwrite the current body content. Continue?')) return;
-                    const html = `<div style="border-left: 5px solid #a31621; background-color: #f7e6e6; padding: 15px; margin-bottom: 20px;">
-  <h3 style="color: #a31621; margin-top: 0; font-family: sans-serif;">DRINGEND: VERFÜGBARKEIT EINTRAGEN!</h3>
-  <p style="color: #000; font-family: sans-serif; font-size: 14px;">Bitte trage <strong>unbedingt</strong> deine Verfügbarkeit über deinen persönlichen App-Link ein:</p>
-  <ul style="color: #000; font-family: sans-serif; font-size: 14px;">
-    <li style="margin-bottom: 5px;">Für <strong>diese Woche</strong> (falls du es noch nicht erledigt hast).</li>
-    <li style="margin-bottom: 5px;">Für <strong>die kommende Woche (OBLIGATORISCH)</strong>.</li>
-  </ul>
-  <p style="color: #000; font-family: sans-serif; font-size: 14px;">Wir weisen Schichten <strong>NUR</strong> denjenigen Fahrern zu, die ihre Verfügbarkeit rechtzeitig ausgefüllt haben. Wer seine Daten nicht einträgt, erhält keine Schichten.</p>
-  <p style="color: #000; font-family: sans-serif; font-size: 14px;"><strong>Wir garantieren: Ab sofort werden die zugewiesenen Schichten deine eingetragene Verfügbarkeit STRENGSTENS respektieren!</strong></p>
-</div>
-
-<div style="border-left: 5px solid #d4a373; background-color: #fcf6ec; padding: 15px; margin-bottom: 20px;">
-  <h3 style="color: #d4a373; margin-top: 0; font-family: sans-serif;">WICHTIGER HINWEIS ZU DEN ARBEITSZEITEN</h3>
-  <p style="color: #000; font-family: sans-serif; font-size: 14px;">Das unentschuldigte Fehlen bei den zugewiesenen Schichten gilt als <strong>Arbeitsverweigerung</strong>. Wir weisen ausdrücklich darauf hin, dass ein unentschuldigtes Fehlen von <strong>3 aufeinanderfolgenden Tagen zur fristlosen Kündigung</strong> des Arbeitsverhältnisses führt.</p>
-</div>
-
-<p style="color: #000; font-family: sans-serif; font-size: 14px;">Hier ist dein persönlicher Link zur App (um deine Verfügbarkeit einzutragen):<br>
-<a href="https://oprisa.fluxer.io/appsoferi/{{pn}}" style="color: #2563eb; font-weight: bold; text-decoration: none;">Link Zur App Öffnen (PN {{pn}})</a></p>
-
-<p style="color: #000; font-family: sans-serif; font-size: 14px;">Mit freundlichen Grüßen,<br>
-<strong>Das Oprisa GmbH Team</strong>, UberEats Partner</p>`;
-                    document.getElementById('template-body').value = html;
-                }
-
-                async function sendToRange(event) {
-                    const fromPn = document.getElementById('range-from-pn').value;
-                    const toPn = document.getElementById('range-to-pn').value;
-                    const category = document.getElementById('template-category').value;
-                    const subject = document.getElementById('template-subject').value;
-                    const body = document.getElementById('template-body').value;
-
-                    if (!fromPn || !toPn || !subject || !body) {
-                        alert("Please fill in PN range, subject, and body.");
-                        return;
-                    }
+                <div class="space-y-5">
+                    <div>
+                        <label class="label-text">Select Category</label>
+                        <select id="template-category" onchange="loadSelectedTemplate()" class="form-input bg-slate-50 font-bold text-indigo-700">
+                            <option value="Test">Test (For Testing Only)</option>
+                            <option value="Started Late">Started Late</option>
+                            <option value="Left Early / Big Gaps">Left Early / Big Gaps</option>
+                            <option value="No Shifts">No Shifts</option>
+                            <option value="Absent">Absent</option>
+                        </select>
+                    </div>
                     
-                    if (!confirm(`Are you sure you want to send this email to all drivers from PN ${fromPn} to ${toPn}?`)) return;
+                    <div>
+                        <label class="label-text">Subject Line</label>
+                        <input type="text" id="template-subject" class="form-input font-medium" placeholder="Email Subject">
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between items-end mb-2">
+                            <label class="label-text mb-0">Email Body (HTML)</label>
+                            <button onclick="loadDefaultHTML()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Load Premium Template
+                            </button>
+                        </div>
+                        <textarea id="template-body" rows="9" class="form-input font-mono text-sm leading-relaxed" placeholder="Available variables: {{name}}, {{pn}}, {{details}}"></textarea>
+                    </div>
+                    
+                    <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 flex items-center justify-between">
+                        <div>
+                            <p class="font-bold text-sm text-slate-700">PDF Attachment</p>
+                            <p id="pdf-status" class="text-xs text-slate-500 mt-1">Checking...</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="file" id="template-pdf" accept="application/pdf" class="hidden" onchange="document.getElementById('pdf-file-name').textContent = this.files[0].name">
+                            <label for="template-pdf" class="btn btn-secondary py-1.5 px-3 text-sm cursor-pointer">
+                                <i class="fa-solid fa-file-pdf"></i> Select
+                            </label>
+                            <span id="pdf-file-name" class="hidden"></span>
+                            <button onclick="uploadPdf()" class="btn btn-primary py-1.5 px-3 text-sm"><i class="fa-solid fa-upload"></i></button>
+                            <button onclick="deletePdf()" class="btn btn-danger py-1.5 px-3 text-sm"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
 
-                    const btn = event.currentTarget;
-                    const originalHtml = btn.innerHTML;
-                    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sending...';
-                    btn.disabled = true;
+                    <button onclick="saveTemplate()" class="btn btn-success w-full">
+                        <i class="fa-solid fa-check"></i> Save Template Changes
+                    </button>
+                </div>
+            </div>
 
-                    try {
-                        const res = await fetch('/api/admin/send-range', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ fromPn, toPn, category, subject, body })
-                        });
-                        
-                        const data = await res.json();
-                        if (res.ok && data.success) {
-                            alert(data.message);
-                            loadEmailLogs();
-                        } else {
-                            alert("Failed to send range: " + (data.error || "Unknown error"));
-                        }
-                    } catch (err) {
-                        alert("Error: " + err.message);
-                    } finally {
-                        btn.innerHTML = originalHtml;
-                        btn.disabled = false;
-                    }
-                }
+            <!-- Testing & Range Send -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                function logout() {
+                <div class="glass-card p-5 border-l-4 border-l-indigo-500">
+                    <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-paper-plane text-indigo-500 mr-2"></i> Send Test</h3>
+                    <p class="text-xs text-slate-500 mb-4">Send the active template to a single email.</p>
                     
-                }
+                    <div class="space-y-3">
+                        <input type="email" id="test-email-target" class="form-input text-sm py-2" placeholder="Target Email" value="ture@oprisa.de">
+                        <input type="text" id="test-email-pn" class="form-input text-sm py-2" placeholder="Simulate PN (optional)">
+                        <button onclick="sendSingleTestEmail(event)" class="btn btn-primary w-full py-2 text-sm">Send Test</button>
+                    </div>
+                </div>
 
-                document.getElementById('timeline-process-form').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const fileInput = document.getElementById('timeline-json-file');
-                    const tableName = document.getElementById('driver-table-name').value;
-                    const statusEl = document.getElementById('process-status');
+                <div class="glass-card p-5 border-l-4 border-l-amber-500">
+                    <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-users text-amber-500 mr-2"></i> Mass Send</h3>
+                    <p class="text-xs text-slate-500 mb-4">Send the active template to a PN range.</p>
                     
-                    if (!fileInput.files.length) {
-                        alert('Please select a JSON file to upload.');
-                        return;
-                    }
-                    if (!tableName) {
-                        alert('Please specify the driver table name.');
-                        return;
-                    }
-                    
-                    const formData = new FormData();
-                    formData.append('jsonFile', fileInput.files[0]);
-                    formData.append('tableName', tableName);
-                    
-                    statusEl.style.display = 'block';
-                    statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Uploading and processing data... This might take a few moments.';
-                    
-                    const btn = document.getElementById('btn-process-timeline');
-                    btn.disabled = true;
-                    
-                    try {
-                        const res = await fetch('/api/admin/process-timeline', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        const data = await res.json();
-                        if (res.ok && data.success) {
-                            statusEl.innerHTML = '<span style="color:#22c55e"><i class="fa-solid fa-check"></i> Processing complete!</span> ' + data.message;
-                        } else {
-                            statusEl.innerHTML = '<span style="color:#ef4444"><i class="fa-solid fa-triangle-exclamation"></i> Error:</span> ' + (data.error || 'Unknown error');
-                        }
-                    } catch (err) {
-                        statusEl.innerHTML = '<span style="color:#ef4444"><i class="fa-solid fa-triangle-exclamation"></i> Error:</span> ' + err.message;
-                    } finally {
-                        btn.disabled = false;
-                    }
-                });
+                    <div class="flex gap-2 mb-3">
+                        <input type="number" id="range-from-pn" class="form-input text-sm py-2" placeholder="From PN">
+                        <input type="number" id="range-to-pn" class="form-input text-sm py-2" placeholder="To PN">
+                    </div>
+                    <button onclick="sendToRange(event)" class="btn btn-warning w-full py-2 text-sm">Send to Range</button>
+                </div>
 
+            </div>
 
-                init();
-            </script>
-        </main>
+        </div>
     </div>
+</div>
+
+<script>
+    let emailTemplates = [];
+
+    // File input UX
+    document.getElementById('timeline-json-file').addEventListener('change', function(e) {
+        const display = document.getElementById('file-name-display');
+        if (this.files && this.files.length > 0) {
+            display.innerHTML = `<span class="text-indigo-600 font-bold">${this.files[0].name}</span> selected`;
+        } else {
+            display.textContent = 'No file selected';
+        }
+    });
+
+    async function init() {
+        try {
+            loadTables();
+            loadEmailTemplates();
+            
+            const res = await fetch('/api/admin/email-settings');
+            if (res.ok) {
+                const settings = await res.json();
+                document.getElementById('email-enabled').value = settings.is_enabled ? 'true' : 'false';
+                document.getElementById('email-cron').value = settings.cron_schedule || '';
+                document.getElementById('email-pn-start').value = settings.pn_range_start || '';
+                document.getElementById('email-pn-end').value = settings.pn_range_end || '';
+                
+                document.querySelectorAll('input[name="email-category"]').forEach(cb => {
+                    cb.checked = (settings.allowed_categories || []).includes(cb.value);
+                });
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function loadTables() {
+        try {
+            const res = await fetch('/api/admin/tables');
+            if (res.ok) {
+                const tables = await res.json();
+                const select = document.getElementById('driver-table-name');
+                select.innerHTML = '<option value="">Select a database table...</option>';
+                tables.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.table_name;
+                    opt.textContent = `${t.title_ro} (${t.table_name})`;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (e) {
+            console.error("Failed to load tables", e);
+        }
+    }
+
+    // Processing Form Submission
+    document.getElementById('timeline-process-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fileInput = document.getElementById('timeline-json-file');
+        const tableName = document.getElementById('driver-table-name').value;
+        const statusEl = document.getElementById('process-status');
+        
+        if (!tableName) {
+            alert('Please select a driver database table.');
+            return;
+        }
+        if (!fileInput.files.length) {
+            alert('Please select the raw JSON data file to upload.');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('jsonFile', fileInput.files[0]);
+        formData.append('tableName', tableName);
+        
+        statusEl.style.display = 'block';
+        statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200";
+        statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Uploading & Processing... (This might take a minute)';
+        
+        const btn = document.getElementById('btn-process-timeline');
+        btn.disabled = true;
+        btn.classList.add('opacity-70');
+        
+        try {
+            const res = await fetch('/api/admin/process-timeline', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium";
+                statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i> ' + data.message;
+                fileInput.value = '';
+                document.getElementById('file-name-display').textContent = 'No file selected';
+            } else {
+                statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200";
+                statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Error: ' + (data.error || 'Unknown error');
+            }
+        } catch (err) {
+            statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200";
+            statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Exception: ' + err.message;
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('opacity-70');
+        }
+    });
+
+    // Same Email Functions as before...
+    async function loadEmailTemplates() {
+        const res = await fetch('/api/admin/email-templates');
+        if (res.ok) {
+            emailTemplates = await res.json();
+            loadSelectedTemplate();
+        }
+    }
+
+    function loadSelectedTemplate() {
+        const category = document.getElementById('template-category').value;
+        const t = emailTemplates.find(x => x.category === category);
+        document.getElementById('template-subject').value = t ? t.subject : '';
+        document.getElementById('template-body').value = t ? t.body : '';
+        checkPdf();
+    }
+
+    async function checkPdf() {
+        const category = document.getElementById('template-category').value;
+        const status = document.getElementById('pdf-status');
+        status.textContent = 'Checking...';
+        try {
+            const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`);
+            if (res.ok) {
+                const data = await res.json();
+                status.innerHTML = data.exists ? '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-check mr-1"></i> Attached</span>' : 'No PDF attached';
+            }
+        } catch (err) {
+            status.textContent = 'Error checking PDF';
+        }
+    }
+
+    async function uploadPdf() {
+        const fileInput = document.getElementById('template-pdf');
+        if (!fileInput.files.length) return alert('Please select a PDF file using the Select button first');
+        const category = document.getElementById('template-category').value;
+        
+        const formData = new FormData();
+        formData.append('pdf', fileInput.files[0]);
+        
+        document.getElementById('pdf-status').textContent = 'Uploading...';
+        try {
+            const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`, { method: 'POST', body: formData });
+            if (res.ok) {
+                alert('PDF uploaded!');
+                fileInput.value = '';
+                document.getElementById('pdf-file-name').textContent = '';
+                checkPdf();
+            } else {
+                alert('Upload failed');
+            }
+        } catch (err) {
+            alert('Upload error');
+        }
+    }
+
+    async function deletePdf() {
+        const category = document.getElementById('template-category').value;
+        if (!confirm('Delete the attached PDF for this category?')) return;
+        try {
+            const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`, { method: 'DELETE' });
+            if (res.ok) {
+                alert('PDF deleted');
+                checkPdf();
+            }
+        } catch (err) { alert('Delete error'); }
+    }
+
+    document.getElementById('email-settings-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const is_enabled = document.getElementById('email-enabled').value === 'true';
+        const cron_schedule = document.getElementById('email-cron').value;
+        const pn_range_start = document.getElementById('email-pn-start').value;
+        const pn_range_end = document.getElementById('email-pn-end').value;
+        const allowed_categories = Array.from(document.querySelectorAll('input[name="email-category"]:checked')).map(cb => cb.value);
+
+        const res = await fetch('/api/admin/email-settings', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ is_enabled, cron_schedule, pn_range_start, pn_range_end, allowed_categories })
+        });
+        if (res.ok) alert('Settings saved successfully!');
+    });
+
+    async function saveTemplate() {
+        const category = document.getElementById('template-category').value;
+        const subject = document.getElementById('template-subject').value;
+        const body = document.getElementById('template-body').value;
+        const res = await fetch('/api/admin/email-templates', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ category, subject, body })
+        });
+        if (res.ok) {
+            alert('Template saved successfully!');
+            loadEmailTemplates();
+        }
+    }
+
+    async function testEmailJob() {
+        if (!confirm('This will trigger the cron job immediately in the background for ALL filtered drivers. Are you sure?')) return;
+        const res = await fetch('/api/admin/test-email', { method: 'POST' });
+        if (res.ok) alert('Triggered! Check logs for progress.');
+    }
+    
+    async function sendSingleTestEmail(event) {
+        const toEmail = document.getElementById('test-email-target').value;
+        const subject = document.getElementById('template-subject').value;
+        const body = document.getElementById('template-body').value;
+        const testPn = document.getElementById('test-email-pn').value;
+        if (!toEmail || !subject || !body) return alert("Fill in target email, subject, and body.");
+        
+        const btn = event.currentTarget;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch('/api/admin/send-single-test', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ toEmail, subject, body, testPn, category: document.getElementById('template-category').value })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) alert("Test sent successfully!");
+            else alert("Failed: " + (data.error || "Unknown"));
+        } catch (err) { alert("Error: " + err.message); } 
+        finally { btn.innerHTML = originalHtml; btn.disabled = false; }
+    }
+    
+    function loadDefaultHTML() {
+        if (!confirm('Overwrite current body content with the premium template?')) return;
+        document.getElementById('template-body').value = `<div style="border-left: 5px solid #4f46e5; background-color: #f1f5f9; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+  <h3 style="color: #1e293b; margin-top: 0; font-family: sans-serif;">HR Notice: Timeline Status</h3>
+  <p style="color: #334155; font-family: sans-serif; font-size: 14px;">Hello {{name}}, this is an automated message regarding your recent activity.</p>
+  <div style="background: white; border: 1px solid #e2e8f0; padding: 10px; border-radius: 4px; margin-top: 10px; font-family: monospace;">
+    {{details}}
+  </div>
+</div>`;
+    }
+
+    async function sendToRange(event) {
+        const fromPn = document.getElementById('range-from-pn').value;
+        const toPn = document.getElementById('range-to-pn').value;
+        const category = document.getElementById('template-category').value;
+        const subject = document.getElementById('template-subject').value;
+        const body = document.getElementById('template-body').value;
+
+        if (!fromPn || !toPn || !subject || !body) return alert("Fill in PN range, subject, and body.");
+        if (!confirm(`Send to drivers from PN ${fromPn} to ${toPn}?`)) return;
+
+        const btn = event.currentTarget;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/admin/send-range', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ fromPn, toPn, category, subject, body })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) alert(data.message);
+            else alert("Failed: " + (data.error || "Unknown"));
+        } catch (err) { alert("Error: " + err.message); } 
+        finally { btn.innerHTML = originalHtml; btn.disabled = false; }
+    }
+    
+    // Init on load
+    document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>
