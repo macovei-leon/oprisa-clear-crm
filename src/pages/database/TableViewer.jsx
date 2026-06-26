@@ -406,18 +406,24 @@ export const TableViewer = () => {
   };
 
   const deleteTable = async () => {
-    if (!window.confirm(`Ești sigur că vrei să ștergi definitiv tabelul "${tableName}" și toate datele din el? Această acțiune este ireversibilă!`)) return;
+    const msg = `ATENȚIE MAJORE!\n\nEști sigur că vrei să ștergi definitiv tabelul "${tableName}"?\n\nOdată cu acest tabel, ABSOLUT TOATE SARCINILE (cardurile) asociate cu angajații din el vor fi ȘTERSE PERMANENT din toate campaniile și fluxurile repetitive în care se află acum.\n\nAceastă acțiune este IREVERSIBILĂ. Continuăm?`;
+    if (!window.confirm(msg)) return;
     try {
       // 1. Delete from custom_tables registry
       const { error: regErr } = await supabase.from('custom_tables').delete().eq('table_name', tableName);
       if (regErr) throw regErr;
       
-      // 2. Drop table using DDL
-      const dropSql = `DROP TABLE IF EXISTS public."${tableName}" CASCADE;\nNOTIFY pgrst, 'reload schema';`;
+      // 2. Drop table and wipe orphaned tasks using DDL
+      const dropSql = `
+        DELETE FROM public.crm_tasks WHERE row_data->>'id' IN (SELECT id::text FROM public."${tableName}");
+        DELETE FROM public.crm_repetitive_tasks WHERE row_data->>'id' IN (SELECT id::text FROM public."${tableName}");
+        DROP TABLE IF EXISTS public."${tableName}" CASCADE;
+        NOTIFY pgrst, 'reload schema';
+      `;
       const { error: dropErr } = await supabase.rpc('execute_ddl', { query_text: dropSql });
       if (dropErr) throw dropErr;
       
-      alert('Tabelul a fost șters cu succes!');
+      alert('Tabelul și toate cardurile asociate au fost șterse cu succes!');
       navigate('/database');
     } catch (err) {
       console.error("Eroare la stergerea tabelului:", err);
