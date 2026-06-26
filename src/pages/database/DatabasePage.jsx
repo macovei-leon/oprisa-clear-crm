@@ -60,7 +60,14 @@ export const DatabasePage = () => {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) setExcelFile(file);
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        alert("Fișierul este prea mare! Dimensiunea maximă admisă este de 10 MB pentru a preveni blocarea aplicației.");
+        e.target.value = null; // reset input
+        return;
+      }
+      setExcelFile(file);
+    }
   };
 
   const analyzeFile = async (e) => {
@@ -114,6 +121,9 @@ export const DatabasePage = () => {
       const selectedCols = detectedColumns.filter(c => c.selected);
       if (selectedCols.length === 0) throw new Error("Selectați cel puțin o coloană.");
       if (!formData.tableName) throw new Error("Numele tabelului este obligatoriu.");
+      if (!/^[a-z0-9_]+$/.test(formData.tableName)) {
+        throw new Error("Numele tabelului poate conține doar litere mici, cifre și underscore (_). Fără spații sau caractere speciale.");
+      }
 
       // Check if exists in DB
       const { data: existing } = await supabase.rpc('get_table_columns', { p_table_name: formData.tableName });

@@ -205,7 +205,14 @@ export const TableViewer = () => {
   // ---- OVERWRITE LOGIC ----
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) setExcelFile(file);
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        alert("Fișierul este prea mare! Dimensiunea maximă admisă este de 10 MB pentru a preveni blocarea aplicației.");
+        e.target.value = null; // reset input
+        return;
+      }
+      setExcelFile(file);
+    }
   };
 
   const analyzeFile = async (e) => {
@@ -687,14 +694,16 @@ export const TableViewer = () => {
 
       <AppendToCampaignModal 
         isOpen={showAppendCampaignModal} 
-        onClose={() => { setShowAppendCampaignModal(false); setSelectedRowIds(new Set()); }}
+        onClose={() => setShowAppendCampaignModal(false)}
+        onSuccess={() => { setShowAppendCampaignModal(false); setSelectedRowIds(new Set()); fetchTableData(); }}
         selectedRowsData={selectedRowsData}
         tableName={tableName}
         isRepetitive={false}
       />
       <AppendToCampaignModal 
         isOpen={showAppendRepetitiveModal} 
-        onClose={() => { setShowAppendRepetitiveModal(false); setSelectedRowIds(new Set()); }}
+        onClose={() => setShowAppendRepetitiveModal(false)}
+        onSuccess={() => { setShowAppendRepetitiveModal(false); setSelectedRowIds(new Set()); fetchTableData(); }}
         selectedRowsData={selectedRowsData}
         tableName={tableName}
         isRepetitive={true}
@@ -702,7 +711,8 @@ export const TableViewer = () => {
 
       <CampaignBuilderModal 
         isOpen={showCampaignModal} 
-        onClose={() => { setShowCampaignModal(false); setSelectedRowIds(new Set()); }}
+        onClose={() => setShowCampaignModal(false)}
+        onSuccess={() => { setShowCampaignModal(false); setSelectedRowIds(new Set()); fetchTableData(); }}
         selectedRowsData={selectedRowsData}
         tableName={tableName}
         visibleColumns={visibleColumns}

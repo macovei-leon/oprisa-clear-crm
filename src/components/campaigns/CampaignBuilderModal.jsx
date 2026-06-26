@@ -8,7 +8,7 @@ const generateId = () => {
     : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
 
-export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], tableName = '', visibleColumns = [], isRepetitive = false, initialData = null }) => {
+export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsData = [], tableName = '', visibleColumns = [], isRepetitive = false, initialData = null }) => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [workers, setWorkers] = useState([]);
@@ -292,8 +292,8 @@ export const CampaignBuilderModal = ({ isOpen, onClose, selectedRowsData = [], t
       }
 
       alert(isRepetitive ? "Flux repetitiv lansat cu succes!" : "Campanie lansată cu succes!");
-      onClose(); // and trigger a refresh upstream to uncheck rows
-      window.location.reload();
+      if (onSuccess) onSuccess();
+      else onClose(); // and trigger a refresh upstream to uncheck rows
     } catch (err) {
       console.error(err);
       alert("Eroare la operare: " + err.message);

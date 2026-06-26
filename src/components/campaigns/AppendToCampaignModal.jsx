@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, Users, Activity, CheckCircle2 } from 'lucide-react';
 
-export const AppendToCampaignModal = ({ isOpen, onClose, selectedRowsData = [], tableName = '', isRepetitive = false }) => {
+export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRowsData = [], tableName = '', isRepetitive = false }) => {
   const [loading, setLoading] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
@@ -116,9 +116,8 @@ export const AppendToCampaignModal = ({ isOpen, onClose, selectedRowsData = [], 
       }
 
       alert('Rândurile au fost adăugate cu succes la campania existentă!');
-      onClose();
-      // Need a way to refresh TableViewer, standard approach is window.location.reload() or triggering a fetch
-      window.location.reload(); 
+      if (onSuccess) onSuccess();
+      else onClose();
     } catch (err) {
       console.error(err);
       alert('Eroare: ' + err.message);
