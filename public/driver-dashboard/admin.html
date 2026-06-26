@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Driver Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="../fleetcap/fleetcap.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+        
+        /* Premium CSS for Inputs and Buttons */
+        h2 { margin-top: 0; margin-bottom: 1rem; font-size: 1.5rem; font-weight: 600; color: #fff; }
+        h3 { margin-top: 0; font-size: 1.1rem; color: #f3f4f6; font-weight: 500; }
+        .form-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+        label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        input, select, textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: #fff;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.05);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+            filter: brightness(1.1);
+        }
+        
+        .btn-secondary {
+            background: #4b5563;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-secondary:hover {
+            background: #6b7280;
+        }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        
+        .test-email-container {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed var(--border-color);
+        }
+        
+        /* Stats Table (from earlier) */
+        .stats-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 1rem;
+        }
+        .stats-table th, .stats-table td {
+            padding: 0.85rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .stats-table th {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stats-table th:first-child { border-top-left-radius: 8px; }
+        .stats-table th:last-child { border-top-right-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="header" style="max-width: 1200px; margin: 0 auto 2rem auto;">
+        <h1>Admin Panel</h1>
+        <div>
+            <button class="btn-secondary" onclick="window.location.href='/dashboard.html'"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</button>
+        </div>
+    </div>
+    
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo-container">
+                <span class="logo-icon"><i class="fa-solid fa-bolt"></i></span>
+                <span class="logo-text">OPRISA GMBH</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a class="nav-item" href="/dashboard.html" id="nav-dashboard">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </a>
+                
+                <div id="sidebar-campaigns-section" style="border-top: 1px solid rgba(0, 0, 0, 0.05); margin-top: 0.5rem; padding-top: 0.5rem; display: block;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 0.25rem 0.75rem 0.35rem 0.75rem; letter-spacing: 0.5px;">Campanii Active</div>
+                    <div id="sidebar-campaigns-list" style="display: flex; flex-direction: column; gap: 0.25rem;">
+                        <div style="padding: 0 0.75rem; font-size:0.8rem; color:var(--text-muted);" id="sidebar-campaigns-loading">Loading campaigns...</div>
+                    </div>
+                </div>
+
+                <a class="nav-item active" href="/admin.html" id="admin-sidebar-link" style="border-top: 1px solid rgba(0, 0, 0, 0.05); margin-top: 0.5rem; padding-top: 0.5rem;">
+                    <i class="fa-solid fa-shield-halved" style="color: #f59e0b"></i>
+                    <span style="font-weight: 700; color: #f59e0b;">Administrare</span>
+                </a>
+            </nav>
+            
+            <div id="user-profile-section" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--card-border); font-size: 0.85rem; color: var(--text-primary); display: flex; flex-direction: column; gap: 0.5rem; text-align: left;">
+                <button class="btn" onclick="logout()" style="background: transparent; border: 1px solid var(--card-border); padding: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); width: 100%; justify-content: flex-start; transition: all 0.2s;">
+                    <i class="fa-solid fa-right-from-bracket"></i> <span>Ieși din cont</span>
+                </button>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <div class="admin-grid" style="max-width: 100%; padding: 0;">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <h2 style="margin: 0;"><i class="fa-solid fa-envelope" style="color: var(--primary);"></i> Email Automation</h2>
+                    </div>
+                    
+                    <div style="background: rgba(59, 130, 246, 0.05); padding: 1.5rem; border: 1px solid var(--card-border); border-radius: 12px; margin-bottom: 2.5rem;">
+                        <h3>Global Settings</h3>
+                        <form id="email-settings-form" style="display: flex; gap: 1.5rem; align-items: flex-start; flex-direction: column;">
+                            <div style="display: flex; gap: 1.5rem; width: 100%; flex-wrap: wrap;">
+                                <div class="form-group" style="margin-bottom: 0; min-width: 200px;">
+                                    <label>Enable Automated Emails</label>
+                                    <select id="email-enabled">
+                                        <option value="true">Enabled</option>
+                                        <option value="false">Disabled</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0; min-width: 200px;">
+                                    <label>Schedule (Cron format)</label>
+                                    <input type="text" id="email-cron" value="0 9 * * *">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0; width: 120px;">
+                                    <label>From PN (Rule)</label>
+                                    <input type="number" id="email-pn-start" placeholder="e.g. 1000">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0; width: 120px;">
+                                    <label>To PN (Rule)</label>
+                                    <input type="number" id="email-pn-end" placeholder="e.g. 2000">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" style="width: 100%; margin-bottom: 0;">
+                                <label style="margin-bottom: 0.5rem; display: block;">Send to Categories (Automated Rule)</label>
+                                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                    <label style="display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="email-category" value="Started Late" checked> Started Late</label>
+                                    <label style="display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="email-category" value="Left Early / Big Gaps" checked> Left Early / Big Gaps</label>
+                                    <label style="display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="email-category" value="No Shifts" checked> No Shifts</label>
+                                    <label style="display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="email-category" value="Absent" checked> Absent</label>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                                <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
+                                <button type="button" class="btn-secondary" onclick="testEmailJob()" style="background: var(--accent-amber);"><i class="fa-solid fa-bolt"></i> Run Full Automated Job Now</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 3rem;">
+                        <div>
+                            <h3 style="margin-bottom: 1.5rem;"><i class="fa-solid fa-pen-to-square"></i> Edit Templates</h3>
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select id="template-category" onchange="loadSelectedTemplate()">
+                                    <option value="Test">Test (For Testing Only)</option>
+                                    <option value="Started Late">Started Late</option>
+                                    <option value="Left Early / Big Gaps">Left Early / Big Gaps</option>
+                                    <option value="No Shifts">No Shifts</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Subject</label>
+                                <input type="text" id="template-subject" placeholder="Email Subject">
+                            </div>
+                            <div class="form-group">
+                                <label>Body (Use {{name}}, {{pn}}, {{details}} - HTML Supported)</label>
+                                <textarea id="template-body" rows="8" placeholder="Hello {{name}}..."></textarea>
+                            </div>
+                            
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px dashed var(--border-color);">
+                                <label>PDF Attachment (Optional)</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
+                                    <input type="file" id="template-pdf" accept="application/pdf" style="padding: 0.5rem; flex: 1;">
+                                    <button onclick="uploadPdf()" class="btn-secondary" style="white-space: nowrap;"><i class="fa-solid fa-upload"></i> Upload</button>
+                                    <button onclick="deletePdf()" class="btn-secondary" style="background: #ef4444; white-space: nowrap;"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                                <span id="pdf-status" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: block;">Checking attachment...</span>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                                <button onclick="saveTemplate()" class="btn-primary" style="flex: 1; background: #10b981;">
+                                    <i class="fa-solid fa-check"></i> Save Template
+                                </button>
+                                <button onclick="loadDefaultHTML()" class="btn-secondary" style="flex: 1;">
+                                    <i class="fa-solid fa-code"></i> Load Nice HTML Design
+                                </button>
+                            </div>
+                            
+                            <div class="test-email-container">
+                                <h3><i class="fa-solid fa-paper-plane"></i> Send Test Email</h3>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Enter an email address below to send the current Subject and Body as a test.</p>
+                                <div class="form-group">
+                                    <label>Target Email</label>
+                                    <input type="email" id="test-email-target" placeholder="your@email.com" value="ture@oprisa.de">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 1.5rem;">
+                                    <label>Simulate Data for PN (Optional)</label>
+                                    <input type="text" id="test-email-pn" placeholder="e.g. 1234">
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">If empty, dummy data will be used for {{name}}, {{pn}} and {{details}}</span>
+                                </div>
+                                <button onclick="sendSingleTestEmail(event)" class="btn-primary" style="width: 100%;">
+                                    <i class="fa-solid fa-paper-plane"></i> Send Test Now
+                                </button>
+                            </div>
+                            
+                            <div class="test-email-container" style="border-top-color: rgba(245, 158, 11, 0.3);">
+                                <h3><i class="fa-solid fa-users"></i> Mass Send to PN Range</h3>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Sends the currently selected template to all drivers within this PN range.</p>
+                                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                        <label>From PN</label>
+                                        <input type="number" id="range-from-pn" placeholder="e.g. 1000">
+                                    </div>
+                                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                        <label>To PN</label>
+                                        <input type="number" id="range-to-pn" placeholder="e.g. 1500">
+                                    </div>
+                                </div>
+                                <button onclick="sendToRange(event)" class="btn-primary" style="width: 100%; background: #f59e0b;">
+                                    <i class="fa-solid fa-paper-plane"></i> Send to Range
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 style="margin-bottom: 1.5rem;"><i class="fa-solid fa-list-check"></i> Recent Email Logs</h3>
+                            <div style="max-height: 600px; overflow-y: auto; background: rgba(0,0,0,0.1); border-radius: 8px; border: 1px solid var(--border-color);">
+                                <table class="stats-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Driver PN</th>
+                                            <th>Category</th>
+                                            <th>Status</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="email-logs-body">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                let emailTemplates = [];
+
+                async function init() {
+                    try {
+                        
+                        }
+                    }
+                }
+
+                async function loadEmailTemplates() {
+                    const res = await fetch('/api/admin/email-templates');
+                    if (res.ok) {
+                        emailTemplates = await res.json();
+                        loadSelectedTemplate();
+                    }
+                }
+
+                function loadSelectedTemplate() {
+                    const category = document.getElementById('template-category').value;
+                    const t = emailTemplates.find(x => x.category === category);
+                    document.getElementById('template-subject').value = t ? t.subject : '';
+                    document.getElementById('template-body').value = t ? t.body : '';
+                    checkPdf();
+                }
+
+                async function checkPdf() {
+                    const category = document.getElementById('template-category').value;
+                    document.getElementById('pdf-status').textContent = 'Checking...';
+                    try {
+                        const res = { ok: false };
+                        if (res.ok) {
+                            const data = await res.json();
+                            document.getElementById('pdf-status').innerHTML = data.exists ? '<span style="color:#22c55e"><i class="fa-solid fa-file-pdf"></i> PDF attached for this category</span>' : 'No PDF attached for this category';
+                        }
+                    } catch (err) {
+                        document.getElementById('pdf-status').textContent = 'Error checking PDF';
+                    }
+                }
+
+                async function uploadPdf() {
+                    const fileInput = document.getElementById('template-pdf');
+                    if (!fileInput.files.length) return alert('Please select a PDF file first');
+                    const category = document.getElementById('template-category').value;
+                    
+                    const formData = new FormData();
+                    formData.append('pdf', fileInput.files[0]);
+                    
+                    document.getElementById('pdf-status').textContent = 'Uploading...';
+                    try {
+                        const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (res.ok) {
+                            alert('PDF uploaded successfully!');
+                            fileInput.value = '';
+                            checkPdf();
+                        } else {
+                            alert('Upload failed');
+                            checkPdf();
+                        }
+                    } catch (err) {
+                        alert('Upload error');
+                        checkPdf();
+                    }
+                }
+
+                async function deletePdf() {
+                    const category = document.getElementById('template-category').value;
+                    if (!confirm('Delete the attached PDF?')) return;
+                    try {
+                        const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`, {
+                            method: 'DELETE'
+                        });
+                        if (res.ok) {
+                            alert('PDF deleted');
+                            checkPdf();
+                        }
+                    } catch (err) {
+                        alert('Delete error');
+                    }
+                }
+
+                async function loadEmailLogs() {
+                    const res = await fetch('/api/admin/email-logs');
+                    if (res.ok) {
+                        const logs = await res.json();
+                        const tbody = document.getElementById('email-logs-body');
+                        tbody.innerHTML = '';
+                        logs.forEach(l => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${l.driver_pn}</td>
+                                <td>${l.category}</td>
+                                <td style="color:${l.status.includes('Success') ? '#22c55e' : '#ef4444'}">${l.status}</td>
+                                <td>${new Date(l.sent_at).toLocaleString()}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                }
+
+                document.getElementById('email-settings-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const is_enabled = document.getElementById('email-enabled').value === 'true';
+                    const cron_schedule = document.getElementById('email-cron').value;
+                    const pn_range_start = document.getElementById('email-pn-start').value;
+                    const pn_range_end = document.getElementById('email-pn-end').value;
+                    
+                    const allowed_categories = Array.from(document.querySelectorAll('input[name="email-category"]:checked')).map(cb => cb.value);
+
+                    const res = await fetch('/api/admin/email-settings', {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ is_enabled, cron_schedule, pn_range_start, pn_range_end, allowed_categories })
+                    });
+                    if (res.ok) alert('Email settings saved!');
+                });
+
+                async function saveTemplate() {
+            await waitForSupabase();
+                    const category = document.getElementById('template-category').value;
+                    const subject = document.getElementById('template-subject').value;
+                    const body = document.getElementById('template-body').value;
+                    const res = await fetch('/api/admin/email-templates', {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ category, subject, body })
+                    });
+                    if (res.ok) {
+                        alert('Template saved!');
+                        loadEmailTemplates();
+                    }
+                }
+
+                async function testEmailJob() {
+                    if (!confirm('This will immediately trigger the daily email job in the background (sends to ALL filtered drivers). Are you sure?')) return;
+                    alert('Email sending is currently disabled in the serverless OPS version.'); const res = { ok: false };
+                    if (res.ok) {
+                        alert('Email job triggered! Check logs in a minute.');
+                        setTimeout(loadEmailLogs, 3000);
+                    }
+                }
+                
+                async function sendSingleTestEmail(event) {
+                    const toEmail = document.getElementById('test-email-target').value;
+                    const subject = document.getElementById('template-subject').value;
+                    const body = document.getElementById('template-body').value;
+                    const testPn = document.getElementById('test-email-pn').value;
+                    
+                    if (!toEmail || !subject || !body) {
+                        alert("Please fill in a target email, subject, and body.");
+                        return;
+                    }
+                    
+                    const btn = event.currentTarget;
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sending...';
+                    btn.disabled = true;
+                    
+                    try {
+                        alert('Email sending is currently disabled in the serverless OPS version.'); const res = { ok: false };
+                        
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            alert("Test email sent successfully to " + toEmail);
+                        } else {
+                            alert("Failed to send test email: " + (data.error || "Unknown error"));
+                        }
+                    } catch (err) {
+                        alert("Error: " + err.message);
+                    } finally {
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = false;
+                    }
+                }
+                
+                function loadDefaultHTML() {
+                    if (!confirm('This will overwrite the current body content. Continue?')) return;
+                    const html = `<div style="border-left: 5px solid #a31621; background-color: #f7e6e6; padding: 15px; margin-bottom: 20px;">
+  <h3 style="color: #a31621; margin-top: 0; font-family: sans-serif;">DRINGEND: VERFÜGBARKEIT EINTRAGEN!</h3>
+  <p style="color: #000; font-family: sans-serif; font-size: 14px;">Bitte trage <strong>unbedingt</strong> deine Verfügbarkeit über deinen persönlichen App-Link ein:</p>
+  <ul style="color: #000; font-family: sans-serif; font-size: 14px;">
+    <li style="margin-bottom: 5px;">Für <strong>diese Woche</strong> (falls du es noch nicht erledigt hast).</li>
+    <li style="margin-bottom: 5px;">Für <strong>die kommende Woche (OBLIGATORISCH)</strong>.</li>
+  </ul>
+  <p style="color: #000; font-family: sans-serif; font-size: 14px;">Wir weisen Schichten <strong>NUR</strong> denjenigen Fahrern zu, die ihre Verfügbarkeit rechtzeitig ausgefüllt haben. Wer seine Daten nicht einträgt, erhält keine Schichten.</p>
+  <p style="color: #000; font-family: sans-serif; font-size: 14px;"><strong>Wir garantieren: Ab sofort werden die zugewiesenen Schichten deine eingetragene Verfügbarkeit STRENGSTENS respektieren!</strong></p>
+</div>
+
+<div style="border-left: 5px solid #d4a373; background-color: #fcf6ec; padding: 15px; margin-bottom: 20px;">
+  <h3 style="color: #d4a373; margin-top: 0; font-family: sans-serif;">WICHTIGER HINWEIS ZU DEN ARBEITSZEITEN</h3>
+  <p style="color: #000; font-family: sans-serif; font-size: 14px;">Das unentschuldigte Fehlen bei den zugewiesenen Schichten gilt als <strong>Arbeitsverweigerung</strong>. Wir weisen ausdrücklich darauf hin, dass ein unentschuldigtes Fehlen von <strong>3 aufeinanderfolgenden Tagen zur fristlosen Kündigung</strong> des Arbeitsverhältnisses führt.</p>
+</div>
+
+<p style="color: #000; font-family: sans-serif; font-size: 14px;">Hier ist dein persönlicher Link zur App (um deine Verfügbarkeit einzutragen):<br>
+<a href="https://oprisa.fluxer.io/appsoferi/{{pn}}" style="color: #2563eb; font-weight: bold; text-decoration: none;">Link Zur App Öffnen (PN {{pn}})</a></p>
+
+<p style="color: #000; font-family: sans-serif; font-size: 14px;">Mit freundlichen Grüßen,<br>
+<strong>Das Oprisa GmbH Team</strong>, UberEats Partner</p>`;
+                    document.getElementById('template-body').value = html;
+                }
+
+                async function sendToRange(event) {
+                    const fromPn = document.getElementById('range-from-pn').value;
+                    const toPn = document.getElementById('range-to-pn').value;
+                    const category = document.getElementById('template-category').value;
+                    const subject = document.getElementById('template-subject').value;
+                    const body = document.getElementById('template-body').value;
+
+                    if (!fromPn || !toPn || !subject || !body) {
+                        alert("Please fill in PN range, subject, and body.");
+                        return;
+                    }
+                    
+                    if (!confirm(`Are you sure you want to send this email to all drivers from PN ${fromPn} to ${toPn}?`)) return;
+
+                    const btn = event.currentTarget;
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sending...';
+                    btn.disabled = true;
+
+                    try {
+                        alert('Email sending is currently disabled in the serverless OPS version.'); const res = { ok: false };
+                        
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            alert(data.message);
+                            loadEmailLogs();
+                        } else {
+                            alert("Failed to send range: " + (data.error || "Unknown error"));
+                        }
+                    } catch (err) {
+                        alert("Error: " + err.message);
+                    } finally {
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = false;
+                    }
+                }
+                
+                function logout() {
+                    
+                }
+
+                init();
+            </script>
+        </main>
+    </div>
+</body>
+</html>
