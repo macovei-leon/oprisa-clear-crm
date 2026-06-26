@@ -799,11 +799,12 @@
 
         /* Help banner style */
         .help-banner {
-            background: rgba(22, 22, 28, 0.8);
+            background: var(--bg-surface);
             border: 1px solid var(--border-color);
             border-radius: 16px;
             padding: 1.5rem;
             margin-bottom: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(12px);
             display: flex;
             flex-direction: column;
@@ -814,7 +815,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid var(--border-color);
             padding-bottom: 0.5rem;
         }
         .help-banner-title {
