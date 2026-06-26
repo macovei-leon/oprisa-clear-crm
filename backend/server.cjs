@@ -458,6 +458,74 @@ app.post('/api/admin/send-range', async (req, res) => {
     const { fromPn, toPn, category, subject, body } = req.body;
     if (!fromPn || !toPn || !category || !subject || !body) {
         return res.status(400).json({ error: 'Missing required fields' });
+
+
+const { processTimelineData } = require('./timeline_processor.cjs');
+
+// Configure multer for JSON uploads
+const jsonUploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(jsonUploadDir)) {
+    fs.mkdirSync(jsonUploadDir, { recursive: true });
+}
+const jsonStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, jsonUploadDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, 'timeline_data_upload.json');
+    }
+});
+const uploadJson = multer({ 
+    storage: jsonStorage,
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/json' || file.originalname.endsWith('.json')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only JSON files are allowed'));
+        }
+    }
+});
+
+app.post('/api/admin/process-timeline', uploadJson.single('jsonFile'), async (req, res) => {
+    try {
+        const tableName = req.body.tableName;
+        if (!tableName) return res.status(400).json({ error: 'Table name required', success: false });
+        if (!req.file) return res.status(400).json({ error: 'JSON file required', success: false });
+        
+        console.log(`Processing timeline data using table: ${tableName}...`);
+
+        // 1. Fetch driver info from Supabase
+        const { data: dbData, error: dbError } = await supabase.from(tableName).select('*');
+        if (dbError) {
+            console.error('Supabase fetch error:', dbError);
+            return res.status(500).json({ error: 'Database error fetching table: ' + dbError.message, success: false });
+        }
+        
+        // 2. Process data
+        const jsonFilePath = req.file.path;
+        const allDriversResult = await processTimelineData(jsonFilePath, dbData);
+        
+        // 3. Save locally
+        fs.writeFileSync(path.join(__dirname, 'absent_drivers_last_3_days.json'), JSON.stringify(allDriversResult, null, 2), 'utf8');
+        
+        // 4. Update Supabase driver_dashboard_data for index.html to fetch
+        const { error: upsertError } = await supabase
+            .from('driver_dashboard_data')
+            .upsert([{ id: 'default', data: allDriversResult }]);
+            
+        if (upsertError) {
+            console.error('Supabase upsert error:', upsertError);
+            // It's okay if it fails if table doesn't exist yet, we still saved locally
+            console.log('Saved locally, but failed to upsert to Supabase driver_dashboard_data.');
+        }
+
+        res.json({ success: true, message: `Successfully processed ${allDriversResult.length} drivers.` });
+    } catch (err) {
+        console.error('Timeline process error:', err);
+        res.status(500).json({ error: err.message, success: false });
+    }
+});
+
     }
 
     const jsonPath = path.join(__dirname, 'absent_drivers_last_3_days.json');
