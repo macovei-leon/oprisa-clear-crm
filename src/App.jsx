@@ -10,6 +10,7 @@ import { TableViewer } from './pages/database/TableViewer'
 import { FlashcardsPage } from './pages/tasks/FlashcardsPage'
 import { RepetitiveFlashcardsPage } from './pages/tasks/RepetitiveFlashcardsPage'
 import { RepetitiveHistoryPage } from './pages/admin/RepetitiveHistoryPage'
+import { DashboardPage } from './pages/DashboardPage'
 import { MainLayout } from './components/layout/MainLayout'
 
 function ProtectedRoute({ children, requiredRole }) {
@@ -30,17 +31,7 @@ function ProtectedRoute({ children, requiredRole }) {
   return children;
 }
 
-function Dashboard() {
-  const { profile } = useAuth();
-  return (
-    <MainLayout title="Dashboard" subtitle="Prezentare generală a asistenței și performanței">
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-800 mb-4">Bine ai venit, {profile?.name || 'User'}!</h2>
-        <p className="text-slate-600">Aceasta este pagina principală a Oprisa OPS. Panourile de control și statisticile vor fi afișate aici.</p>
-      </div>
-    </MainLayout>
-  );
-}
+
 
 function App() {
   return (
@@ -50,7 +41,7 @@ function App() {
           <Routes>
             <Route path="/" element={
               <ProtectedRoute>
-                <Dashboard />
+                <DashboardPage />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
