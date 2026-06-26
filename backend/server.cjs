@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const ws = require('ws');
 const cron = require('node-cron');
-const { runDailyEmailJob, sendSingleTestEmail } = require('./email_service.cjs');
+const { runDailyEmailJob, processEmailQueue, sendSingleTestEmail } = require('./email_service.cjs');
 const multer = require('multer');
 
 // Configure multer for PDF uploads
@@ -320,34 +320,80 @@ app.delete('/api/campaigns/:id', async (req, res) => {
     res.json({ success: true });
 });
 
+
 // ------------------------------------------
 // API Routes: Email Automation (Admin)
 // ------------------------------------------
 let emailCronTask = null;
+let queueProcessorTask = null;
 
 async function setupEmailCron() {
     if (emailCronTask) {
         emailCronTask.stop();
         emailCronTask = null;
     }
+    if (queueProcessorTask) {
+        queueProcessorTask.stop();
+        queueProcessorTask = null;
+    }
+
     const { data: settings } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
-    if (settings && settings.is_enabled && settings.cron_schedule) {
-        emailCronTask = cron.schedule(settings.cron_schedule, () => {
+    
+    // Always start the queue processor (every 5 minutes)
+    queueProcessorTask = cron.schedule('*/5 * * * *', () => {
+        processEmailQueue();
+    });
+    console.log('[Email Queue] Processor scheduled every 5 minutes.');
+
+    if (settings && settings.is_enabled && settings.send_time) {
+        const [hour, minute] = settings.send_time.split(':');
+        const cronStr = `${minute} ${hour} * * *`;
+        emailCronTask = cron.schedule(cronStr, () => {
             runDailyEmailJob();
         });
-        console.log(`[Email Automation] Cron scheduled at: ${settings.cron_schedule}`);
+        console.log(`[Email Automation] Daily Job scheduled at: ${settings.send_time} (cron: ${cronStr})`);
     } else {
-        console.log('[Email Automation] Cron is disabled or not configured.');
+        console.log('[Email Automation] Daily Job is disabled or not configured.');
     }
 }
 setupEmailCron();
+
+app.get('/api/admin/email-status', async (req, res) => {
+    try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // Sent today
+        const { count: sentToday } = await supabase.from('driver_email_logs')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'Success')
+            .gte('sent_at', `${todayStr}T00:00:00Z`)
+            .lt('sent_at', `${todayStr}T23:59:59Z`);
+            
+        // Pending Queue
+        const { count: pendingQueue } = await supabase.from('driver_email_logs')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'Pending');
+            
+        const { data: settings } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
+        const dailyLimit = (settings && settings.daily_limit) ? settings.daily_limit : 1000;
+        
+        res.json({
+            sent_today: sentToday || 0,
+            pending_queue: pendingQueue || 0,
+            daily_limit: dailyLimit
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 app.get('/api/admin/email-settings', async (req, res) => {
     const { data, error } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
     if (error) return res.status(500).json({ error: 'Database error' });
     res.json(data || { 
-        cron_schedule: '0 9 * * *', 
+        send_time: '09:00', 
         is_enabled: false,
+        daily_limit: 1000,
         pn_range_start: '',
         pn_range_end: '',
         allowed_categories: ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent']
@@ -355,10 +401,11 @@ app.get('/api/admin/email-settings', async (req, res) => {
 });
 
 app.put('/api/admin/email-settings', async (req, res) => {
-    const { cron_schedule, is_enabled, pn_range_start, pn_range_end, allowed_categories } = req.body;
+    const { send_time, is_enabled, daily_limit, pn_range_start, pn_range_end, allowed_categories } = req.body;
     const { error } = await supabase.from('driver_email_settings').upsert([{ 
         id: 1, 
-        cron_schedule, 
+        send_time, 
+        daily_limit,
         is_enabled,
         pn_range_start,
         pn_range_end,
@@ -454,152 +501,6 @@ app.post('/api/admin/send-single-test', async (req, res) => {
     }
 });
 
-app.post('/api/admin/send-range', async (req, res) => {
-    const { fromPn, toPn, category, subject, body } = req.body;
-    if (!fromPn || !toPn || !category || !subject || !body) {
-        return res.status(400).json({ error: 'Missing required fields' });
-
-
-const { processTimelineData } = require('./timeline_processor.cjs');
-
-// Configure multer for JSON uploads
-const jsonUploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(jsonUploadDir)) {
-    fs.mkdirSync(jsonUploadDir, { recursive: true });
-}
-const jsonStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, jsonUploadDir);
-    },
-    filename: function (req, file, cb) {
-        cb(null, 'timeline_data_upload.json');
-    }
-});
-const uploadJson = multer({ 
-    storage: jsonStorage,
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'application/json' || file.originalname.endsWith('.json')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only JSON files are allowed'));
-        }
-    }
-});
-
-app.post('/api/admin/process-timeline', uploadJson.single('jsonFile'), async (req, res) => {
-    try {
-        const tableName = req.body.tableName;
-        if (!tableName) return res.status(400).json({ error: 'Table name required', success: false });
-
-
-app.get('/api/admin/tables', async (req, res) => {
-    const { data, error } = await supabase.from('custom_tables').select('table_name, title_ro').order('created_at', { ascending: false });
-    if (error) return res.status(500).json({ error: 'Database error' });
-    res.json(data);
-});
-
-        if (!req.file) return res.status(400).json({ error: 'JSON file required', success: false });
-        
-        console.log(`Processing timeline data using table: ${tableName}...`);
-
-        // 1. Fetch driver info from Supabase
-        const { data: dbData, error: dbError } = await supabase.from(tableName).select('*');
-        if (dbError) {
-            console.error('Supabase fetch error:', dbError);
-            return res.status(500).json({ error: 'Database error fetching table: ' + dbError.message, success: false });
-        }
-        
-        // 2. Process data
-        const jsonFilePath = req.file.path;
-        const allDriversResult = await processTimelineData(jsonFilePath, dbData);
-        
-        // 3. Save locally
-        fs.writeFileSync(path.join(__dirname, 'absent_drivers_last_3_days.json'), JSON.stringify(allDriversResult, null, 2), 'utf8');
-        
-        // 4. Update Supabase driver_dashboard_data for index.html to fetch
-        const { error: upsertError } = await supabase
-            .from('driver_dashboard_data')
-            .upsert([{ id: 'default', data: allDriversResult }]);
-            
-        if (upsertError) {
-            console.error('Supabase upsert error:', upsertError);
-            // It's okay if it fails if table doesn't exist yet, we still saved locally
-            console.log('Saved locally, but failed to upsert to Supabase driver_dashboard_data.');
-        }
-
-        res.json({ success: true, message: `Successfully processed ${allDriversResult.length} drivers.` });
-    } catch (err) {
-        console.error('Timeline process error:', err);
-        res.status(500).json({ error: err.message, success: false });
-    }
-});
-
-    }
-
-    const jsonPath = path.join(__dirname, 'absent_drivers_last_3_days.json');
-    if (!fs.existsSync(jsonPath)) {
-        return res.status(404).json({ error: 'Driver data not found' });
-    }
-
-    const drivers = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-    const targetDrivers = drivers.filter(d => {
-        const pnNum = parseInt(d.pn);
-        return !isNaN(pnNum) && pnNum >= parseInt(fromPn) && pnNum <= parseInt(toPn) && d.email;
-    });
-
-    if (targetDrivers.length === 0) {
-        return res.status(404).json({ error: 'No drivers found in that range with an email address' });
-    }
-
-    let sentCount = 0;
-    const catSafe = category.replace(/[^a-zA-Z0-9]/g, '_');
-    const attachmentPath = path.join(__dirname, 'attachments', `${catSafe}.pdf`);
-    const attachments = fs.existsSync(attachmentPath) ? [{
-        filename: `${catSafe}.pdf`,
-        path: attachmentPath,
-        contentType: 'application/pdf'
-    }] : [];
-
-    const { transporter } = require('./email_service');
-
-    for (const driver of targetDrivers) {
-        let finalSubject = subject.replace(/{{name}}/g, driver.name).replace(/{{pn}}/g, driver.pn);
-        let finalBody = body.replace(/{{name}}/g, driver.name).replace(/{{pn}}/g, driver.pn);
-        let detailsText = (driver.missedShifts && driver.missedShifts.length > 0) ? driver.missedShifts.join('<br>') : 'No specific violations found.';
-        finalBody = finalBody.replace(/{{details}}/g, detailsText);
-
-        try {
-            await transporter.sendMail({
-                from: `"Oprisa Team" <${process.env.EMAIL_USER}>`,
-                to: driver.email,
-                subject: finalSubject,
-                html: finalBody,
-                attachments: attachments
-            });
-
-            await supabase.from('driver_email_logs').insert([{
-                driver_pn: driver.pn,
-                email: driver.email,
-                category: `Range: ${category}`,
-                status: 'Success'
-            }]);
-            sentCount++;
-            
-            // Add a small delay (1 second) to prevent Google Workspace rate limiting for bulk range sending
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        } catch (err) {
-            console.error(`Failed to send to ${driver.email}`, err);
-            await supabase.from('driver_email_logs').insert([{
-                driver_pn: driver.pn,
-                email: driver.email,
-                category: `Range: ${category}`,
-                status: 'Failed: ' + err.message
-            }]);
-        }
-    }
-
-    res.json({ success: true, message: `Sent ${sentCount} emails out of ${targetDrivers.length} matched drivers.` });
-});
 
 // ------------------------------------------
 // Static files (Protected dashboard, public login)

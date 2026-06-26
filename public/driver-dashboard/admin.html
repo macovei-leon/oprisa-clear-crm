@@ -140,11 +140,13 @@
 
             <!-- Email Automation Settings -->
             <div class="glass-card p-6 border-t-4 border-t-emerald-500">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                        <i class="fa-solid fa-robot text-lg"></i>
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                            <i class="fa-solid fa-robot text-lg"></i>
+                        </div>
+                        <h2 class="text-xl font-bold">Automation Rules</h2>
                     </div>
-                    <h2 class="text-xl font-bold">Automation Rules</h2>
                 </div>
                 
                 <form id="email-settings-form" class="space-y-5">
@@ -157,19 +159,34 @@
                             </select>
                         </div>
                         <div>
-                            <label class="label-text">Cron Schedule</label>
-                            <input type="text" id="email-cron" class="form-input" value="0 9 * * *">
+                            <label class="label-text">Schedule Time</label>
+                            <input type="time" id="email-time" class="form-input" value="09:00">
                         </div>
                     </div>
                     
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="label-text">From PN (Optional)</label>
-                            <input type="number" id="email-pn-start" class="form-input" placeholder="e.g. 1000">
+                            <label class="label-text">Daily Sending Limit</label>
+                            <input type="number" id="email-daily-limit" class="form-input" value="1000">
                         </div>
                         <div>
-                            <label class="label-text">To PN (Optional)</label>
-                            <input type="number" id="email-pn-end" class="form-input" placeholder="e.g. 2000">
+                            <label class="label-text">Apply from PN</label>
+                            <input type="number" id="email-pn-start" class="form-input" placeholder="Optional">
+                        </div>
+                    </div>
+
+                    <!-- Queue Status Widget -->
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mt-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-emerald-800 uppercase tracking-wide"><i class="fa-solid fa-chart-line mr-1"></i> Today's Queue Progress</span>
+                            <span id="queue-status-text" class="text-xs font-bold text-emerald-600">Loading...</span>
+                        </div>
+                        <div class="w-full bg-white rounded-full h-2.5 border border-emerald-100 overflow-hidden">
+                            <div id="queue-progress-bar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                        <div class="flex justify-between mt-2 text-xs text-emerald-700">
+                            <span id="queue-sent-text">Sent: 0</span>
+                            <span id="queue-pending-text">Pending Queue: 0</span>
                         </div>
                     </div>
                     
@@ -220,7 +237,7 @@
 
         </div>
 
-        <!-- Right Column (Templates & Logs) -->
+        <!-- Right Column (Templates & Testing) -->
         <div class="lg:col-span-7 space-y-8">
             
             <!-- Email Templates -->
@@ -281,31 +298,16 @@
                 </div>
             </div>
 
-            <!-- Testing & Range Send -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Testing -->
+            <div class="glass-card p-5 border-l-4 border-l-indigo-500">
+                <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-paper-plane text-indigo-500 mr-2"></i> Send Single Test Email</h3>
+                <p class="text-xs text-slate-500 mb-4">Send the active template to a single email to verify formatting.</p>
                 
-                <div class="glass-card p-5 border-l-4 border-l-indigo-500">
-                    <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-paper-plane text-indigo-500 mr-2"></i> Send Test</h3>
-                    <p class="text-xs text-slate-500 mb-4">Send the active template to a single email.</p>
-                    
-                    <div class="space-y-3">
-                        <input type="email" id="test-email-target" class="form-input text-sm py-2" placeholder="Target Email" value="ture@oprisa.de">
-                        <input type="text" id="test-email-pn" class="form-input text-sm py-2" placeholder="Simulate PN (optional)">
-                        <button onclick="sendSingleTestEmail(event)" class="btn btn-primary w-full py-2 text-sm">Send Test</button>
-                    </div>
+                <div class="flex gap-3">
+                    <input type="email" id="test-email-target" class="form-input text-sm py-2 flex-[2]" placeholder="Target Email" value="ture@oprisa.de">
+                    <input type="text" id="test-email-pn" class="form-input text-sm py-2 flex-1" placeholder="Simulate PN">
+                    <button onclick="sendSingleTestEmail(event)" class="btn btn-primary py-2 px-6 text-sm whitespace-nowrap">Send Test</button>
                 </div>
-
-                <div class="glass-card p-5 border-l-4 border-l-amber-500">
-                    <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-users text-amber-500 mr-2"></i> Mass Send</h3>
-                    <p class="text-xs text-slate-500 mb-4">Send the active template to a PN range.</p>
-                    
-                    <div class="flex gap-2 mb-3">
-                        <input type="number" id="range-from-pn" class="form-input text-sm py-2" placeholder="From PN">
-                        <input type="number" id="range-to-pn" class="form-input text-sm py-2" placeholder="To PN">
-                    </div>
-                    <button onclick="sendToRange(event)" class="btn btn-warning w-full py-2 text-sm">Send to Range</button>
-                </div>
-
             </div>
 
         </div>
@@ -314,6 +316,7 @@
 
 <script>
     let emailTemplates = [];
+    let statusInterval = null;
 
     // File input UX
     document.getElementById('timeline-json-file').addEventListener('change', function(e) {
@@ -329,14 +332,18 @@
         try {
             loadTables();
             loadEmailTemplates();
+            loadQueueStatus();
+            
+            // Poll queue status every 10 seconds
+            statusInterval = setInterval(loadQueueStatus, 10000);
             
             const res = await fetch('/api/admin/email-settings');
             if (res.ok) {
                 const settings = await res.json();
                 document.getElementById('email-enabled').value = settings.is_enabled ? 'true' : 'false';
-                document.getElementById('email-cron').value = settings.cron_schedule || '';
+                document.getElementById('email-time').value = settings.send_time || '09:00';
+                document.getElementById('email-daily-limit').value = settings.daily_limit || '1000';
                 document.getElementById('email-pn-start').value = settings.pn_range_start || '';
-                document.getElementById('email-pn-end').value = settings.pn_range_end || '';
                 
                 document.querySelectorAll('input[name="email-category"]').forEach(cb => {
                     cb.checked = (settings.allowed_categories || []).includes(cb.value);
@@ -344,6 +351,34 @@
             }
         } catch (e) {
             console.error(e);
+        }
+    }
+
+    async function loadQueueStatus() {
+        try {
+            const res = await fetch('/api/admin/email-status');
+            if (res.ok) {
+                const status = await res.json();
+                const limit = parseInt(status.daily_limit) || 1000;
+                const sent = parseInt(status.sent_today) || 0;
+                const pending = parseInt(status.pending_queue) || 0;
+                
+                let percent = (sent / limit) * 100;
+                if (percent > 100) percent = 100;
+                
+                document.getElementById('queue-progress-bar').style.width = percent + '%';
+                document.getElementById('queue-status-text').textContent = `${sent} / ${limit} Daily Quota`;
+                document.getElementById('queue-sent-text').textContent = `Sent: ${sent}`;
+                document.getElementById('queue-pending-text').textContent = `Pending Queue: ${pending}`;
+                
+                // Color formatting
+                const pb = document.getElementById('queue-progress-bar');
+                if (percent >= 100) { pb.className = 'h-2.5 rounded-full transition-all duration-500 bg-red-500'; }
+                else if (percent >= 80) { pb.className = 'h-2.5 rounded-full transition-all duration-500 bg-amber-500'; }
+                else { pb.className = 'h-2.5 rounded-full transition-all duration-500 bg-emerald-500'; }
+            }
+        } catch (e) {
+            console.error("Failed to load queue status");
         }
     }
 
@@ -373,14 +408,8 @@
         const tableName = document.getElementById('driver-table-name').value;
         const statusEl = document.getElementById('process-status');
         
-        if (!tableName) {
-            alert('Please select a driver database table.');
-            return;
-        }
-        if (!fileInput.files.length) {
-            alert('Please select the raw JSON data file to upload.');
-            return;
-        }
+        if (!tableName) return alert('Please select a driver database table.');
+        if (!fileInput.files.length) return alert('Please select the raw JSON data file to upload.');
         
         const formData = new FormData();
         formData.append('jsonFile', fileInput.files[0]);
@@ -395,10 +424,7 @@
         btn.classList.add('opacity-70');
         
         try {
-            const res = await fetch('/api/admin/process-timeline', {
-                method: 'POST',
-                body: formData
-            });
+            const res = await fetch('/api/admin/process-timeline', { method: 'POST', body: formData });
             const data = await res.json();
             if (res.ok && data.success) {
                 statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium";
@@ -418,7 +444,6 @@
         }
     });
 
-    // Same Email Functions as before...
     async function loadEmailTemplates() {
         const res = await fetch('/api/admin/email-templates');
         if (res.ok) {
@@ -466,12 +491,8 @@
                 fileInput.value = '';
                 document.getElementById('pdf-file-name').textContent = '';
                 checkPdf();
-            } else {
-                alert('Upload failed');
-            }
-        } catch (err) {
-            alert('Upload error');
-        }
+            } else alert('Upload failed');
+        } catch (err) { alert('Upload error'); }
     }
 
     async function deletePdf() {
@@ -489,15 +510,15 @@
     document.getElementById('email-settings-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const is_enabled = document.getElementById('email-enabled').value === 'true';
-        const cron_schedule = document.getElementById('email-cron').value;
+        const send_time = document.getElementById('email-time').value;
+        const daily_limit = document.getElementById('email-daily-limit').value;
         const pn_range_start = document.getElementById('email-pn-start').value;
-        const pn_range_end = document.getElementById('email-pn-end').value;
         const allowed_categories = Array.from(document.querySelectorAll('input[name="email-category"]:checked')).map(cb => cb.value);
 
         const res = await fetch('/api/admin/email-settings', {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ is_enabled, cron_schedule, pn_range_start, pn_range_end, allowed_categories })
+            body: JSON.stringify({ is_enabled, send_time, daily_limit, pn_range_start, pn_range_end: '', allowed_categories })
         });
         if (res.ok) alert('Settings saved successfully!');
     });
@@ -518,9 +539,12 @@
     }
 
     async function testEmailJob() {
-        if (!confirm('This will trigger the cron job immediately in the background for ALL filtered drivers. Are you sure?')) return;
+        if (!confirm('This will trigger the daily job immediately in the background, adding users to the queue. Are you sure?')) return;
         const res = await fetch('/api/admin/test-email', { method: 'POST' });
-        if (res.ok) alert('Triggered! Check logs for progress.');
+        if (res.ok) {
+            alert('Triggered! Emails have been added to the pending queue and will process momentarily.');
+            loadQueueStatus();
+        }
     }
     
     async function sendSingleTestEmail(event) {
@@ -559,34 +583,6 @@
 </div>`;
     }
 
-    async function sendToRange(event) {
-        const fromPn = document.getElementById('range-from-pn').value;
-        const toPn = document.getElementById('range-to-pn').value;
-        const category = document.getElementById('template-category').value;
-        const subject = document.getElementById('template-subject').value;
-        const body = document.getElementById('template-body').value;
-
-        if (!fromPn || !toPn || !subject || !body) return alert("Fill in PN range, subject, and body.");
-        if (!confirm(`Send to drivers from PN ${fromPn} to ${toPn}?`)) return;
-
-        const btn = event.currentTarget;
-        const originalHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-        btn.disabled = true;
-
-        try {
-            const res = await fetch('/api/admin/send-range', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ fromPn, toPn, category, subject, body })
-            });
-            const data = await res.json();
-            if (res.ok && data.success) alert(data.message);
-            else alert("Failed: " + (data.error || "Unknown"));
-        } catch (err) { alert("Error: " + err.message); } 
-        finally { btn.innerHTML = originalHtml; btn.disabled = false; }
-    }
-    
     // Init on load
     document.addEventListener('DOMContentLoaded', init);
 </script>

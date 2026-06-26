@@ -12,37 +12,30 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     realtime: { transport: ws }
 });
 
-// Nodemailer transport
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER || 'ture@oprisa.de',
         pass: process.env.EMAIL_PASS || 'crskjjbecrrnqiky'
     },
-    pool: true, // Use pooled connections for bulk sending
-    maxConnections: 3, // Limit concurrent connections
-    maxMessages: 1500 // Limit messages per connection
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 1500
 });
 
-async function runDailyEmailJob() {
-    console.log('[Email Service] Starting daily email job...');
-    try {
-        // 1. Get templates
-        const { data: templatesData, error: tErr } = await supabase.from('driver_email_templates').select('*');
-        if (tErr) throw new Error('Failed to fetch templates: ' + tErr.message);
-        
-        const templates = {};
-        templatesData.forEach(t => templates[t.category] = t);
+let isProcessingQueue = false;
 
-        // 2. Load drivers data
+// 1. Queue Emails
+async function runDailyEmailJob() {
+    console.log('[Email Queue] Starting daily email queuing job...');
+    try {
         const jsonPath = path.join(__dirname, 'absent_drivers_last_3_days.json');
         if (!fs.existsSync(jsonPath)) {
-            console.log('[Email Service] Data file not found. Aborting.');
+            console.log('[Email Queue] Data file not found. Aborting.');
             return;
         }
         const drivers = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
 
-        // 3. Get settings and filter drivers
         const { data: settings } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
         const targetCategories = settings && settings.allowed_categories ? settings.allowed_categories : ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent'];
         const pnStart = settings && settings.pn_range_start ? parseInt(settings.pn_range_start, 10) : null;
@@ -57,7 +50,6 @@ async function runDailyEmailJob() {
             return true;
         });
 
-        // 4. Get today's logs to prevent duplicates
         const todayStr = new Date().toISOString().split('T')[0];
         const { data: logsData, error: lErr } = await supabase.from('driver_email_logs')
             .select('driver_pn')
@@ -65,35 +57,112 @@ async function runDailyEmailJob() {
             .lt('sent_at', `${todayStr}T23:59:59Z`);
         
         if (lErr) throw new Error('Failed to fetch logs: ' + lErr.message);
+        const alreadyProcessedPns = new Set(logsData.map(l => l.driver_pn));
 
-        const alreadySentPns = new Set(logsData.map(l => l.driver_pn));
-
-        // 5. Send emails
-        let sentCount = 0;
+        let queuedCount = 0;
         for (const driver of targets) {
-            if (alreadySentPns.has(driver.pn)) continue; // Already sent today
-            if (!driver.email) continue; // No email address
+            if (alreadyProcessedPns.has(driver.pn)) continue;
+            if (!driver.email) continue;
 
-            const template = templates[driver.status];
+            // Insert as Pending
+            await supabase.from('driver_email_logs').insert([{
+                driver_pn: driver.pn,
+                email: driver.email,
+                category: driver.status,
+                status: 'Pending'
+            }]);
+            queuedCount++;
+        }
+
+        console.log(`[Email Queue] Queued ${queuedCount} emails for sending.`);
+        
+        // Immediately try to process the queue
+        processEmailQueue();
+    } catch (error) {
+        console.error('[Email Queue] Error queuing emails:', error);
+    }
+}
+
+// 2. Process Queue
+async function processEmailQueue() {
+    if (isProcessingQueue) {
+        console.log('[Email Queue] Already processing queue...');
+        return;
+    }
+    isProcessingQueue = true;
+    console.log('[Email Queue] Processor started...');
+
+    try {
+        const { data: settings } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
+        const dailyLimit = (settings && settings.daily_limit) ? settings.daily_limit : 1000;
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // Count how many we already SENT today (Success)
+        const { count: sentToday, error: cErr } = await supabase.from('driver_email_logs')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'Success')
+            .gte('sent_at', `${todayStr}T00:00:00Z`)
+            .lt('sent_at', `${todayStr}T23:59:59Z`);
+            
+        if (cErr) throw new Error('Failed to count sent logs: ' + cErr.message);
+        
+        const remainingCapacity = dailyLimit - (sentToday || 0);
+        console.log(`[Email Queue] Capacity: limit=${dailyLimit}, sent_today=${sentToday}, remaining=${remainingCapacity}`);
+
+        if (remainingCapacity <= 0) {
+            console.log('[Email Queue] Daily limit reached. Halting processor for today.');
+            isProcessingQueue = false;
+            return;
+        }
+
+        // Fetch Pending from today (or earlier, but let's just fetch pending)
+        const { data: pendingData, error: pErr } = await supabase.from('driver_email_logs')
+            .select('*')
+            .eq('status', 'Pending')
+            .order('sent_at', { ascending: true }) // FIFO
+            .limit(remainingCapacity);
+
+        if (pErr) throw new Error('Failed to fetch pending: ' + pErr.message);
+
+        if (!pendingData || pendingData.length === 0) {
+            console.log('[Email Queue] No pending emails to send.');
+            isProcessingQueue = false;
+            return;
+        }
+
+        console.log(`[Email Queue] Found ${pendingData.length} pending emails. Sending...`);
+
+        const { data: templatesData, error: tErr } = await supabase.from('driver_email_templates').select('*');
+        if (tErr) throw new Error('Failed to fetch templates: ' + tErr.message);
+        
+        const templates = {};
+        templatesData.forEach(t => templates[t.category] = t);
+        
+        const jsonPath = path.join(__dirname, 'absent_drivers_last_3_days.json');
+        let driversData = [];
+        if (fs.existsSync(jsonPath)) {
+            driversData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+        }
+
+        let processCount = 0;
+        for (const item of pendingData) {
+            const template = templates[item.category];
+            const driver = driversData.find(d => d.pn === item.driver_pn) || { name: 'Driver', pn: item.driver_pn, missedShifts: [] };
+
             if (!template) {
-                console.warn(`[Email Service] No template found for category: ${driver.status}`);
+                await supabase.from('driver_email_logs').update({ status: 'Failed: No template found' }).eq('id', item.id);
                 continue;
             }
 
-            // Simple templating
             let subject = template.subject.replace(/{{name}}/g, driver.name).replace(/{{pn}}/g, driver.pn);
             let body = template.body.replace(/{{name}}/g, driver.name).replace(/{{pn}}/g, driver.pn);
             
-            // Format details if available
-            let detailsText = '';
-            if (driver.missedShifts && driver.missedShifts.length > 0) {
-                detailsText = driver.missedShifts.join('<br>');
-            }
+            let detailsText = (driver.missedShifts && driver.missedShifts.length > 0) ? driver.missedShifts.join('<br>') : '';
             body = body.replace(/{{details}}/g, detailsText);
 
             try {
-                // Check for attachments
-                const catSafe = driver.status.replace(/[^a-zA-Z0-9]/g, '_');
+                const catSafe = item.category.replace(/[^a-zA-Z0-9]/g, '_');
                 const attachmentPath = path.join(__dirname, 'attachments', `${catSafe}.pdf`);
                 const attachments = fs.existsSync(attachmentPath) ? [{
                     filename: `${catSafe}.pdf`,
@@ -101,42 +170,31 @@ async function runDailyEmailJob() {
                     contentType: 'application/pdf'
                 }] : [];
 
-                // Send email
                 await transporter.sendMail({
                     from: `"Oprisa Team" <${process.env.EMAIL_USER}>`,
-                    to: driver.email,
+                    to: item.email,
                     subject: subject,
                     html: body,
                     attachments: attachments
                 });
 
-                // Log success
-                await supabase.from('driver_email_logs').insert([{
-                    driver_pn: driver.pn,
-                    email: driver.email,
-                    category: driver.status,
-                    status: 'Success'
-                }]);
+                await supabase.from('driver_email_logs')
+                    .update({ status: 'Success', sent_at: new Date().toISOString() }) // Update sent_at to actual send time
+                    .eq('id', item.id);
 
-                sentCount++;
-                console.log(`[Email Service] Sent email to ${driver.email} (${driver.status})`);
-                
-                // Add a small delay (1 second) to prevent Google Workspace rate limiting (500/1500 daily limit, but strict per-second burst limits)
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                processCount++;
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Google rate limit spacing
             } catch (err) {
-                console.error(`[Email Service] Failed to send email to ${driver.email}:`, err.message);
-                await supabase.from('driver_email_logs').insert([{
-                    driver_pn: driver.pn,
-                    email: driver.email,
-                    category: driver.status,
-                    status: 'Failed: ' + err.message
-                }]);
+                console.error(`[Email Queue] Failed sending to ${item.email}`, err.message);
+                await supabase.from('driver_email_logs').update({ status: 'Failed: ' + err.message }).eq('id', item.id);
             }
         }
 
-        console.log(`[Email Service] Job completed. Emails sent: ${sentCount}`);
+        console.log(`[Email Queue] Processor finished. Sent ${processCount} emails.`);
     } catch (error) {
-        console.error('[Email Service] Error running job:', error);
+        console.error('[Email Queue] Error processing queue:', error);
+    } finally {
+        isProcessingQueue = false;
     }
 }
 
@@ -147,11 +205,7 @@ async function sendSingleTestEmail(toEmail, subject, body, category = null) {
             const catSafe = category.replace(/[^a-zA-Z0-9]/g, '_');
             const attachmentPath = path.join(__dirname, 'attachments', `${catSafe}.pdf`);
             if (fs.existsSync(attachmentPath)) {
-                attachments.push({
-                    filename: `${catSafe}.pdf`,
-                    path: attachmentPath,
-                    contentType: 'application/pdf'
-                });
+                attachments.push({ filename: `${catSafe}.pdf`, path: attachmentPath, contentType: 'application/pdf' });
             }
         }
 
@@ -164,13 +218,13 @@ async function sendSingleTestEmail(toEmail, subject, body, category = null) {
         });
         return { success: true };
     } catch (err) {
-        console.error('[Email Service] Failed to send test email:', err.message);
         return { success: false, error: err.message };
     }
 }
 
 module.exports = {
     runDailyEmailJob,
+    processEmailQueue,
     sendSingleTestEmail,
     transporter
 };
