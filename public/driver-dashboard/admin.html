@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./style.css">
     <link rel="stylesheet" href="../fleetcap/fleetcap.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
         .admin-grid {
             display: grid;
@@ -18,7 +18,7 @@
         }
         
         /* Premium CSS for Inputs and Buttons */
-        h2 { margin-top: 0; margin-bottom: 1rem; font-size: 1.5rem; font-weight: 600; color: #fff; }
+        h2 { margin-top: 0; margin-bottom: 1rem; font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
         h3 { margin-top: 0; font-size: 1.1rem; color: #f3f4f6; font-weight: 500; }
         .form-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
         label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -29,7 +29,7 @@
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 0.75rem 1rem;
-            color: #fff;
+            color: var(--text-primary);
             box-sizing: border-box;
             font-family: inherit;
             font-size: 0.95rem;
@@ -158,9 +158,7 @@
             </nav>
             
             <div id="user-profile-section" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--card-border); font-size: 0.85rem; color: var(--text-primary); display: flex; flex-direction: column; gap: 0.5rem; text-align: left;">
-                <button class="btn" onclick="window.location.href='./index.html'" style="background: transparent; border: 1px solid var(--card-border); padding: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); width: 100%; justify-content: flex-start; transition: all 0.2s;">
-                    <i class="fa-solid fa-chart-line"></i> <span>Dashboard</span>
-                </button>
+                <button class="btn" onclick="window.location.href='./index.html'" style="background: transparent; border: 1px solid var(--card-border); padding: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); width: 100%; justify-content: flex-start; transition: all 0.2s;"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></button>
             </div>
         </aside>
         
@@ -341,7 +339,7 @@
                     const category = document.getElementById('template-category').value;
                     document.getElementById('pdf-status').textContent = 'Checking...';
                     try {
-                        const res = { ok: false };
+                        const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`);
                         if (res.ok) {
                             const data = await res.json();
                             document.getElementById('pdf-status').innerHTML = data.exists ? '<span style="color:#22c55e"><i class="fa-solid fa-file-pdf"></i> PDF attached for this category</span>' : 'No PDF attached for this category';
@@ -432,7 +430,6 @@
                 });
 
                 async function saveTemplate() {
-            await waitForSupabase();
                     const category = document.getElementById('template-category').value;
                     const subject = document.getElementById('template-subject').value;
                     const body = document.getElementById('template-body').value;
@@ -449,7 +446,7 @@
 
                 async function testEmailJob() {
                     if (!confirm('This will immediately trigger the daily email job in the background (sends to ALL filtered drivers). Are you sure?')) return;
-                    alert('Email sending is currently disabled in the serverless OPS version.'); const res = { ok: false };
+                    const res = await fetch('/api/admin/test-email', { method: 'POST' });
                     if (res.ok) {
                         alert('Email job triggered! Check logs in a minute.');
                         setTimeout(loadEmailLogs, 3000);
@@ -473,7 +470,17 @@
                     btn.disabled = true;
                     
                     try {
-                        alert('Email sending is currently disabled in the serverless OPS version.'); const res = { ok: false };
+                        const res = await fetch('/api/admin/send-single-test', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ 
+                                toEmail, 
+                                subject, 
+                                body, 
+                                testPn, 
+                                category: document.getElementById('template-category').value 
+                            })
+                        });
                         
                         const data = await res.json();
                         if (res.ok && data.success) {
@@ -535,7 +542,11 @@
                     btn.disabled = true;
 
                     try {
-                        alert('Email sending is currently disabled in the serverless OPS version.'); const res = { ok: false };
+                        const res = await fetch('/api/admin/send-range', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ fromPn, toPn, category, subject, body })
+                        });
                         
                         const data = await res.json();
                         if (res.ok && data.success) {
