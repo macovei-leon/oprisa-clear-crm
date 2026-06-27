@@ -1,14 +1,13 @@
-
         :root {
-            --bg-base: #0a0a0c;
-            --bg-surface: #121217;
-            --bg-card: rgba(22, 22, 28, 0.7);
-            --border-color: rgba(255, 255, 255, 0.06);
-            --border-hover: rgba(255, 255, 255, 0.12);
+            --bg-base: #f1f5f9;
+            --bg-surface: #ffffff;
+            --bg-card: rgba(255, 255, 255, 0.8);
+            --border-color: rgba(0, 0, 0, 0.1);
+            --border-hover: rgba(0, 0, 0, 0.2);
             
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
-            --text-muted: #6b7280;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
             
             --primary: #3b82f6;
             --primary-glow: rgba(59, 130, 246, 0.15);
@@ -76,7 +75,7 @@
         .header-title h1 {
             font-size: 2.25rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             letter-spacing: -0.02em;
@@ -144,7 +143,7 @@
         .stat-info .stat-val {
             font-size: 1.75rem;
             font-weight: 700;
-            color: #fff;
+            color: var(--text-primary);
             line-height: 1;
         }
 
@@ -192,11 +191,11 @@
 
         .search-input {
             width: 100%;
-            background: #17171e;
+            background: #f8fafc;
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 1rem 1rem 1rem 3rem;
-            color: #fff;
+            color: var(--text-primary);
             font-family: inherit;
             font-size: 1rem;
             transition: var(--transition-smooth);
@@ -206,7 +205,7 @@
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-            background: #1c1c24;
+            background: #f1f5f9;
         }
 
         .filters-row {
@@ -230,17 +229,17 @@
         }
 
         .filter-select {
-            background: #17171e;
+            background: #f8fafc;
             border: 1px solid var(--border-color);
             border-radius: 10px;
             padding: 0.8rem 1rem;
-            color: #fff;
+            color: var(--text-primary);
             font-family: inherit;
             font-size: 0.95rem;
             cursor: pointer;
             transition: var(--transition-smooth);
             appearance: none;
-            background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+            background-image: url("data:image/svg+xml;utf8,<svg fill='%23475569' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
             background-repeat: no-repeat;
             background-position: right 0.75rem center;
             background-size: 1.25rem;
@@ -254,7 +253,7 @@
 
         /* Sorting triggers */
         .sort-btn {
-            background: #17171e;
+            background: #f8fafc;
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 0 1.5rem;
@@ -270,7 +269,7 @@
 
         .sort-btn:hover {
             border-color: var(--border-hover);
-            background: #1c1c24;
+            background: #f1f5f9;
         }
 
         .sort-btn.active {
@@ -317,7 +316,7 @@
         .driver-name {
             font-size: 1.2rem;
             font-weight: 600;
-            color: #fff;
+            color: var(--text-primary);
             margin-right: 0.5rem;
             line-height: 1.2;
         }
@@ -328,7 +327,7 @@
             margin-top: 0.2rem;
             font-weight: 600;
             display: inline-block;
-            background: #17171e;
+            background: #f8fafc;
             padding: 0.15rem 0.4rem;
             border-radius: 4px;
         }
@@ -406,7 +405,7 @@
         .day-timeline-track {
             position: relative;
             height: 18px;
-            background: #17171e;
+            background: #f8fafc;
             border-radius: 4px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -513,8 +512,8 @@
         }
 
         .btn-view {
-            background: #272732;
-            color: #fff;
+            background: #e2e8f0;
+            color: var(--text-primary);
             border: none;
             border-radius: 8px;
             padding: 0.5rem 1rem;
@@ -546,7 +545,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(5, 5, 8, 0.85);
+            background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(12px);
             z-index: 100;
             display: flex;
@@ -563,7 +562,7 @@
         }
 
         .modal-card {
-            background: #121217;
+            background: #ffffff;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 20px;
             width: 90%;
@@ -591,7 +590,7 @@
         .modal-title h2 {
             font-size: 1.5rem;
             font-weight: 700;
-            color: #fff;
+            color: var(--text-primary);
         }
 
         .modal-close-btn {
@@ -604,7 +603,7 @@
         }
 
         .modal-close-btn:hover {
-            color: #fff;
+            color: var(--text-primary);
         }
 
         .modal-body {
@@ -619,7 +618,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
-            background: #171720;
+            background: #f8fafc;
             border-radius: 12px;
             padding: 1rem;
             font-size: 0.95rem;
@@ -641,7 +640,7 @@
         }
 
         .modal-info-val {
-            color: #fff;
+            color: var(--text-primary);
             font-weight: 500;
         }
 
@@ -686,7 +685,7 @@
         .modal-shift-time {
             font-size: 0.95rem;
             font-weight: 600;
-            color: #fff;
+            color: var(--text-primary);
         }
 
         .modal-shift-details {
@@ -699,9 +698,9 @@
             position: fixed;
             bottom: 2rem;
             right: 2rem;
-            background: #171720;
+            background: #f8fafc;
             border: 1px solid var(--primary);
-            color: #fff;
+            color: var(--text-primary);
             padding: 0.75rem 1.5rem;
             border-radius: 10px;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
@@ -741,7 +740,7 @@
 
         .no-results h3 {
             font-size: 1.25rem;
-            color: #fff;
+            color: var(--text-primary);
         }
 
         /* Tooltip style */
@@ -781,7 +780,7 @@
             font-weight: 500;
         }
         .segment-tooltip-value {
-            color: #fff;
+            color: var(--text-primary);
             font-weight: 600;
             text-align: right;
         }
@@ -795,16 +794,17 @@
             line-height: 1;
         }
         .segment-tooltip-close:hover {
-            color: #fff;
+            color: var(--text-primary);
         }
 
         /* Help banner style */
         .help-banner {
-            background: rgba(22, 22, 28, 0.8);
+            background: var(--bg-surface);
             border: 1px solid var(--border-color);
             border-radius: 16px;
             padding: 1.5rem;
             margin-bottom: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(12px);
             display: flex;
             flex-direction: column;
@@ -815,13 +815,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid var(--border-color);
             padding-bottom: 0.5rem;
         }
         .help-banner-title {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #fff;
+            color: var(--text-primary);
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -835,7 +835,7 @@
             line-height: 1;
         }
         .help-banner-close:hover {
-            color: #fff;
+            color: var(--text-primary);
         }
         .help-banner-content {
             font-size: 0.9rem;
