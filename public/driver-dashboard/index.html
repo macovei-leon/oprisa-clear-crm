@@ -720,22 +720,23 @@
             document.getElementById('modal-visual-timeline-container').innerHTML = generateVisualTimeline(d, true);
 
             // Lists
-            function renderList(containerId, list, typeClass) {
+            function renderList(containerId, list, typeClass, color) {
                 const container = document.getElementById(containerId);
                 if (!list || list.length === 0) {
                     container.innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">None recorded</div>';
                     return;
                 }
+                const defaultColor = color || '#3b82f6';
                 container.innerHTML = list.map(item => `
-                    <div class="shift-item">
-                        <span class="shift-type ${typeClass}">${item.type || 'Log'}</span>
-                        <span class="shift-time">${item.start} - ${item.end}</span>
+                    <div class="modal-shift-item" style="border-left-color: ${defaultColor};">
+                        <span class="modal-shift-source" style="color: ${defaultColor};">${item.type || 'Log'}</span>
+                        <span class="modal-shift-time">${item.start} - ${item.end}</span>
                     </div>
                 `).join('');
             }
 
-            renderList('modal-timeline-shifts', d.timelineShifts, '');
-            renderList('modal-timeline-activities', d.timelineActivities, '');
+            renderList('modal-timeline-shifts', d.timelineShifts, '', '#3b82f6');
+            renderList('modal-timeline-activities', d.timelineActivities, '', '#10b981');
             
             // Render disponibilitate if exists
             const dispoList = (d.timelineAvailability && d.timelineAvailability.length > 0) ? d.timelineAvailability : [];
@@ -745,9 +746,9 @@
                 document.getElementById('modal-timeline-disponibilitate').innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">None recorded</div>';
             } else {
                 document.getElementById('modal-timeline-disponibilitate').innerHTML = dispoList.map(item => `
-                    <div class="shift-item">
-                        <span class="shift-type" style="background:#2dd4bf; color:white;">${item.type}</span>
-                        <span class="shift-time">${item.start} - ${item.end}</span>
+                    <div class="modal-shift-item" style="border-left-color: #2dd4bf;">
+                        <span class="modal-shift-source" style="color: #2dd4bf;">${item.type}</span>
+                        <span class="modal-shift-time">${item.start} - ${item.end}</span>
                     </div>
                 `).join('');
             }
@@ -756,9 +757,9 @@
                 document.getElementById('modal-timeline-forecast').innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">None recorded</div>';
             } else {
                 document.getElementById('modal-timeline-forecast').innerHTML = forecastList.map(item => `
-                    <div class="shift-item">
-                        <span class="shift-type" style="background:#8b5cf6; color:white;">${item.type}</span>
-                        <span class="shift-time">${item.start} - ${item.end}</span>
+                    <div class="modal-shift-item" style="border-left-color: #8b5cf6;">
+                        <span class="modal-shift-source" style="color: #8b5cf6;">${item.type}</span>
+                        <span class="modal-shift-time">${item.start} - ${item.end}</span>
                     </div>
                 `).join('');
             }
@@ -770,9 +771,9 @@
                     return;
                 }
                 container.innerHTML = list.map(item => `
-                    <div class="shift-item" style="border-left-color: var(--accent-coral); background: rgba(239, 68, 68, 0.05);">
-                        <span class="shift-type" style="background:var(--accent-coral); color:white;">Violation</span>
-                        <span class="shift-time" style="color:var(--text-primary);">${item}</span>
+                    <div class="modal-shift-item" style="border-left-color: var(--accent-coral); background: rgba(239, 68, 68, 0.05);">
+                        <span class="modal-shift-source" style="color: var(--accent-coral);">Violation</span>
+                        <span class="modal-shift-time" style="color:var(--text-primary);">${item}</span>
                     </div>
                 `).join('');
             }
