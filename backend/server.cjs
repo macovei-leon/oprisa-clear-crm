@@ -358,6 +358,18 @@ async function setupEmailCron() {
 }
 setupEmailCron();
 
+app.get('/api/admin/tables', async (req, res) => {
+    // For now return a hardcoded list or fetch from DB if we had a metadata table.
+    // Returning the list expected by the UI.
+    res.json([
+        { table_name: 'drivers', title_ro: 'Șoferi Activi' },
+        { table_name: 'driver_attendance', title_ro: 'Prezență Zilnică' },
+        { table_name: 'driver_timeline_activities', title_ro: 'Activități și Concedii' },
+        { table_name: 'driver_forecast', title_ro: 'Forecast' },
+        { table_name: 'driver_availability', title_ro: 'Disponibilitate' }
+    ]);
+});
+
 app.get('/api/admin/email-status', async (req, res) => {
     try {
         const todayStr = new Date().toISOString().split('T')[0];
