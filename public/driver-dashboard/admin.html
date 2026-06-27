@@ -381,7 +381,7 @@
             
             const res = await fetch('/api/admin/email-settings');
             if (res.ok) {
-                const settings = await res.json();
+                const __txt_ = await res.text(); if(__txt_.trim().startsWith('<')) return; const settings = JSON.parse(__txt_);
                 document.getElementById('email-enabled').value = settings.is_enabled ? 'true' : 'false';
                 document.getElementById('email-time').value = settings.send_time || '09:00';
                 document.getElementById('email-daily-limit').value = settings.daily_limit || '1000';
@@ -471,7 +471,7 @@
         
         try {
             const res = await fetch('/api/admin/process-timeline', { method: 'POST', body: formData });
-            const data = await res.json();
+            const __txt_ = await res.text(); if(__txt_.trim().startsWith('<')) return; const data = JSON.parse(__txt_);
             if (res.ok && data.success) {
                 statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium";
                 statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i> ' + data.message;
@@ -493,7 +493,7 @@
     async function loadEmailTemplates() {
         const res = await fetch('/api/admin/email-templates');
         if (res.ok) {
-            emailTemplates = await res.json();
+            const __txt_et = await res.text(); if(__txt_et.trim().startsWith('<')) return; emailTemplates = JSON.parse(__txt_et);
             loadSelectedTemplate();
         }
     }
@@ -513,7 +513,7 @@
         try {
             const res = await fetch(`/api/admin/email-templates/${encodeURIComponent(category)}/attachment`);
             if (res.ok) {
-                const data = await res.json();
+                const __txt_ = await res.text(); if(__txt_.trim().startsWith('<')) return; const data = JSON.parse(__txt_);
                 status.innerHTML = data.exists ? '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-check mr-1"></i> Attached</span>' : 'No PDF attached';
             }
         } catch (err) {
@@ -611,7 +611,7 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ toEmail, subject, body, testPn, category: document.getElementById('template-category').value })
             });
-            const data = await res.json();
+            const __txt_ = await res.text(); if(__txt_.trim().startsWith('<')) return; const data = JSON.parse(__txt_);
             if (res.ok && data.success) alert("Test sent successfully!");
             else alert("Failed: " + (data.error || "Unknown"));
         } catch (err) { alert("Error: " + err.message); } 
@@ -683,3 +683,4 @@
 </script>
 </body>
 </html>
+
