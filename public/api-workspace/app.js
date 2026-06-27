@@ -30,25 +30,29 @@ window.updatePostmanUrl = function() {
 
 window.fetchApiDirectories = async function() {
     try {
-        const host = window.location.hostname;
-        const protocol = window.location.protocol;
-        
-        const statusRes = await fetch(`${protocol}//${host}:3050/api/proxy/status`);
-        const statusData = await statusRes.json();
+        const safeFetchJson = async (url) => {
+            try {
+                const res = await fetch(url);
+                const text = await res.text();
+                if (text.trim().startsWith('<')) return { data: [] }; // Fallback if backend is down and returns HTML
+                return JSON.parse(text);
+            } catch (e) {
+                return { data: [] };
+            }
+        };
+
+        const statusData = await safeFetchJson('/api/proxy/status');
         apiLiveStatuses = statusData.data || statusData || [];
 
-        const schedRes = await fetch(`${protocol}//${host}:3050/api/proxy/schedules`);
-        const schedData = await schedRes.json();
+        const schedData = await safeFetchJson('/api/proxy/schedules');
         apiLiveSchedules = schedData.data || schedData || [];
 
-        const linkRes = await fetch(`${protocol}//${host}:3050/api/proxy/links`);
-        const linkData = await linkRes.json();
+        const linkData = await safeFetchJson('/api/proxy/links');
         apiLiveLinks = linkData.data || linkData || [];
 
-        const stateRes = await fetch(`${protocol}//${host}:3050/api/state`);
-        const stateData = await stateRes.json();
+        const stateData = await safeFetchJson('/api/state');
         apiLiveState = stateData || { drivers: [] };
-
+        
         window.renderApiDriverList();
     } catch (err) {
         console.error("API Workspace Fetch Error:", err);
@@ -281,16 +285,21 @@ window.sendPostmanRequest = async function() {
 
     const startTime = performance.now();
     try {
-        const host = window.location.hostname;
-        const protocol = window.location.protocol;
-        let targetUrl = `${protocol}//${host}:3050/api/proxy/${endpoint}`;
+        let targetUrl = `/api/proxy/${endpoint}`;
         
-        if (endpoint === 'state') targetUrl = `${protocol}//${host}:3050/api/state`;
+        if (endpoint === 'state') targetUrl = `/api/state`;
         
         const response = await fetch(targetUrl);
         const latency = Math.round(performance.now() - startTime);
 
-        const data = await response.json();
+        const text = await response.text();
+        let data;
+        if (text.trim().startsWith('<')) {
+             data = { error: "Backend server is down or route not found (HTML returned)" };
+        } else {
+             data = JSON.parse(text);
+        }
+
         apiActivePostmanRawJson = data;
 
         document.getElementById('postman-meta-status').innerText = `${response.status} ${response.statusText || 'OK'}`;

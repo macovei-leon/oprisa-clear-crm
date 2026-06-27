@@ -701,7 +701,7 @@
             document.getElementById('modal-overlay').style.display = 'none';
         }
 
-        function openDriverModal(index) {
+        function openDriverModal(index) { try {
             const d = allDrivers[index];
             if (!d) return;
 
@@ -779,8 +779,7 @@
 
             renderMissedList('modal-timeline-tasks', d.missedShifts);
 
-            document.getElementById('modal-overlay').style.display = 'flex';
-        }
+            document.getElementById('modal-overlay').style.display = 'flex'; } catch (err) { alert('Error in openDriverModal: ' + err.message + '\\n' + err.stack); } }
 
         function renderCards(drivers) {
             
