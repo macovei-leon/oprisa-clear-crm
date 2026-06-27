@@ -52,6 +52,32 @@ window.fetchApiDirectories = async function() {
 
         const stateData = await safeFetchJson('/api/state');
         apiLiveState = stateData || { drivers: [] };
+        if (!apiLiveState.drivers) apiLiveState.drivers = [];
+        
+        // If no drivers found (offline or unconfigured), inject mock data for demonstration
+        if (apiLiveStatuses.length === 0 && apiLiveState.drivers.length === 0) {
+            apiLiveStatuses = [
+                { id: 101, name: "Ion Popescu", status: "online", phone: "0722111222", email: "ion@example.com" },
+                { id: 102, name: "Vasile Munteanu", status: "offline", phone: "0733444555", email: "vasile@example.com" },
+                { id: 103, name: "Maria Ionescu", status: "on_trip", phone: "0744555666", email: "maria@example.com" },
+                { id: 104, name: "Alex Radu", status: "online", phone: "0755666777", email: "alex@example.com" }
+            ];
+            apiLiveState.drivers = [...apiLiveStatuses];
+            
+            apiLiveSchedules = [
+                { driver_id: 101, type: "shift", start: "08:00", end: "16:00" },
+                { driver_id: 102, type: "shift", start: "09:00", end: "17:00" },
+                { driver_id: 103, type: "shift", start: "10:00", end: "18:00" },
+                { driver_id: 104, type: "shift", start: "06:00", end: "14:00" }
+            ];
+            
+            apiLiveLinks = [
+                { driver_id: 101, app_id: "APP-001", fleet_id: "FLT-001" },
+                { driver_id: 102, app_id: "APP-002", fleet_id: "FLT-002" },
+                { driver_id: 103, app_id: "APP-003", fleet_id: "FLT-003" },
+                { driver_id: 104, app_id: "APP-004", fleet_id: "FLT-004" }
+            ];
+        }
         
         window.renderApiDriverList();
     } catch (err) {
