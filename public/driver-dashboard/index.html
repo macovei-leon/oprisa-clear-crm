@@ -698,10 +698,10 @@
         }
 
         function closeDriverModal() {
-            document.getElementById('modal-overlay').style.display = 'none';
+            document.getElementById('modal-overlay').classList.remove('active');
         }
 
-        function openDriverModal(index) { try {
+        function openDriverModal(index) {
             const d = allDrivers[index];
             if (!d) return;
 
@@ -730,20 +730,6 @@
                     <div class="shift-item">
                         <span class="shift-type ${typeClass}">${item.type || 'Log'}</span>
                         <span class="shift-time">${item.start} - ${item.end}</span>
-                    </div>
-                `).join('');
-            }
-            
-            function renderMissedList(containerId, list) {
-                const container = document.getElementById(containerId);
-                if (!list || list.length === 0) {
-                    container.innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">No violations</div>';
-                    return;
-                }
-                container.innerHTML = list.map(item => `
-                    <div class="shift-item" style="border-left-color: var(--accent-coral); background: rgba(239, 68, 68, 0.05);">
-                        <span class="shift-type" style="background:var(--accent-coral); color:white;">Violation</span>
-                        <span class="shift-time" style="color:var(--text-primary);">${item}</span>
                     </div>
                 `).join('');
             }
@@ -779,7 +765,8 @@
 
             renderMissedList('modal-timeline-tasks', d.missedShifts);
 
-            document.getElementById('modal-overlay').style.display = 'flex'; } catch (err) { alert('Error in openDriverModal: ' + err.message + '\\n' + err.stack); } }
+            document.getElementById('modal-overlay').classList.add('active');
+        }
 
         function renderCards(drivers) {
             
@@ -1126,9 +1113,6 @@
             if(overlay) overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) closeDriverModal();
             });
-            
-            // Ensure modal is hidden on load
-            if(overlay) overlay.style.display = 'none';
         }
 
         function switchTab(tabName) {
