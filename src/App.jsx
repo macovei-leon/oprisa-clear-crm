@@ -14,6 +14,7 @@ import { FleetCapPage } from './pages/admin/FleetCapPage'
 import { DriverDashboardPage } from './pages/admin/DriverDashboardPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { MainLayout } from './components/layout/MainLayout'
+import { ApiWorkspacePage } from './pages/developer/ApiWorkspacePage'
 
 function ProtectedRoute({ children, requiredRole }) {
   const { user, profile, loading } = useAuth();
@@ -64,6 +65,11 @@ function App() {
             <Route path="/admin/driver-dashboard" element={
               <ProtectedRoute requiredRole="admin">
                 <DriverDashboardPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/developer/api-workspace" element={
+              <ProtectedRoute requiredRole="admin">
+                <ApiWorkspacePage />
               </ProtectedRoute>
             } />
             <Route path="/database" element={

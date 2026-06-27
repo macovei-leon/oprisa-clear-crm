@@ -697,6 +697,91 @@
             return html;
         }
 
+        function closeDriverModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        function openDriverModal(index) {
+            const d = allDrivers[index];
+            if (!d) return;
+
+            activeDriverPn = d.pn;
+            
+            document.getElementById('modal-driver-name').textContent = d.name || 'Unknown Driver';
+            document.getElementById('modal-driver-pn').textContent = d.pn || '-';
+            document.getElementById('modal-driver-phone').innerHTML = d.phone ? `<a href="tel:${d.phone}">${d.phone}</a>` : '-';
+            document.getElementById('modal-driver-email').textContent = d.email || '-';
+            document.getElementById('modal-driver-status').textContent = d.status || '-';
+            document.getElementById('modal-driver-company').textContent = (d.companies || []).join(', ') || '-';
+            document.getElementById('modal-driver-cities').textContent = (d.cities || []).join(', ') || '-';
+            document.getElementById('modal-driver-contract').textContent = d.contractType || '-';
+
+            // Visual Timeline
+            document.getElementById('modal-visual-timeline-container').innerHTML = generateVisualTimeline(d, true);
+
+            // Lists
+            function renderList(containerId, list, typeClass) {
+                const container = document.getElementById(containerId);
+                if (!list || list.length === 0) {
+                    container.innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">None recorded</div>';
+                    return;
+                }
+                container.innerHTML = list.map(item => `
+                    <div class="shift-item">
+                        <span class="shift-type ${typeClass}">${item.type || 'Log'}</span>
+                        <span class="shift-time">${item.start} - ${item.end}</span>
+                    </div>
+                `).join('');
+            }
+            
+            function renderMissedList(containerId, list) {
+                const container = document.getElementById(containerId);
+                if (!list || list.length === 0) {
+                    container.innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">No violations</div>';
+                    return;
+                }
+                container.innerHTML = list.map(item => `
+                    <div class="shift-item" style="border-left-color: var(--accent-coral); background: rgba(239, 68, 68, 0.05);">
+                        <span class="shift-type" style="background:var(--accent-coral); color:white;">Violation</span>
+                        <span class="shift-time" style="color:var(--text-primary);">${item}</span>
+                    </div>
+                `).join('');
+            }
+
+            renderList('modal-timeline-shifts', d.timelineShifts, '');
+            renderList('modal-timeline-activities', d.timelineActivities, '');
+            
+            // Render disponibilitate if exists
+            const dispoList = (d.timelineAvailability && d.timelineAvailability.length > 0) ? d.timelineAvailability : [];
+            const forecastList = (d.timelineForecast && d.timelineForecast.length > 0) ? d.timelineForecast : [];
+            
+            if (dispoList.length === 0) {
+                document.getElementById('modal-timeline-disponibilitate').innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">None recorded</div>';
+            } else {
+                document.getElementById('modal-timeline-disponibilitate').innerHTML = dispoList.map(item => `
+                    <div class="shift-item">
+                        <span class="shift-type" style="background:#2dd4bf; color:white;">${item.type}</span>
+                        <span class="shift-time">${item.start} - ${item.end}</span>
+                    </div>
+                `).join('');
+            }
+
+            if (forecastList.length === 0) {
+                document.getElementById('modal-timeline-forecast').innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">None recorded</div>';
+            } else {
+                document.getElementById('modal-timeline-forecast').innerHTML = forecastList.map(item => `
+                    <div class="shift-item">
+                        <span class="shift-type" style="background:#8b5cf6; color:white;">${item.type}</span>
+                        <span class="shift-time">${item.start} - ${item.end}</span>
+                    </div>
+                `).join('');
+            }
+
+            renderMissedList('modal-timeline-tasks', d.missedShifts);
+
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
         function renderCards(drivers) {
             
             const grid = document.getElementById('drivers-grid');
@@ -1035,7 +1120,16 @@
                 }
             });
 
-            document.getElementById('modal-overlay').style.display = 'flex';
+            // Close modal events
+            const closeBtn = document.getElementById('modal-close-btn');
+            const overlay = document.getElementById('modal-overlay');
+            if(closeBtn) closeBtn.addEventListener('click', closeDriverModal);
+            if(overlay) overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeDriverModal();
+            });
+            
+            // Ensure modal is hidden on load
+            if(overlay) overlay.style.display = 'none';
         }
 
         function switchTab(tabName) {

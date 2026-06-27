@@ -503,6 +503,48 @@ app.post('/api/admin/send-single-test', async (req, res) => {
 
 
 // ------------------------------------------
+// API Routes: Proxy endpoints for API Workspace
+// ------------------------------------------
+app.get('/api/proxy/:endpoint', async (req, res) => {
+    const endpoint = req.params.endpoint;
+    
+    const urlMap = {
+        'status': process.env.FLUXER_STATUS_URL || '',
+        'schedules': process.env.FLUXER_SCHEDULES_URL || '',
+        'links': process.env.FLUXER_LINKS_URL || ''
+    };
+
+    const targetUrl = urlMap[endpoint];
+    if (!targetUrl) {
+        // Return dummy data if not configured
+        return res.json({ data: [], _warning: "Endpoint not configured in .env" });
+    }
+
+    try {
+        const response = await fetch(targetUrl);
+        const data = await response.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/state', async (req, res) => {
+    const targetUrl = process.env.STATE_API_URL || '';
+    if (!targetUrl) {
+        return res.json({ drivers: [], _warning: "State API not configured" });
+    }
+
+    try {
+        const response = await fetch(targetUrl);
+        const data = await response.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ------------------------------------------
 // Static files (Protected dashboard, public login)
 // ------------------------------------------
 app.get('/', (req, res) => {

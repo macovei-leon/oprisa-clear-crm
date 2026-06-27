@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
-import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap } from 'lucide-react';
+import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap, Code } from 'lucide-react';
 
 export const Sidebar = () => {
   const { profile, signOut } = useAuth();
@@ -229,6 +229,23 @@ export const Sidebar = () => {
                 <>
                   <Users size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
                   Driver Dashboard
+                </>
+              )}
+            </NavLink>
+          </>
+        )}
+
+        {profile?.role === 'admin' && (
+          <>
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-6 px-3">Developer</div>
+            <NavLink 
+              to="/developer/api-workspace" 
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-cyan-50 text-cyan-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              {({ isActive }) => (
+                <>
+                  <Code size={18} className={isActive ? 'text-cyan-600' : 'text-cyan-500'} />
+                  API Workspace
                 </>
               )}
             </NavLink>
