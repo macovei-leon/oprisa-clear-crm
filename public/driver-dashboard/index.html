@@ -763,6 +763,20 @@
                 `).join('');
             }
 
+            function renderMissedList(containerId, list) {
+                const container = document.getElementById(containerId);
+                if (!list || list.length === 0) {
+                    container.innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">No violations</div>';
+                    return;
+                }
+                container.innerHTML = list.map(item => `
+                    <div class="shift-item" style="border-left-color: var(--accent-coral); background: rgba(239, 68, 68, 0.05);">
+                        <span class="shift-type" style="background:var(--accent-coral); color:white;">Violation</span>
+                        <span class="shift-time" style="color:var(--text-primary);">${item}</span>
+                    </div>
+                `).join('');
+            }
+
             renderMissedList('modal-timeline-tasks', d.missedShifts);
 
             document.getElementById('modal-overlay').classList.add('active');
