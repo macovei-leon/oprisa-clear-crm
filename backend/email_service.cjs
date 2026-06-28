@@ -74,18 +74,34 @@ async function stampPdf(attachmentPath, configPath, driver) {
 }
 
 
+async function getTimelineDrivers() {
+    try {
+        const { data, error } = await supabase.from('dashboard_settings').select('timeline_file_path').eq('id', 1).maybeSingle();
+        let targetPath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json');
+        if (!error && data && data.timeline_file_path) {
+            targetPath = path.isAbsolute(data.timeline_file_path) ? data.timeline_file_path : path.resolve(__dirname, data.timeline_file_path);
+        }
+        if (fs.existsSync(targetPath)) {
+            return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+        }
+        return [];
+    } catch (e) {
+        console.error('Error fetching timeline drivers:', e);
+        return [];
+    }
+}
+
 let isProcessingQueue = false;
 
 // 1. Queue Emails
 async function runDailyEmailJob() {
     console.log('[Email Queue] Starting daily email queuing job...');
     try {
-        const jsonPath = path.join(__dirname, 'absent_drivers_last_3_days.json');
-        if (!fs.existsSync(jsonPath)) {
-            console.log('[Email Queue] Data file not found. Aborting.');
+        const drivers = await getTimelineDrivers();
+        if (!drivers || drivers.length === 0) {
+            console.log('[Email Queue] Data file not found or empty. Aborting.');
             return;
         }
-        const drivers = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
 
         const { data: settings } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
         const targetCategories = settings && settings.allowed_categories ? settings.allowed_categories : ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent'];
@@ -190,11 +206,7 @@ async function processEmailQueue() {
         const templates = {};
         templatesData.forEach(t => templates[t.category] = t);
         
-        const jsonPath = path.join(__dirname, 'absent_drivers_last_3_days.json');
-        let driversData = [];
-        if (fs.existsSync(jsonPath)) {
-            driversData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-        }
+        let driversData = await getTimelineDrivers();
 
         let processCount = 0;
         for (const item of pendingData) {
@@ -286,6 +298,7 @@ async function sendSingleTestEmail(toEmail, subject, body, category = null, driv
 }
 
 module.exports = {
+    getTimelineDrivers,
     runDailyEmailJob,
     processEmailQueue,
     sendSingleTestEmail,

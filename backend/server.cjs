@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const ws = require('ws');
 const cron = require('node-cron');
-const { runDailyEmailJob, processEmailQueue, sendSingleTestEmail } = require('./email_service.cjs');
+const { runDailyEmailJob, processEmailQueue, sendSingleTestEmail, getTimelineDrivers } = require('./email_service.cjs');
 const { processTimelineData } = require('./timeline_processor.cjs');
 const multer = require('multer');
 
@@ -114,10 +114,8 @@ app.get('/api/me', (req, res) => {
 // API Routes: Drivers & Tasks
 // ------------------------------------------
 app.get('/api/drivers', async (req, res) => {
-    const jsonPath = path.join(__dirname, 'absent_drivers_last_3_days.json');
-    if (!fs.existsSync(jsonPath)) return res.status(404).json({ error: 'Data not found' });
-
-    const rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    const rawData = await getTimelineDrivers();
+    if (!rawData || rawData.length === 0) return res.status(404).json({ error: 'Data not found' });
 
     if (req.user.role === 'admin') {
         return res.json(rawData);
@@ -676,11 +674,8 @@ app.post('/api/admin/send-single-test', async (req, res) => {
     
     let driver = null;
     if (testPn) {
-        const jsonPath = path.join(__dirname, 'absent_drivers_last_3_days.json');
-        if (fs.existsSync(jsonPath)) {
-            const drivers = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-            driver = drivers.find(d => d.pn === testPn);
-        }
+        const drivers = await getTimelineDrivers();
+        driver = drivers.find(d => d.pn === testPn);
     }
     
     if (driver) {
