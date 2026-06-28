@@ -80,7 +80,6 @@ async function processTimelineData(jsonFilePath, supabaseData) {
     
     soferi.forEach(sofer => {
         if (sofer.timeline) sofer.timeline.forEach(t => { processTimeStr(t.dataOraStart); processTimeStr(t.dataOraEnd); });
-        if (sofer.ture) sofer.ture.forEach(t => { processTimeStr(t.dataOraStart); processTimeStr(t.dataOraEnd); });
     });
     
     if (minTime === Infinity) {
@@ -88,18 +87,19 @@ async function processTimelineData(jsonFilePath, supabaseData) {
         maxTime = minTime + 5 * 24 * 3600000;
     }
 
-    const baseDateObj = new Date(minTime);
-    const yyyy = baseDateObj.getFullYear();
-    const mm = String(baseDateObj.getMonth() + 1).padStart(2, '0');
-    const dd = String(baseDateObj.getDate()).padStart(2, '0');
-    const baseDateStr = `${yyyy}-${mm}-${dd}T00:00:00+03:00`;
+    const getBucharestDateParts = (dateObj) => {
+        const str = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(dateObj); // YYYY-MM-DD
+        const parts = str.split('-');
+        return { yyyy: parts[0], mm: parts[1], dd: parts[2] };
+    };
+
+    const bParts = getBucharestDateParts(new Date(minTime));
+    const baseDateStr = `${bParts.yyyy}-${bParts.mm}-${bParts.dd}T00:00:00+03:00`;
     const BASE_DATE = new Date(baseDateStr);
 
     let endMaxDateObj = new Date(maxTime);
-    const max_yyyy = endMaxDateObj.getFullYear();
-    const max_mm = String(endMaxDateObj.getMonth() + 1).padStart(2, '0');
-    const max_dd = String(endMaxDateObj.getDate()).padStart(2, '0');
-    let END_DATE = new Date(`${max_yyyy}-${max_mm}-${max_dd}T00:00:00+03:00`);
+    const eParts = getBucharestDateParts(endMaxDateObj);
+    let END_DATE = new Date(`${eParts.yyyy}-${eParts.mm}-${eParts.dd}T00:00:00+03:00`);
     if (END_DATE.getTime() <= maxTime) {
         END_DATE = new Date(END_DATE.getTime() + 24 * 3600000); // add one full day to envelope everything
     }
@@ -116,19 +116,13 @@ async function processTimelineData(jsonFilePath, supabaseData) {
     const formatHourToDateTime = (t) => {
         const timeInMs = t * 60 * 60 * 1000;
         const d = new Date(BASE_DATE.getTime() + timeInMs);
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const yr = d.getFullYear();
-        const hours = String(d.getHours()).padStart(2, '0');
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        return `${day}.${month}.${yr} ${hours}:${minutes}`;
+        const parts = getBucharestDateParts(d);
+        const timeStr = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+        return `${parts.dd}.${parts.mm}.${parts.yyyy} ${timeStr}`;
     };
 
-    const dataStartStr = `${yyyy}-${mm}-${dd}`;
-    const end_yyyy = END_DATE.getFullYear();
-    const end_mm = String(END_DATE.getMonth() + 1).padStart(2, '0');
-    const end_dd = String(END_DATE.getDate()).padStart(2, '0');
-    const dataEndStr = `${end_yyyy}-${end_mm}-${end_dd}`;
+    const dataStartStr = `${bParts.yyyy}-${bParts.mm}-${bParts.dd}`;
+    const dataEndStr = `${eParts.yyyy}-${eParts.mm}-${eParts.dd}`;
 
     console.log(`Fetching Ture Programate from API... (${dataStartStr} to ${dataEndStr}) | totalDays: ${totalDays}`);
     
@@ -152,17 +146,18 @@ async function processTimelineData(jsonFilePath, supabaseData) {
     }
     
     const dayMappingList = [];
-    const monthShortNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const timelineDaysMeta = [];
     for (let i = 0; i < totalDays; i++) {
         const d = new Date(BASE_DATE.getTime() + i * 24 * 3600000);
+        const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Bucharest', weekday: 'long' }).format(d).toLowerCase();
+        const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Bucharest', month: 'short', day: 'numeric' }).format(d);
         dayMappingList.push({
             offset: i * 24,
-            dayName: dayNames[d.getDay()],
+            dayName: weekday,
             dayIndex: i
         });
         timelineDaysMeta.push({
-            label: `${monthShortNames[d.getMonth()]} ${d.getDate()}`,
+            label: monthDay,
             start: i * 24,
             end: (i + 1) * 24
         });
