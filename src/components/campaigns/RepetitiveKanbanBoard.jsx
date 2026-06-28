@@ -73,12 +73,16 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
       let updatePayload = {};
 
       if (actionType === 'next') {
-        updatePayload = { active_step_idx: task.active_step_idx + 1 };
+        updatePayload = { 
+          active_step_idx: task.active_step_idx + 1,
+          updated_at: new Date().toISOString()
+        };
       } else if (actionType.startsWith('category_')) {
         updatePayload = { 
           completed: true, 
           category: actionType.replace('category_', ''),
-          completed_at: new Date().toISOString()
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
       }
 
