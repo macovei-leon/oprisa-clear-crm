@@ -16,11 +16,11 @@ export const RepetitiveKanbanSnapshotModal = ({ flow, historyData, selectedDate,
       try {
         let query = supabase
           .from('crm_repetitive_tasks')
-          .select('id, row_data, worker_id')
+          .select('id, row_data, assigned_to')
           .eq('repetitive_flow_id', flow.id);
           
         if (workerId) {
-          query = query.eq('worker_id', workerId);
+          query = query.eq('assigned_to', workerId);
         }
         
         const { data, error } = await query;
