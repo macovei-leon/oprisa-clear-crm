@@ -233,6 +233,13 @@ graph TD
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative">
+      <style>{`
+        .mermaid svg {
+            max-width: none !important;
+            height: auto !important;
+            width: auto !important;
+        }
+      `}</style>
       <Sidebar />
       <main className="flex-1 flex flex-col h-screen relative">
         {/* Header */}
