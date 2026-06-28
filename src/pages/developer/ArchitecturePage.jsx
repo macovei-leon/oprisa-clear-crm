@@ -8,66 +8,89 @@ import { X, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 const NODE_DATA = {
   ViteApp: {
     title: 'React Admin Panel (Vite)',
-    type: 'Frontend',
-    description: 'The core CRM application built with React and Vite. Handles routing, global authentication context, and renders all other micro-apps via iframes.',
+    type: 'Frontend Application',
+    description: 'The core CRM application built with React and Vite. Handles routing, modern authentication (Supabase Auth), and renders legacy micro-apps via iframes to preserve older Vanilla JS tools.',
     tables: ['profiles', 'departments'],
-    logic: 'Uses React Router for navigation and Context API for global state. Protected routes ensure only authenticated admins can access the backend.'
+    logic: 'Uses React Router for navigation and Context API for global state. Directly connects to Supabase for reading/writing core CRM tables (angajati, campaigns, tasks) bypassing the Express backend entirely for most CRUD operations.'
   },
   DriverDashboard: {
     title: 'Driver Dashboard UI',
-    type: 'Frontend Micro-App',
-    description: 'Static HTML/JS app loaded in an iframe. Provides UI for HR to process timeline data, configure automated rules, and view sent email logs.',
-    tables: ['driver_email_settings', 'driver_dashboard_data'],
+    type: 'Frontend Micro-App (iframe)',
+    description: 'A static HTML/JS dashboard specifically built for HR managers to process massive JSON timeline files and configure automated warning emails (e.g., for missing shifts or unverified timelines).',
+    tables: ['driver_email_settings', 'driver_dashboard_data', 'dashboard_settings'],
     columns: {
-      'driver_email_settings': 'id, is_enabled (bool), send_time (time), allowed_categories (jsonb), pn_range_start (int), pn_range_end (int), cron_schedule (text)',
-      'driver_dashboard_data': 'id, data (jsonb)'
+      'driver_email_settings': 'id, is_enabled (bool), send_time (time), allowed_categories (jsonb), cron_schedule (text)',
+      'dashboard_settings': 'id, timeline_file_path (text), raw_timeline_data (jsonb)'
     },
-    logic: 'Calls /api/admin/ endpoints to trigger test emails, fetch logs, and upload timeline JSON files.'
+    logic: 'It uploads heavy JSON files to the Backend Data Processor. It fetches logs and queue statuses from the Express API (routes: /api/admin/*) to display automation health.'
   },
   FleetCap: {
     title: 'FleetCap Optimization UI',
-    type: 'Frontend Micro-App',
-    description: 'Standalone HTML app for calculating fleet capacity and driver metrics based on daily actions.',
+    type: 'Frontend Micro-App (iframe)',
+    description: 'A specialized tool used to calculate fleet capacity and driver metrics per city. It analyzes hourly costs, TPH (Trips Per Hour), KPH, and recommends eliminating specific Minijob/Car contracts if costs exceed limits.',
     tables: ['fleetcap_app_data', 'driver_activity', 'driver_daily_actions'],
     columns: {
-      'fleetcap_app_data': 'id, data (jsonb)',
-      'driver_daily_actions': 'id, driver_pn, status, created_at, user_id'
+      'fleetcap_app_data': 'id, data (jsonb - holds the city logic and shift schedules)',
+      'driver_daily_actions': 'id, driver_pn, status (text - tracks medical/inactive states), created_at'
     },
-    logic: 'Fetches raw timeline data and cross-references it with driver actions to optimize scheduling.'
+    logic: 'Makes requests to the Express API (/api/drivers, /api/driver/action, /api/assignments) to fetch parsed driver timelines and cross-reference them with daily actions. Allows HR to override driver statuses directly.'
   },
-  ExpressAPI: {
-    title: 'Express Node.js Server',
-    type: 'Backend',
-    description: 'Main backend server running on port 3001. Handles API requests from the frontend, securely communicates with Supabase, and orchestrates background jobs.',
-    tables: ['All Tables via Supabase Service Key'],
-    logic: 'Routes include /api/admin/email-settings, /api/admin/active-table, /api/admin/trigger-email-job. Bypasses RLS using the service role key to perform admin duties.'
+  ApiWorkspace: {
+    title: 'API Workspace UI',
+    type: 'Frontend Micro-App (iframe)',
+    description: 'A developer sandbox used for securely testing 3rd party integrations and external webhooks without dealing with CORS issues.',
+    tables: ['None (Stateless)'],
+    logic: 'Sends requests to the Backend Proxy Service (/api/proxy/*, /api/state). The backend performs the actual HTTP requests to external services on behalf of this UI.'
+  },
+  ExpressRouter: {
+    title: 'Express Routing Engine',
+    type: 'Backend Module',
+    description: 'The central traffic controller of the Node.js server (running on Port 3001). It catches all incoming HTTP requests from the iframes.',
+    logic: 'Exposes specialized route groups:\n- /api/admin/* (for Driver Dashboard settings)\n- /api/driver/* (for FleetCap status updates)\n- /api/proxy/* (for API Workspace external requests)'
+  },
+  LegacyAuth: {
+    title: 'Legacy Auth Service',
+    type: 'Backend Module',
+    description: 'Handles authentication specifically for the old standalone HTML files (login.html, dashboard.html).',
+    tables: ['users (legacy)'],
+    logic: 'Manages /api/login and /api/logout routes. Issues JWT cookies for the static apps. (Note: The main React app uses Supabase Auth instead, making this a secondary auth system).'
+  },
+  DataProcessor: {
+    title: 'Timeline Data Processor',
+    type: 'Backend Module',
+    description: 'A heavy-duty JSON parser (timeline_processor.cjs) that ingests massive timeline exports from HR.',
+    tables: ['driver_timeline_data'],
+    columns: {
+      'driver_timeline_data': 'id, data (jsonb - stores the massive parsed arrays)'
+    },
+    logic: 'Extracts exact shift starts, stops, and missing periods. Formats the data into digestible chunks for the Email Service to use as dynamic variables.'
   },
   NodeCron: {
-    title: 'Node-Cron Automation Engine',
-    type: 'Background Service',
-    description: 'Internal scheduling system that runs completely independently of the frontend browser.',
+    title: 'Node-Cron Scheduler',
+    type: 'Backend Background Worker',
+    description: 'An independent timer engine that runs forever on the VPS, regardless of whether any browser is open.',
     tables: ['driver_email_settings', 'driver_email_queue', 'driver_email_batches'],
     columns: {
       'driver_email_batches': 'id, name, total_emails, sent_count, failed_count, status, created_at',
       'driver_email_queue': 'id, batch_id, driver_pn, email, category, status, scheduled_for'
     },
-    logic: '1. Queue Processor runs every 5 minutes (Europe/Berlin).\n2. Daily Job runs at configured send_time.\n3. Pushes targets to queue and fires Nodemailer.'
+    logic: '1. Queue Processor runs every 5 minutes (timezone locked to Europe/Berlin).\n2. Daily Job runs at the HR-configured send_time.\n3. Pushes target drivers into the database queue.'
   },
   EmailService: {
     title: 'Nodemailer & PDF-lib',
     type: 'Backend Service',
-    description: 'Generates customized HTML emails and optionally attaches customized PDFs using puppeteer/pdf-lib.',
+    description: 'The dispatch center for outgoing automated warnings.',
     tables: ['driver_email_logs', 'driver_email_templates'],
     columns: {
-      'driver_email_logs': 'id, driver_pn, email, category, status, details, sent_at',
+      'driver_email_logs': 'id, driver_pn, email, category, status, details (captures exact error messages or email subjects), sent_at',
       'driver_email_templates': 'category, subject, body'
     },
-    logic: 'Replaces {{variables}} in the template, generates a batch, sends emails via SMTP, and logs the result/error in driver_email_logs.'
+    logic: 'Pulls raw templates, injects personalized driver variables (like missing shift dates), optionally uses pdf-lib to attach formal warning PDFs, and blasts them via SMTP.'
   },
   DB_CRM: {
     title: 'CRM Database Layer',
     type: 'Supabase PostgreSQL',
-    description: 'Core tables for managing the internal company hierarchy, tasks, and employees.',
+    description: 'Core tables for managing the internal company hierarchy, tasks, and employees. Handled mostly by the React frontend directly.',
     tables: ['angajati', 'crm_tasks', 'crm_campaigns', 'departments', 'profiles'],
     columns: {
       'angajati': 'id, uuid, nume, email, telefon, companie, iban, tip_contract, inactiv',
@@ -75,15 +98,23 @@ const NODE_DATA = {
       'crm_tasks': 'id, category, assigned_to, row_data, completed, active_step_idx'
     }
   },
-  DB_Timeline: {
-    title: 'Raw Timeline Data',
+  DB_Driver: {
+    title: 'Automation & Log Data',
     type: 'Supabase PostgreSQL',
-    description: 'Stores massive JSON files uploaded by HR regarding raw driver timeline tracking.',
-    tables: ['dashboard_settings', 'driver_timeline_data'],
-    columns: {
-      'dashboard_settings': 'id, timeline_file_path, active_table, raw_timeline_data',
-      'driver_timeline_data': 'id, data (jsonb)'
-    }
+    description: 'Stores all rules, templates, and history of automated emails. Handled entirely by the Express Backend.',
+    tables: ['driver_email_settings', 'driver_email_templates', 'driver_email_queue', 'driver_email_logs', 'driver_email_batches']
+  },
+  DB_Fleet: {
+    title: 'Fleet Optimization Data',
+    type: 'Supabase PostgreSQL',
+    description: 'Stores raw JSON city plans and individual driver daily actions (medical leave, inactive).',
+    tables: ['fleetcap_app_data', 'driver_activity', 'driver_daily_actions']
+  },
+  DB_Timeline: {
+    title: 'Raw Timeline Exports',
+    type: 'Supabase PostgreSQL',
+    description: 'Stores the gigabytes of raw tracking JSON uploaded by HR.',
+    tables: ['dashboard_settings', 'driver_timeline_data']
   }
 };
 
@@ -151,39 +182,49 @@ graph TD
         end
         
         subgraph BackendContainer["⚙️ Backend Container (Express, Port 3001)"]
-            ExpressAPI["🌐 Express API Server"]:::backend
-            NodeCron["🕒 Node-Cron (Scheduler)"]:::backend
-            EmailService["📧 Email Service (Nodemailer)"]:::backend
+            ExpressRouter["🌐 Express Routing Engine"]:::backend
+            LegacyAuth["🔑 Legacy Auth (/api/login)"]:::backend
+            DataProcessor["🧮 Timeline Data Processor"]:::backend
+            NodeCron["🕒 Node-Cron Scheduler"]:::backend
+            EmailService["📧 Email & PDF Service"]:::backend
             
-            ExpressAPI -.-> NodeCron
-            ExpressAPI -.-> EmailService
+            ExpressRouter -.-> LegacyAuth
+            ExpressRouter -.-> DataProcessor
+            ExpressRouter -.-> NodeCron
+            ExpressRouter -.-> EmailService
             NodeCron -.-> EmailService
         end
     end
     
     subgraph Database["🗄️ Supabase PostgreSQL (External)"]
         DB_CRM[("CRM Data<br>(angajati, tasks, campaigns)")]:::database
-        DB_Driver[("Automation Data<br>(email_settings, queue, logs)")]:::database
+        DB_Driver[("Automation Data<br>(email_settings, logs)")]:::database
         DB_Fleet[("Fleet Optimization<br>(fleetcap_data)")]:::database
-        DB_Timeline[("Timeline Data<br>(raw timeline tracking)")]:::database
+        DB_Timeline[("Timeline Data<br>(raw exports)")]:::database
     end
     
     SMTP["✉️ SMTP Server (Gmail)"]:::external
-    ClientBrowser["🧑‍💻 Client Browser / Internet"]:::external
+    ClientBrowser["🧑‍💻 Client Browser"]:::external
     
     ClientBrowser == "HTTP 80/443" ==> FrontendContainer
-    FrontendContainer <== "API Calls (REST)" ==> BackendContainer
-    FrontendContainer <== "Auth / Supabase-js" ==> Database
-    BackendContainer <== "Supabase Service Key" ==> Database
+    ClientBrowser -. "Direct Supabase Calls" .-> Database
+    FrontendContainer <== "API Calls (REST)" ==> ExpressRouter
+    FrontendContainer <== "Direct Database Access" ==> DB_CRM
+    BackendContainer <== "Service Key Access" ==> DB_Driver
+    BackendContainer <== "Service Key Access" ==> DB_Timeline
     EmailService == "SMTP Protocol" ==> SMTP
 
     click ViteApp call handleMermaidClick()
     click DriverDashboard call handleMermaidClick()
     click FleetCap call handleMermaidClick()
     click ApiWorkspace call handleMermaidClick()
-    click ExpressAPI call handleMermaidClick()
+    
+    click ExpressRouter call handleMermaidClick()
+    click LegacyAuth call handleMermaidClick()
+    click DataProcessor call handleMermaidClick()
     click NodeCron call handleMermaidClick()
     click EmailService call handleMermaidClick()
+    
     click DB_CRM call handleMermaidClick()
     click DB_Driver call handleMermaidClick()
     click DB_Fleet call handleMermaidClick()
