@@ -508,33 +508,33 @@
                         statusBadge = `<span class="px-2 py-1 bg-slate-100 text-slate-700 text-xs rounded-md font-bold"><i class="fa-solid fa-check mr-1"></i> Completed</span>`;
                     }
                     
-                    return \`
+                    return `
                         <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                             <div class="flex justify-between items-start mb-3">
                                 <div>
-                                    <h4 class="font-bold text-slate-800 text-sm truncate">\${b.name}</h4>
-                                    <p class="text-xs text-slate-500 mt-0.5">\${timeStr}</p>
+                                    <h4 class="font-bold text-slate-800 text-sm truncate">${b.name}</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5">${timeStr}</p>
                                 </div>
-                                \${statusBadge}
+                                ${statusBadge}
                             </div>
                             
                             <div class="mb-2 flex justify-between text-xs font-medium text-slate-600">
-                                <span>Progress: \${progress} / \${total}</span>
-                                <span>\${percent}%</span>
+                                <span>Progress: ${progress} / ${total}</span>
+                                <span>${percent}%</span>
                             </div>
                             <div class="w-full bg-slate-100 rounded-full h-2 mb-3 overflow-hidden">
-                                <div class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: \${percent}%"></div>
+                                <div class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
                             </div>
                             
                             <div class="flex justify-between items-center text-xs text-slate-500 pt-2 border-t border-slate-100">
                                 <div class="flex gap-3">
-                                    <span class="text-emerald-600 font-medium" title="Sent"><i class="fa-solid fa-paper-plane mr-1"></i>\${b.sent_count}</span>
-                                    <span class="text-red-500 font-medium" title="Failed"><i class="fa-solid fa-triangle-exclamation mr-1"></i>\${b.failed_count}</span>
+                                    <span class="text-emerald-600 font-medium" title="Sent"><i class="fa-solid fa-paper-plane mr-1"></i>${b.sent_count}</span>
+                                    <span class="text-red-500 font-medium" title="Failed"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${b.failed_count}</span>
                                 </div>
-                                \${actionBtn}
+                                ${actionBtn}
                             </div>
                         </div>
-                    \`;
+                    `;
                 }).join('');
             }
         } catch (e) {
@@ -545,14 +545,14 @@
     async function pauseBatch(id) {
         if(!confirm('Pause this batch? Emails in the queue will stop sending.')) return;
         try {
-            await fetch(\`/api/admin/automation-batches/\${id}/pause\`, { method: 'POST' });
+            await fetch(`/api/admin/automation-batches/${id}/pause`, { method: 'POST' });
             loadBatches();
         } catch(e){}
     }
 
     async function resumeBatch(id) {
         try {
-            await fetch(\`/api/admin/automation-batches/\${id}/resume\`, { method: 'POST' });
+            await fetch(`/api/admin/automation-batches/${id}/resume`, { method: 'POST' });
             loadBatches();
         } catch(e){}
     }
@@ -572,13 +572,13 @@
                 }
                 
                 tbody.innerHTML = queue.slice(0, 100).map(q => {
-                    return \`
+                    return `
                     <tr class="bg-white border-b border-slate-100 hover:bg-slate-50">
-                        <td class="px-4 py-2 font-medium text-slate-800 text-xs">\${q.driver_pn} (\${q.email})</td>
-                        <td class="px-4 py-2 text-xs">\${q.category}</td>
-                        <td class="px-4 py-2 text-xs text-amber-600 font-medium"><i class="fa-solid fa-clock mr-1"></i>\${q.status}</td>
+                        <td class="px-4 py-2 font-medium text-slate-800 text-xs">${q.driver_pn} (${q.email})</td>
+                        <td class="px-4 py-2 text-xs">${q.category}</td>
+                        <td class="px-4 py-2 text-xs text-amber-600 font-medium"><i class="fa-solid fa-clock mr-1"></i>${q.status}</td>
                     </tr>
-                    \`;
+                    `;
                 }).join('');
             }
         } catch (e) {
@@ -626,7 +626,7 @@
                             let baseName = activeData.fileInfo.name;
                             if(baseName.startsWith('timeline_')) {
                                 // Extract original timestamp if present, but user might just want the name
-                                baseName = baseName.replace(/^timeline_\d+_(.*)/, '$1'); 
+                                baseName = baseName.replace(/^timeline_d+_(.*)/, '$1'); 
                             }
                             
                             fileName.textContent = baseName;
@@ -953,7 +953,7 @@
                 <button onclick="addPdfField('[Email]')" class="p-2 bg-white border border-slate-300 rounded text-sm text-left hover:border-blue-500 transition-colors shadow-sm"><i class="fa-solid fa-envelope text-slate-400 w-5"></i> [Email]</button>
                 <button onclick="addPdfField('[Company]')" class="p-2 bg-white border border-slate-300 rounded text-sm text-left hover:border-blue-500 transition-colors shadow-sm"><i class="fa-solid fa-building text-slate-400 w-5"></i> [Company]</button>
                 <button onclick="addPdfField('[Contract Type]')" class="p-2 bg-white border border-slate-300 rounded text-sm text-left hover:border-blue-500 transition-colors shadow-sm"><i class="fa-solid fa-file-contract text-slate-400 w-5"></i> [Contract Type]</button>
-                <button onclick="addPdfField('[Today\'s Date]')" class="p-2 bg-white border border-slate-300 rounded text-sm text-left hover:border-blue-500 transition-colors shadow-sm"><i class="fa-solid fa-calendar-day text-slate-400 w-5"></i> [Today's Date]</button>
+                <button onclick="addPdfField('[Today's Date]')" class="p-2 bg-white border border-slate-300 rounded text-sm text-left hover:border-blue-500 transition-colors shadow-sm"><i class="fa-solid fa-calendar-day text-slate-400 w-5"></i> [Today's Date]</button>
                 <button onclick="addPdfField('[Details]')" class="p-2 bg-white border border-slate-300 rounded text-sm text-left hover:border-blue-500 transition-colors shadow-sm"><i class="fa-solid fa-circle-info text-slate-400 w-5"></i> [Details]</button>
             </div>
             <button onclick="clearPdfFields()" class="mt-auto px-4 py-2 bg-slate-200 hover:bg-red-100 hover:text-red-600 rounded text-sm font-medium transition-colors border border-slate-300">Clear All Fields</button>
