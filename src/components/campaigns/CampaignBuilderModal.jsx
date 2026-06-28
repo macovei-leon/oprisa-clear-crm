@@ -359,18 +359,28 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
               </div>
               {isRepetitive && (
                 <div>
-                  <label className="block text-sm font-bold text-slate-600 mb-1">Interval de Resetare Sarcini (Ore)</label>
+                  <label className="block text-sm font-bold text-slate-600 mb-1">Interval de Resetare Sarcini</label>
                   <div className="flex items-center gap-2">
                     <input 
                       type="number" 
-                      min="1"
+                      min="0"
                       value={resetIntervalHours} 
-                      onChange={e => setResetIntervalHours(parseInt(e.target.value) || 24)} 
+                      onChange={e => setResetIntervalHours(parseInt(e.target.value) || 0)} 
                       className="w-24 p-2 border rounded-lg focus:outline-none focus:border-indigo-500 text-center font-bold" 
                     />
-                    <span className="text-sm text-slate-500 font-medium">ore (Ex: 24, 48, 72)</span>
+                    <span className="text-sm text-slate-500 font-medium">ore</span>
+
+                    <input 
+                      type="number" 
+                      min="0"
+                      max="59"
+                      value={resetIntervalMinutes} 
+                      onChange={e => setResetIntervalMinutes(parseInt(e.target.value) || 0)} 
+                      className="w-24 p-2 border rounded-lg focus:outline-none focus:border-indigo-500 text-center font-bold ml-4" 
+                    />
+                    <span className="text-sm text-slate-500 font-medium">minute</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">Sarcina completată se va reseta automat pentru operator după acest număr de ore.</p>
+                  <p className="text-xs text-slate-400 mt-1">Sarcina completată se va reseta automat pentru operator după acest interval.</p>
                 </div>
               )}
             </div>
