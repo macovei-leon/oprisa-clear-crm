@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# Copy all files
+COPY . ./
+
+# Expose backend port
+EXPOSE 3001
+
+CMD ["node", "backend/server.cjs"]
