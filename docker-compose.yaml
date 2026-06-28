@@ -19,6 +19,8 @@ services:
     container_name: oprisa-clear-crm-backend
     ports:
       - "3001:3001"
+    volumes:
+      - ./backend/attachments:/app/attachments
     restart: unless-stopped
     # If deploying to Coolify with Traefik later, you can add Traefik labels here
     # similar to your oprisa ultimate crm project, but for now this exposes port 3050.
