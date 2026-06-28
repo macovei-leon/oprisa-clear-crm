@@ -382,7 +382,7 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
         const jsonFileBuffer = req.file.buffer;
 
         // Upload RAW JSON to Supabase Storage
-        const rawFileName = 'raw_timeline_' + Date.now() + '.json';
+        const rawFileName = 'raw_timeline.json';
         const { error: rawUploadError } = await supabase.storage
             .from('crm-attachments')
             .upload(rawFileName, jsonFileBuffer, { contentType: 'application/json', upsert: true });
@@ -410,7 +410,7 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
         const allDriversResult = await processTimelineData(jsonFileBuffer, supabaseData);
 
         // Upload processed JSON to Supabase Storage
-        const processedFileName = 'processed_timeline_' + Date.now() + '.json';
+        const processedFileName = 'processed_timeline.json';
         const processedBuffer = Buffer.from(JSON.stringify(allDriversResult, null, 2), 'utf8');
         const { error: procUploadError } = await supabase.storage
             .from('crm-attachments')
@@ -459,7 +459,7 @@ app.post('/api/admin/set-table', async (req, res) => {
 
             const allDriversResult = await processTimelineData(settingsData.raw_file_path, supabaseData);
             
-            const processedFileName = 'processed_timeline_' + Date.now() + '.json';
+            const processedFileName = 'processed_timeline.json';
             const processedBuffer = Buffer.from(JSON.stringify(allDriversResult, null, 2), 'utf8');
             const { error: procUploadError } = await supabase.storage.from('crm-attachments').upload(processedFileName, processedBuffer, { contentType: 'application/json', upsert: true });
             if (procUploadError) throw new Error(`Processed upload failed: ${procUploadError.message}`);
@@ -496,7 +496,12 @@ app.get('/api/admin/active-table', async (req, res) => {
         if (error || !data || !data.active_table) return res.json({ tableName: 'angajati', fileInfo: null });
         
         let fileInfo = null;
-        if (data.raw_file_path && fs.existsSync(data.raw_file_path)) {
+        if (data.raw_file_path && data.raw_file_path.startsWith('http')) {
+            fileInfo = {
+                name: 'raw_timeline.json (Supabase)',
+                updated_at: data.updated_at
+            };
+        } else if (data.raw_file_path && fs.existsSync(data.raw_file_path)) {
             const stats = fs.statSync(data.raw_file_path);
             fileInfo = {
                 name: path.basename(data.raw_file_path),
@@ -514,12 +519,18 @@ app.get('/api/admin/timeline-data', async (req, res) => {
         const { data, error } = await supabase.from('dashboard_settings').select('timeline_file_path').eq('id', 1).maybeSingle();
         let targetPath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json'); // Default fallback
         if (!error && data && data.timeline_file_path) {
-            targetPath = path.isAbsolute(data.timeline_file_path) ? data.timeline_file_path : path.resolve(__dirname, data.timeline_file_path);
-        }
-        
-        if (fs.existsSync(targetPath)) {
-            const fileData = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
-            return res.json(fileData);
+            if (data.timeline_file_path.startsWith('http')) {
+                const fetchRes = await fetch(data.timeline_file_path + '?t=' + Date.now());
+                if (fetchRes.ok) {
+                    return res.json(await fetchRes.json());
+                }
+            } else {
+                let targetPath = path.isAbsolute(data.timeline_file_path) ? data.timeline_file_path : path.resolve(__dirname, data.timeline_file_path);
+                if (fs.existsSync(targetPath)) {
+                    const fileData = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+                    return res.json(fileData);
+                }
+            }
         }
         res.json([]);
     } catch (e) {

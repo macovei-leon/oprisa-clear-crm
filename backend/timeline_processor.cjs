@@ -38,8 +38,15 @@ async function processTimelineData(jsonDataRaw, supabaseData) {
 
     // Read the timeline JSON
     let jsonData;
-    if (typeof jsonDataRaw === 'string' && fs.existsSync(jsonDataRaw)) {
-        jsonData = JSON.parse(fs.readFileSync(jsonDataRaw, 'utf8'));
+    if (typeof jsonDataRaw === 'string') {
+        if (jsonDataRaw.startsWith('http')) {
+            const fetchRes = await fetch(jsonDataRaw);
+            jsonData = await fetchRes.json();
+        } else if (fs.existsSync(jsonDataRaw)) {
+            jsonData = JSON.parse(fs.readFileSync(jsonDataRaw, 'utf8'));
+        } else {
+            jsonData = JSON.parse(jsonDataRaw);
+        }
     } else {
         jsonData = JSON.parse(jsonDataRaw.toString('utf8'));
     }
