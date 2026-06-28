@@ -173,7 +173,8 @@ async function runDailyEmailJob(overrideCategories = null) {
         }
 
         // Create batch
-        const batchName = `Automation Run - ${new Date().toLocaleString()}`;
+        const catList = targetCategories.length > 2 ? targetCategories.slice(0,2).join(', ') + '...' : targetCategories.join(', ');
+        const batchName = `Run [${catList}] - ${new Date().toLocaleString()}`;
         const { data: batchData, error: bErr } = await supabase.from('driver_email_batches')
             .insert([{ name: batchName, total_emails: validTargets.length }])
             .select()
@@ -304,7 +305,7 @@ async function processEmailQueue() {
 
                 // Success: delete from queue, log, update batch
                 await supabase.from('driver_email_queue').delete().eq('id', item.id);
-                await supabase.from('driver_email_logs').insert([{ driver_pn: item.driver_pn, email: item.email, category: item.category, status: 'Success' }]);
+                await supabase.from('driver_email_logs').insert([{ driver_pn: item.driver_pn, email: item.email, category: item.category, status: 'Success', details: `Subject: ${subject}` }]);
                 if (currentBatch) await supabase.from('driver_email_batches').update({ sent_count: currentBatch.sent_count + 1 }).eq('id', item.batch_id);
 
                 processCount++;
@@ -312,7 +313,7 @@ async function processEmailQueue() {
             } catch (err) {
                 console.error(`[Email Queue] Failed sending to ${item.email}`, err.message);
                 await supabase.from('driver_email_queue').update({ status: 'Failed' }).eq('id', item.id);
-                await supabase.from('driver_email_logs').insert([{ driver_pn: item.driver_pn, email: item.email, category: item.category, status: 'Failed: ' + err.message }]);
+                await supabase.from('driver_email_logs').insert([{ driver_pn: item.driver_pn, email: item.email, category: item.category, status: 'Failed: ' + err.message, details: `Subject: ${subject}` }]);
                 if (currentBatch) await supabase.from('driver_email_batches').update({ failed_count: currentBatch.failed_count + 1 }).eq('id', item.batch_id);
             }
         }
