@@ -28,11 +28,17 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
     if (flow) {
       fetchTasks();
       setActiveTabIdx(0); // Reset tab when flow changes
+      
+      const intervalId = setInterval(() => {
+        fetchTasks(true);
+      }, 30000); // Poll every 30 seconds to catch resets automatically
+      
+      return () => clearInterval(intervalId);
     }
   }, [flow, viewMode]);
 
-  const fetchTasks = async () => {
-    setLoading(true);
+  const fetchTasks = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       // 1. Reset tasks if needed based on reset interval
       const { error: resetErr } = await supabase.rpc('reset_repetitive_tasks', { p_flow_id: flow.id });
@@ -58,7 +64,7 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

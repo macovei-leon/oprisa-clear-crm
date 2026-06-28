@@ -39,7 +39,7 @@ export const RepetitiveHistoryPage = () => {
       let query = supabase
         .from('crm_repetitive_history')
         .select(`
-          id, category, subcategory, repetitive_flow_id, 
+          id, category, repetitive_flow_id, 
           completed_date,
           worker_id,
           flow:repetitive_flow_id ( id, name )
