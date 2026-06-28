@@ -673,9 +673,19 @@ app.post('/api/admin/send-single-test', async (req, res) => {
     let finalBody = body;
     
     let driver = null;
-    if (testPn) {
-        const drivers = await getTimelineDrivers();
-        driver = drivers.find(d => d.pn === testPn);
+    try {
+        if (testPn) {
+            const drivers = await getTimelineDrivers();
+            if (Array.isArray(drivers)) {
+                driver = drivers.find(d => String(d.pn) === String(testPn));
+            } else if (drivers && Array.isArray(drivers.data)) {
+                driver = drivers.data.find(d => String(d.pn) === String(testPn));
+            } else if (drivers && Array.isArray(drivers.drivers)) {
+                driver = drivers.drivers.find(d => String(d.pn) === String(testPn));
+            }
+        }
+    } catch (e) {
+        console.error('Error finding driver:', e);
     }
     
     if (driver) {
@@ -704,11 +714,17 @@ app.post('/api/admin/send-single-test', async (req, res) => {
         };
     }
     
-    const result = await sendSingleTestEmail(toEmail, finalSubject, finalBody, category, driver);
-    if (result.success) {
-        res.json({ success: true, message: 'Test email sent successfully' });
-    } else {
-        res.status(500).json({ error: result.error });
+    try {
+        const result = await sendSingleTestEmail(toEmail, finalSubject, finalBody, category, driver);
+        if (result.success) {
+            res.json({ success: true, message: 'Test email sent successfully' });
+        } else {
+            console.error('sendSingleTestEmail failed:', result.error);
+            res.status(500).json({ error: result.error });
+        }
+    } catch (e) {
+        console.error('Unexpected error in send-single-test:', e);
+        res.status(500).json({ error: e.message });
     }
 });
 
