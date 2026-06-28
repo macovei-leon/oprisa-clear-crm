@@ -1,12 +1,14 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, FolderClosed, Activity, CheckCircle2, Loader2 } from 'lucide-react';
+import { FlashcardModal } from '../campaigns/FlashcardModal';
 
 export const RepetitiveKanbanSnapshotModal = ({ flow, historyData, selectedDate, workerId, onClose }) => {
   const [activeTabIdx, setActiveTabIdx] = useState(0);
   const [viewMode, setViewMode] = useState('all');
   const [liveTasks, setLiveTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
+  const [selectedCard, setSelectedCard] = useState(null);
 
   const steps = flow?.steps || [];
 
@@ -189,7 +191,8 @@ export const RepetitiveKanbanSnapshotModal = ({ flow, historyData, selectedDate,
                 return (
                   <div 
                     key={task.id}
-                    className={`bg-white p-4 rounded-xl border shadow-sm flex flex-col justify-between min-h-[160px] relative overflow-hidden ${isClosed ? 'border-emerald-200' : 'border-slate-200'}`}
+                    onClick={() => setSelectedCard(task)}
+                    className={`bg-white p-4 rounded-xl border shadow-sm flex flex-col justify-between min-h-[160px] relative overflow-hidden cursor-pointer hover:shadow-md transition-all ${isClosed ? 'border-emerald-200 hover:border-emerald-300' : 'border-slate-200 hover:border-indigo-300'}`}
                   >
                     <div className={`absolute top-0 left-0 right-0 h-1 ${isClosed ? 'bg-emerald-300' : 'bg-indigo-100'}`}></div>
                     
@@ -234,8 +237,16 @@ export const RepetitiveKanbanSnapshotModal = ({ flow, historyData, selectedDate,
             </div>
           )}
         </div>
-
       </div>
+      
+      {/* Read-only Data Modal */}
+      {selectedCard && (
+        <FlashcardModal
+          task={selectedCard}
+          onClose={() => setSelectedCard(null)}
+          // By not passing stepConfig or onTransition, it acts as a read-only viewer
+        />
+      )}
     </div>
   );
 };
