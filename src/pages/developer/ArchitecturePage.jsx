@@ -246,11 +246,11 @@ graph TD
         {/* Interactive Canvas */}
         <div className="flex-1 overflow-hidden relative bg-slate-50/50 cursor-grab active:cursor-grabbing">
             <TransformWrapper
-              initialScale={1.2}
-              minScale={0.5}
-              maxScale={3}
+              initialScale={1}
+              minScale={0.1}
+              maxScale={15}
               centerOnInit={true}
-              wheel={{ step: 0.1 }}
+              wheel={{ step: 0.15 }}
             >
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
