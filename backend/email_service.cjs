@@ -52,6 +52,7 @@ async function stampPdf(attachmentPath, configPath, driver) {
             textToDraw = textToDraw.replace(/\[Company\]/g, (driver.companies || []).join(', ') || '');
             textToDraw = textToDraw.replace(/\[Contract Type\]/g, driver.contractType || '');
             textToDraw = textToDraw.replace(/\[Today's Date\]/g, new Date().toLocaleDateString('ro-RO'));
+            textToDraw = textToDraw.replace(/\[Details\]/g, (driver.missedShifts && driver.missedShifts.length > 0) ? driver.missedShifts.join('\n') : 'No specific violations found.');
             
             const x = (field.x / 100) * width;
             const y = height - ((field.y / 100) * height) - 12; // offset for font height

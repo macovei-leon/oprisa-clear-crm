@@ -696,6 +696,17 @@ app.post('/api/admin/send-single-test', async (req, res) => {
         finalSubject = finalSubject.replace(/{{name}}/g, dummyName).replace(/{{pn}}/g, dummyPn);
         finalBody = finalBody.replace(/{{name}}/g, dummyName).replace(/{{pn}}/g, dummyPn);
         finalBody = finalBody.replace(/{{details}}/g, dummyDetails);
+        
+        // Construct dummy driver so the PDF also gets stamped
+        driver = {
+            name: dummyName,
+            pn: dummyPn,
+            email: toEmail,
+            phone: '0700000000',
+            companies: ['Oprisa Delivery'],
+            contractType: 'Full-time',
+            missedShifts: dummyDetails.split('<br>')
+        };
     }
     
     const result = await sendSingleTestEmail(toEmail, finalSubject, finalBody, category, driver);
