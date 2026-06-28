@@ -407,10 +407,16 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
         const { data: settingsData } = await supabase.from('dashboard_settings').select('active_table').eq('id', 1).single();
         const tableName = settingsData?.active_table || 'angajati';
 
-        // Fetch driver data from the selected table
-        const { data: supabaseData, error } = await supabase.from(tableName).select('*');
-        if (error) {
-            throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
+        // Fetch driver data from the selected table (paginate to get ALL rows, beyond 1000 limit)
+        let supabaseData = [];
+        let page = 0;
+        const pageSize = 1000;
+        while (true) {
+            const { data: pageData, error } = await supabase.from(tableName).select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+            if (error) throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
+            if (pageData && pageData.length > 0) supabaseData.push(...pageData);
+            if (!pageData || pageData.length < pageSize) break;
+            page++;
         }
 
         // Process timeline data
@@ -447,8 +453,16 @@ app.post('/api/admin/set-table', async (req, res) => {
         const { data: settingsData } = await supabase.from('dashboard_settings').select('*').eq('id', 1).maybeSingle();
         
         if (settingsData && settingsData.raw_file_path && fs.existsSync(settingsData.raw_file_path)) {
-            const { data: supabaseData, error } = await supabase.from(tableName).select('*');
-            if (error) throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
+            let supabaseData = [];
+            let page = 0;
+            const pageSize = 1000;
+            while (true) {
+                const { data: pageData, error } = await supabase.from(tableName).select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+                if (error) throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
+                if (pageData && pageData.length > 0) supabaseData.push(...pageData);
+                if (!pageData || pageData.length < pageSize) break;
+                page++;
+            }
 
             const allDriversResult = await processTimelineData(settingsData.raw_file_path, supabaseData);
             

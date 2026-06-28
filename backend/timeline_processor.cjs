@@ -85,17 +85,11 @@ async function processTimelineData(jsonFilePath, supabaseData) {
             else if (normalizedDriverName && excelMapByName.has(normalizedDriverName)) matchedInfo = excelMapByName.get(normalizedDriverName);
             
             if (matchedInfo) {
-                driver.phone = matchedInfo.phone;
-                driver.email = matchedInfo.email;
-                driver.companies = matchedInfo.company ? [matchedInfo.company] : [];
-                driver.cities = matchedInfo.city ? [matchedInfo.city] : [];
-                driver.contractType = matchedInfo.contractType;
-            } else {
-                driver.phone = '';
-                driver.email = '';
-                driver.companies = [];
-                driver.cities = [];
-                driver.contractType = '';
+                if (matchedInfo.phone) driver.phone = matchedInfo.phone;
+                if (matchedInfo.email) driver.email = matchedInfo.email;
+                if (matchedInfo.company) driver.companies = [matchedInfo.company];
+                if (matchedInfo.city) driver.cities = [matchedInfo.city];
+                if (matchedInfo.contractType) driver.contractType = matchedInfo.contractType;
             }
         });
         return jsonData;
@@ -292,17 +286,28 @@ async function processTimelineData(jsonFilePath, supabaseData) {
         const m23 = missedShifts.some(m => m.day === 23 && m.violationType === 'Missed Shift');
         const missedThreeDaysInARow = (m19 && m20 && m21) || (m20 && m21 && m22) || (m21 && m22 && m23);
 
-        let phone = '', email = '', companies = [], cities = [], contractType = '';
+        let phone = sofer.telefon || '';
+        let email = sofer.email || '';
+        let companies = [];
+        let cities = [];
+        let contractType = sofer.tipContract || '';
+        
+        if (sofer.ture && sofer.ture.length > 0) {
+            const firstTura = sofer.ture[0];
+            if (!contractType && firstTura.tipContract) contractType = firstTura.tipContract;
+            if (firstTura.oras) cities.push(firstTura.oras);
+        }
+
         const normalizedDriverName = normalizeName(name);
         let matchedInfo = null;
         if (pn && excelMapByPn.has(pn)) matchedInfo = excelMapByPn.get(pn);
         else if (normalizedDriverName && excelMapByName.has(normalizedDriverName)) matchedInfo = excelMapByName.get(normalizedDriverName);
 
         if (matchedInfo) {
-            phone = matchedInfo.phone;
-            email = matchedInfo.email;
-            if (matchedInfo.company) companies.push(matchedInfo.company);
-            if (matchedInfo.city) cities.push(matchedInfo.city);
+            if (matchedInfo.phone) phone = matchedInfo.phone;
+            if (matchedInfo.email) email = matchedInfo.email;
+            if (matchedInfo.company) companies = [matchedInfo.company];
+            if (matchedInfo.city) cities = [matchedInfo.city];
             if (matchedInfo.contractType) contractType = matchedInfo.contractType;
         }
 
