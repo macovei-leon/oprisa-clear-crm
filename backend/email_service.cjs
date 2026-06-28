@@ -115,7 +115,7 @@ async function runDailyEmailJob() {
         }
 
         const { data: settings } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
-        const targetCategories = settings && settings.allowed_categories ? settings.allowed_categories : ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent'];
+        const targetCategories = settings && settings.allowed_categories ? settings.allowed_categories : ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent', 'Test'];
         const pnStart = settings && settings.pn_range_start ? parseInt(settings.pn_range_start, 10) : null;
         const pnEnd = settings && settings.pn_range_end ? parseInt(settings.pn_range_end, 10) : null;
 
