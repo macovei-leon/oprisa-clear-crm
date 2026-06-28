@@ -54,7 +54,13 @@ export const RepetitiveHistoryPage = () => {
           profiles ( id, name, email ),
           flow:repetitive_flow_id ( id, name )
         `)
-        .eq('completed_date', selectedDate)
+        
+      const localStart = new Date(`${selectedDate}T00:00:00`);
+      const localEnd = new Date(`${selectedDate}T23:59:59.999`);
+      
+      query = query
+        .gte('created_at', localStart.toISOString())
+        .lte('created_at', localEnd.toISOString())
         .order('created_at', { ascending: false });
         
       if (selectedFlowId !== 'all') {
@@ -108,8 +114,6 @@ export const RepetitiveHistoryPage = () => {
   const statsByWorker = useMemo(() => {
     const map = {};
     historyData.forEach(item => {
-      if (item.action_type === 'ADVANCEMENT') return; // Do not count advancements in performance stats
-      
       const wId = item.worker_id;
       const wName = item.profiles?.name || item.profiles?.email || 'Nevalabil';
       const cat = item.category || 'Fără Categorie';
@@ -119,9 +123,16 @@ export const RepetitiveHistoryPage = () => {
           id: wId,
           name: wName,
           total: 0,
+          advancements: 0,
           categories: {}
         };
       }
+      
+      if (item.action_type === 'ADVANCEMENT') {
+        map[wId].advancements += 1;
+        return;
+      }
+      
       map[wId].total += 1;
       map[wId].categories[cat] = (map[wId].categories[cat] || 0) + 1;
     });
@@ -271,6 +282,11 @@ export const RepetitiveHistoryPage = () => {
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-sm border border-emerald-200">
                       <CheckCircle2 size={16} /> Total finalizate: {worker.total}
                     </div>
+                    {worker.advancements > 0 && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-600 font-bold rounded-lg text-sm border border-slate-200">
+                        Mutări/Avansări: {worker.advancements}
+                      </div>
+                    )}
                     {selectedFlowId !== 'all' && worker.id && (
                       <button
                         onClick={() => {
