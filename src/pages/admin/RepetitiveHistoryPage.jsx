@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { MainLayout } from '../../components/layout/MainLayout';
-import { Calendar as CalendarIcon, Users, Activity, BarChart, CheckCircle2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Users, Activity, BarChart, CheckCircle2, Clock, MessageSquare, List } from 'lucide-react';
+import { CardTimelineModal } from '../../components/admin/CardTimelineModal';
 
 export const RepetitiveHistoryPage = () => {
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -14,6 +15,7 @@ export const RepetitiveHistoryPage = () => {
   
   const [flows, setFlows] = useState([]);
   const [selectedFlowId, setSelectedFlowId] = useState('all');
+  const [selectedTimelineTaskId, setSelectedTimelineTaskId] = useState(null);
 
   useEffect(() => {
     fetchFlows();
@@ -39,12 +41,14 @@ export const RepetitiveHistoryPage = () => {
       let query = supabase
         .from('crm_repetitive_history')
         .select(`
-          id, category, repetitive_flow_id, 
-          completed_date,
+          id, category, repetitive_flow_id, task_id, 
+          completed_date, created_at, notes, step_name, action_type, card_snapshot,
           worker_id,
+          profiles ( id, name, email ),
           flow:repetitive_flow_id ( id, name )
         `)
-        .eq('completed_date', selectedDate);
+        .eq('completed_date', selectedDate)
+        .order('created_at', { ascending: false });
         
       if (selectedFlowId !== 'all') {
         query = query.eq('repetitive_flow_id', selectedFlowId);
@@ -91,6 +95,21 @@ export const RepetitiveHistoryPage = () => {
       map[cat] = (map[cat] || 0) + 1;
     });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [historyData]);
+
+  // Group data by hour
+  const hourlyStats = useMemo(() => {
+    const map = {};
+    historyData.forEach(item => {
+      if (!item.created_at) return;
+      const hour = new Date(item.created_at).getHours();
+      const hourLabel = `${hour.toString().padStart(2, '0')}:00 - ${(hour + 1).toString().padStart(2, '0')}:00`;
+      if (!map[hourLabel]) {
+        map[hourLabel] = [];
+      }
+      map[hourLabel].push(item);
+    });
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
   }, [historyData]);
 
   return (
@@ -203,7 +222,87 @@ export const RepetitiveHistoryPage = () => {
             </div>
           </div>
           
+          {/* Detailed Log Table & Hourly Breakdown */}
+          <div className="lg:col-span-3 flex flex-col gap-4 mt-4">
+            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 mb-2 border-t border-slate-200 pt-8">
+              <List size={20} className="text-indigo-600" /> Jurnal Detaliat Interacțiuni (Grupat pe Ore)
+            </h3>
+            
+            <div className="flex flex-col gap-6">
+              {hourlyStats.map(([hourLabel, actions]) => (
+                <div key={hourLabel} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-3">
+                    <Clock size={18} className="text-slate-500" />
+                    <h4 className="font-bold text-slate-700">{hourLabel}</h4>
+                    <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-0.5 rounded-full ml-auto">
+                      {actions.length} acțiuni
+                    </span>
+                  </div>
+                  <div className="p-0 overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-white border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400">
+                          <th className="p-4 font-bold">Ora Exactă</th>
+                          <th className="p-4 font-bold">Operator</th>
+                          <th className="p-4 font-bold">Acțiune / Categorie</th>
+                          <th className="p-4 font-bold">Etapă</th>
+                          <th className="p-4 font-bold">Notițe (Comentariu)</th>
+                          <th className="p-4 font-bold text-right">Card</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {actions.map(action => (
+                          <tr key={action.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-4 text-sm font-bold text-slate-600 whitespace-nowrap">
+                              {new Date(action.created_at).toLocaleTimeString('ro-RO')}
+                            </td>
+                            <td className="p-4 text-sm font-medium text-slate-700">
+                              {action.profiles?.name || action.profiles?.email || 'Nevalabil'}
+                            </td>
+                            <td className="p-4">
+                              <span className={`inline-flex px-2 py-1 rounded text-xs font-bold ${action.action_type === 'COMPLETION' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
+                                {action.category}
+                              </span>
+                            </td>
+                            <td className="p-4 text-sm text-slate-600 font-medium">
+                              {action.step_name || '-'}
+                            </td>
+                            <td className="p-4">
+                              {action.notes ? (
+                                <div className="flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 p-2 rounded border border-amber-100 max-w-xs">
+                                  <MessageSquare size={14} className="shrink-0 mt-0.5" />
+                                  <span className="line-clamp-2" title={action.notes}>{action.notes}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">Fără notiță</span>
+                              )}
+                            </td>
+                            <td className="p-4 text-right">
+                              <button 
+                                onClick={() => setSelectedTimelineTaskId(action.task_id)}
+                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded transition-colors"
+                              >
+                                Vezi Istoric Card
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
         </div>
+      )}
+
+      {selectedTimelineTaskId && (
+        <CardTimelineModal 
+          taskId={selectedTimelineTaskId} 
+          onClose={() => setSelectedTimelineTaskId(null)} 
+        />
       )}
     </MainLayout>
   );

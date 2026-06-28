@@ -68,7 +68,7 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
     }
   };
 
-  const handleTaskTransition = async (task, actionLabel, actionType, actionTarget) => {
+  const handleTaskTransition = async (task, actionLabel, actionType, notes) => {
     try {
       let updatePayload = {};
 
@@ -93,17 +93,25 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
 
       if (error) throw error;
 
-      if (updatePayload.completed) {
-        const { error: histErr } = await supabase
-          .from('crm_repetitive_history')
-          .insert([{
-            repetitive_flow_id: flow.id,
-            task_id: task.id,
-            worker_id: profile?.id,
-            category: updatePayload.category
-          }]);
-        if (histErr) console.error('Failed to save history', histErr);
-      }
+      // Always save history for tracking
+      const stepName = steps[task.active_step_idx]?.name || `Pas ${task.active_step_idx + 1}`;
+      const actionTypeVal = updatePayload.completed ? 'COMPLETION' : 'ADVANCEMENT';
+      const catVal = updatePayload.completed ? updatePayload.category : `[Avansare] ${actionLabel}`;
+
+      const { error: histErr } = await supabase
+        .from('crm_repetitive_history')
+        .insert([{
+          repetitive_flow_id: flow.id,
+          task_id: task.id,
+          worker_id: profile?.id,
+          category: catVal,
+          step_name: stepName,
+          action_type: actionTypeVal,
+          notes: notes || null,
+          card_snapshot: task.row_data || {}
+        }]);
+
+      if (histErr) console.error('Failed to save history', histErr);
 
       // Update local state to immediately move the card
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...updatePayload } : t));

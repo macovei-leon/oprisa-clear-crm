@@ -172,7 +172,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                   <button
                     key={branch.id}
                     onClick={() => {
-                      onTransition(task, branch.label, branch.action);
+                      onTransition(task, branch.label, branch.action, notes);
                     }}
                     className={`w-full py-3 rounded-xl text-sm font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${getColorClass(branch.color)} flex items-center justify-center gap-2`}
                   >
