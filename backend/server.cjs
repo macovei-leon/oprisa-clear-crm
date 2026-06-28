@@ -8,6 +8,7 @@ const fs = require('fs');
 const ws = require('ws');
 const cron = require('node-cron');
 const { runDailyEmailJob, processEmailQueue, sendSingleTestEmail } = require('./email_service.cjs');
+const { processTimelineData } = require('./timeline_processor.cjs');
 const multer = require('multer');
 
 // Configure multer for PDF uploads
@@ -367,15 +368,69 @@ app.get('/api/admin/cron-status', (req, res) => {
 });
 
 app.get('/api/admin/tables', async (req, res) => {
-    // For now return a hardcoded list or fetch from DB if we had a metadata table.
-    // Returning the list expected by the UI.
-    res.json([
-        { table_name: 'drivers', title_ro: 'Șoferi Activi' },
-        { table_name: 'driver_attendance', title_ro: 'Prezență Zilnică' },
-        { table_name: 'driver_timeline_activities', title_ro: 'Activități și Concedii' },
-        { table_name: 'driver_forecast', title_ro: 'Forecast' },
-        { table_name: 'driver_availability', title_ro: 'Disponibilitate' }
-    ]);
+    try {
+        const { data, error } = await supabase.from('custom_tables').select('table_name, title_ro').order('created_at', { ascending: false });
+        if (error) throw error;
+        res.json(data || []);
+    } catch (err) {
+        console.error('Error fetching custom tables:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch tables' });
+    }
+});
+
+const uploadJson = multer({
+    storage: multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, uploadDir);
+        },
+        filename: function (req, file, cb) {
+            cb(null, 'timeline_' + Date.now() + '.json');
+        }
+    }),
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/json') {
+            cb(null, true);
+        } else {
+            cb(new Error('Only JSON files are allowed'));
+        }
+    }
+});
+
+app.post('/api/admin/process-timeline', uploadJson.single('jsonFile'), async (req, res) => {
+    try {
+        const tableName = req.body.tableName;
+        const jsonFilePath = req.file?.path;
+        
+        if (!tableName || !jsonFilePath) {
+            return res.status(400).json({ success: false, message: 'Missing table name or JSON file' });
+        }
+
+        // Fetch driver data from the selected table
+        const { data: supabaseData, error } = await supabase.from(tableName).select('*');
+        if (error) {
+            throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
+        }
+
+        // Process timeline data
+        const allDriversResult = await processTimelineData(jsonFilePath, supabaseData);
+
+        // Save result to driver_timeline_data
+        const { error: upsertError } = await supabase
+            .from('driver_timeline_data')
+            .upsert({ id: 'default', data: allDriversResult });
+
+        if (upsertError) {
+            throw new Error(`Failed to save timeline data: ${upsertError.message}`);
+        }
+        
+        // Clean up the uploaded JSON file
+        fs.unlinkSync(jsonFilePath);
+
+        res.json({ success: true, message: 'Timeline processed successfully!' });
+    } catch (err) {
+        console.error('Timeline process error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 app.get('/api/admin/email-status', async (req, res) => {
