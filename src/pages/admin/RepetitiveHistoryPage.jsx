@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { MainLayout } from '../../components/layout/MainLayout';
-import { Calendar as CalendarIcon, Users, Activity, BarChart, CheckCircle2, Clock, MessageSquare, List } from 'lucide-react';
+import { Calendar as CalendarIcon, Users, Activity, BarChart, CheckCircle2, Clock, MessageSquare, List, FolderClosed } from 'lucide-react';
 import { CardTimelineModal } from '../../components/admin/CardTimelineModal';
+import { RepetitiveKanbanSnapshotModal } from '../../components/admin/RepetitiveKanbanSnapshotModal';
 
 export const RepetitiveHistoryPage = () => {
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -16,6 +17,7 @@ export const RepetitiveHistoryPage = () => {
   const [flows, setFlows] = useState([]);
   const [selectedFlowId, setSelectedFlowId] = useState('all');
   const [selectedTimelineTaskId, setSelectedTimelineTaskId] = useState(null);
+  const [showSnapshotModal, setShowSnapshotModal] = useState(false);
 
   useEffect(() => {
     fetchFlows();
@@ -134,16 +136,27 @@ export const RepetitiveHistoryPage = () => {
           
           <div className="flex flex-col">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Filtru Flux</label>
-            <select 
-              value={selectedFlowId}
-              onChange={e => setSelectedFlowId(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all min-w-[200px]"
-            >
-              <option value="all">Toate Fluxurile</option>
-              {flows.map(f => (
-                <option key={f.id} value={f.id}>{f.name}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select 
+                value={selectedFlowId}
+                onChange={e => setSelectedFlowId(e.target.value)}
+                className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all min-w-[200px]"
+              >
+                <option value="all">Toate Fluxurile</option>
+                {flows.map(f => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+              {selectedFlowId !== 'all' && (
+                <button
+                  onClick={() => setShowSnapshotModal(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                  title="Vezi stadiul kanban din această zi"
+                >
+                  <FolderClosed size={16} /> Snapshot Kanban
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -302,6 +315,15 @@ export const RepetitiveHistoryPage = () => {
         <CardTimelineModal 
           taskId={selectedTimelineTaskId} 
           onClose={() => setSelectedTimelineTaskId(null)} 
+        />
+      )}
+
+      {showSnapshotModal && selectedFlowId !== 'all' && (
+        <RepetitiveKanbanSnapshotModal
+          flow={flows.find(f => f.id === selectedFlowId)}
+          historyData={historyData}
+          selectedDate={selectedDate}
+          onClose={() => setShowSnapshotModal(false)}
         />
       )}
     </MainLayout>
