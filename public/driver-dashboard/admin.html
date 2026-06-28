@@ -490,7 +490,7 @@
                 
                 // Fetch currently active table
                 try {
-                    const activeRes = await fetch('./active_table.json');
+                    const activeRes = await fetch('/api/admin/active-table');
                     if (activeRes.ok) {
                         const activeData = await activeRes.json();
                         if (activeData && activeData.tableName) {

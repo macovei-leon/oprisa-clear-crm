@@ -377,7 +377,7 @@
 
                 // Fetch active table to display in header
                 try {
-                    const activeRes = await fetch('./active_table.json');
+                    const activeRes = await fetch('/api/admin/active-table');
                     if (activeRes.ok) {
                         const activeData = await activeRes.json();
                         if (activeData && activeData.tableName) {
@@ -388,8 +388,8 @@
                     }
                 } catch(e) {}
 
-                // Load assigned data from local JSON file
-                const res = await fetch('./timeline_data.json');
+                // Load assigned data from backend API
+                const res = await fetch('/api/admin/timeline-data');
                 const contentType = res.headers.get('content-type');
                 if (!res.ok || !contentType || !contentType.includes('application/json')) {
                     console.warn('Timeline data not found locally or invalid format. Using empty data.');

@@ -468,6 +468,32 @@ app.post('/api/admin/set-table', async (req, res) => {
     }
 });
 
+app.get('/api/admin/active-table', (req, res) => {
+    try {
+        const activeTablePath = path.join(__dirname, '../public/driver-dashboard/active_table.json');
+        if (fs.existsSync(activeTablePath)) {
+            const tableData = JSON.parse(fs.readFileSync(activeTablePath, 'utf8'));
+            return res.json({ tableName: tableData.tableName || 'angajati' });
+        }
+        res.json({ tableName: 'angajati' });
+    } catch (e) {
+        res.json({ tableName: 'angajati' });
+    }
+});
+
+app.get('/api/admin/timeline-data', (req, res) => {
+    try {
+        const outputFilePath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json');
+        if (fs.existsSync(outputFilePath)) {
+            const data = JSON.parse(fs.readFileSync(outputFilePath, 'utf8'));
+            return res.json(data);
+        }
+        res.json([]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/api/admin/email-status', async (req, res) => {
     try {
         const todayStr = new Date().toISOString().split('T')[0];
