@@ -134,6 +134,22 @@ async function runDailyEmailJob(overrideCategories = null) {
             return true;
         });
 
+        // Automatically inject test drivers if 'Test' category is active
+        if (targetCategories.includes('Test')) {
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const testFilePath = path.resolve(__dirname, '../test_timeline.json');
+                if (fs.existsSync(testFilePath)) {
+                    const testDriversRaw = JSON.parse(fs.readFileSync(testFilePath, 'utf8'));
+                    const testDrivers = Array.isArray(testDriversRaw) ? testDriversRaw : (testDriversRaw.drivers || []);
+                    targets.push(...testDrivers.filter(d => d.status === 'Test'));
+                }
+            } catch (err) {
+                console.error("Error injecting test drivers:", err);
+            }
+        }
+
         const todayStr = new Date().toISOString().split('T')[0];
         const { data: logsData, error: lErr } = await supabase.from('driver_email_logs')
             .select('driver_pn')
