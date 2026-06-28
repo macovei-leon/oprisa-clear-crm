@@ -117,7 +117,7 @@ async function runDailyEmailJob(overrideCategories = null) {
         const drivers = await getTimelineDrivers();
         if (!drivers || drivers.length === 0) {
             console.log('[Email Queue] Data file not found or empty. Aborting.');
-            return;
+            return { success: false, message: 'Data file not found or empty.' };
         }
 
         const { data: settings } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
@@ -153,7 +153,7 @@ async function runDailyEmailJob(overrideCategories = null) {
 
         if (validTargets.length === 0) {
             console.log('[Email Queue] No valid targets to queue today.');
-            return;
+            return { success: false, message: `No valid targets to queue today. Checked ${targets.length} drivers, but ${targets.length - validTargets.length} were already emailed or lacked emails.` };
         }
 
         // Create batch
@@ -180,8 +180,11 @@ async function runDailyEmailJob(overrideCategories = null) {
         
         // Immediately try to process the queue
         processEmailQueue();
+        
+        return { success: true, message: `Created batch ${batchData.id} with ${queueEntries.length} emails queued.` };
     } catch (error) {
         console.error('[Email Queue] Error queuing emails:', error);
+        return { success: false, message: 'Error queuing emails: ' + error.message };
     }
 }
 

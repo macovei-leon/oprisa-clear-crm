@@ -848,8 +848,11 @@
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ categories })
         });
+        const data = await res.json();
+        
         if (res.ok) {
-            alert('Triggered! Emails have been added to the pending queue and will process momentarily.');
+            const resultMsg = data.result && data.result.message ? data.result.message : 'Job triggered.';
+            alert('Automation Test Result:\n\n' + resultMsg);
             loadBatches();
             loadQueue();
         }

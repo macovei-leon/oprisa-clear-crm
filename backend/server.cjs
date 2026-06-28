@@ -589,7 +589,10 @@ app.put('/api/admin/email-settings', async (req, res) => {
         pn_range_end: pn_range_end || null,
         allowed_categories: allowed_categories || ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent']
     }]);
-    if (error) return res.status(500).json({ error: 'Database error' });
+    if (error) {
+        console.error("Supabase Error on email-settings PUT:", error);
+        return res.status(500).json({ error: 'Database error', details: error.message });
+    }
     setupEmailCron(); // Reload cron
     res.json({ success: true });
 });
@@ -700,8 +703,8 @@ app.post('/api/admin/email-templates/:category/pdf-config', async (req, res) => 
 app.post('/api/admin/test-email', async (req, res) => {
     const { categories } = req.body || {};
     // Manually trigger the job immediately for testing
-    runDailyEmailJob(categories);
-    res.json({ success: true, message: 'Email job triggered in background' });
+    const result = await runDailyEmailJob(categories);
+    res.json({ success: true, message: 'Email job triggered in background', result });
 });
 
 app.post('/api/admin/send-single-test', async (req, res) => {
