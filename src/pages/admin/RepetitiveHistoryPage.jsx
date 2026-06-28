@@ -29,7 +29,7 @@ export const RepetitiveHistoryPage = () => {
 
   const fetchFlows = async () => {
     try {
-      const { data, error } = await supabase.from('crm_repetitive_flows').select('id, name').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('crm_repetitive_flows').select('id, name, steps').order('created_at', { ascending: false });
       if (error) throw error;
       setFlows(data || []);
     } catch (err) {
