@@ -396,13 +396,23 @@ const uploadJson = multer({
     }
 });
 
-app.post('/api/admin/process-timeline', uploadJson.single('jsonFile'), async (req, res) => {
+app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req, res) => {
     try {
-        const tableName = req.body.tableName;
         const jsonFilePath = req.file?.path;
-        
-        if (!tableName || !jsonFilePath) {
-            return res.status(400).json({ success: false, message: 'Missing table name or JSON file' });
+        if (!jsonFilePath) {
+            return res.status(400).json({ success: false, message: 'Missing JSON file' });
+        }
+
+        // Save as raw_timeline.json
+        const rawFilePath = path.join(__dirname, 'raw_timeline.json');
+        fs.copyFileSync(jsonFilePath, rawFilePath);
+
+        // Get active table
+        const activeTablePath = path.join(__dirname, '../public/driver-dashboard/active_table.json');
+        let tableName = 'angajati';
+        if (fs.existsSync(activeTablePath)) {
+            const tableData = JSON.parse(fs.readFileSync(activeTablePath, 'utf8'));
+            tableName = tableData.tableName || 'angajati';
         }
 
         // Fetch driver data from the selected table
@@ -412,18 +422,48 @@ app.post('/api/admin/process-timeline', uploadJson.single('jsonFile'), async (re
         }
 
         // Process timeline data
-        const allDriversResult = await processTimelineData(jsonFilePath, supabaseData);
+        const allDriversResult = await processTimelineData(rawFilePath, supabaseData);
 
-        // Save result locally to public/driver-dashboard/timeline_data.json
+        // Save result locally
         const outputFilePath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json');
         fs.writeFileSync(outputFilePath, JSON.stringify(allDriversResult, null, 2), 'utf8');
         
-        // Clean up the uploaded JSON file
         fs.unlinkSync(jsonFilePath);
 
-        res.json({ success: true, message: 'Timeline processed successfully!' });
+        res.json({ success: true, message: 'Timeline uploaded and processed successfully!' });
     } catch (err) {
-        console.error('Timeline process error:', err);
+        console.error('Timeline upload error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/admin/set-table', async (req, res) => {
+    try {
+        const tableName = req.body.tableName;
+        if (!tableName) {
+            return res.status(400).json({ success: false, message: 'Missing table name' });
+        }
+
+        // Save active table
+        const activeTablePath = path.join(__dirname, '../public/driver-dashboard/active_table.json');
+        fs.writeFileSync(activeTablePath, JSON.stringify({ tableName }), 'utf8');
+
+        // Re-process if raw_timeline.json exists
+        const rawFilePath = path.join(__dirname, 'raw_timeline.json');
+        if (fs.existsSync(rawFilePath)) {
+            const { data: supabaseData, error } = await supabase.from(tableName).select('*');
+            if (error) throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
+
+            const allDriversResult = await processTimelineData(rawFilePath, supabaseData);
+            const outputFilePath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json');
+            fs.writeFileSync(outputFilePath, JSON.stringify(allDriversResult, null, 2), 'utf8');
+            
+            return res.json({ success: true, message: 'Table updated and data re-processed!' });
+        }
+
+        res.json({ success: true, message: 'Table updated, but no timeline data to process yet.' });
+    } catch (err) {
+        console.error('Set table error:', err);
         res.status(500).json({ success: false, message: err.message });
     }
 });

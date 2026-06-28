@@ -111,16 +111,26 @@
                     <h2 class="text-xl font-bold">Data Processing</h2>
                 </div>
                 
-                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                    <form id="timeline-process-form" class="space-y-5">
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200 mb-6">
+                    <form id="table-select-form" class="space-y-4">
                         <div>
                             <label class="label-text">Driver Info Table (Supabase)</label>
-                            <select id="driver-table-name" class="form-input">
-                                <option value="">Loading tables...</option>
-                            </select>
-                            <p class="text-xs text-slate-500 mt-1">Select the table that contains employee contacts.</p>
+                            <div class="flex gap-2">
+                                <select id="driver-table-name" class="form-input flex-1">
+                                    <option value="">Loading tables...</option>
+                                </select>
+                                <button type="submit" id="btn-set-table" class="btn btn-primary whitespace-nowrap">
+                                    <i class="fa-solid fa-save"></i> Set Active
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">Select the table that contains employee contacts. Setting this will automatically update the dashboard data.</p>
                         </div>
-                        
+                        <div id="table-status" class="text-sm hidden p-3 rounded-lg border"></div>
+                    </form>
+                </div>
+                
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                    <form id="timeline-upload-form" class="space-y-5">
                         <div>
                             <label class="label-text">Raw JSON Tracking File</label>
                             <div class="border-2 border-dashed border-indigo-200 rounded-lg p-4 bg-white text-center hover:bg-indigo-50 transition-colors relative">
@@ -132,9 +142,9 @@
                         </div>
 
                         <button type="submit" id="btn-process-timeline" class="btn btn-warning w-full">
-                            <i class="fa-solid fa-gears"></i> Process Timeline Data
+                            <i class="fa-solid fa-gears"></i> Upload & Process Timeline
                         </button>
-                        <div id="process-status" class="text-sm mt-3 hidden p-3 rounded-lg bg-white border border-slate-200"></div>
+                        <div id="process-status" class="text-sm mt-3 hidden p-3 rounded-lg border"></div>
                     </form>
                 </div>
             </div>
@@ -477,6 +487,18 @@
                     opt.textContent = `${t.title_ro} (${t.table_name})`;
                     select.appendChild(opt);
                 });
+                
+                // Fetch currently active table
+                try {
+                    const activeRes = await fetch('./active_table.json');
+                    if (activeRes.ok) {
+                        const activeData = await activeRes.json();
+                        if (activeData && activeData.tableName) {
+                            select.value = activeData.tableName;
+                        }
+                    }
+                } catch(e) {}
+                
             } else {
                 select.innerHTML += '<option value="angajati">Angajati (Fallback)</option>';
             }
@@ -487,31 +509,69 @@
         }
     }
 
-    // Processing Form Submission
-    document.getElementById('timeline-process-form').addEventListener('submit', async (e) => {
+    // Table Select Form Submission
+    document.getElementById('table-select-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const fileInput = document.getElementById('timeline-json-file');
         const tableName = document.getElementById('driver-table-name').value;
-        const statusEl = document.getElementById('process-status');
+        const statusEl = document.getElementById('table-status');
         
         if (!tableName) return alert('Please select a driver database table.');
+        
+        statusEl.style.display = 'block';
+        statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200";
+        statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Setting active table...';
+        
+        const btn = document.getElementById('btn-set-table');
+        btn.disabled = true;
+        btn.classList.add('opacity-70');
+        
+        try {
+            const res = await fetch('/api/admin/set-table', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tableName })
+            });
+            const __txt_ = await res.text(); if(__txt_.trim().startsWith('<')) throw new Error("API not accessible. Are you behind a proxy?"); const data = JSON.parse(__txt_);
+            
+            if (res.ok && data.success) {
+                statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium";
+                statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i> ' + data.message;
+            } else {
+                statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200";
+                statusEl.textContent = data.message || 'Error occurred';
+            }
+        } catch (err) {
+            statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200";
+            statusEl.textContent = 'Connection error: ' + err.message;
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('opacity-70');
+            setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
+        }
+    });
+
+    // File Upload Form Submission
+    document.getElementById('timeline-upload-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fileInput = document.getElementById('timeline-json-file');
+        const statusEl = document.getElementById('process-status');
+        
         if (!fileInput.files.length) return alert('Please select the raw JSON data file to upload.');
         
         const formData = new FormData();
         formData.append('jsonFile', fileInput.files[0]);
-        formData.append('tableName', tableName);
         
         statusEl.style.display = 'block';
         statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200";
-        statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Uploading & Processing... (This might take a minute)';
+        statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Uploading & Processing...';
         
         const btn = document.getElementById('btn-process-timeline');
         btn.disabled = true;
         btn.classList.add('opacity-70');
         
         try {
-            const res = await fetch('/api/admin/process-timeline', { method: 'POST', body: formData });
-            const __txt_ = await res.text(); if(__txt_.trim().startsWith('<')) return; const data = JSON.parse(__txt_);
+            const res = await fetch('/api/admin/upload-timeline', { method: 'POST', body: formData });
+            const __txt_ = await res.text(); if(__txt_.trim().startsWith('<')) throw new Error("API not accessible. Are you behind a proxy?"); const data = JSON.parse(__txt_);
             if (res.ok && data.success) {
                 statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium";
                 statusEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i> ' + data.message;
@@ -519,14 +579,15 @@
                 document.getElementById('file-name-display').textContent = 'No file selected';
             } else {
                 statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200";
-                statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Error: ' + (data.error || 'Unknown error');
+                statusEl.textContent = data.message || 'Error occurred';
             }
         } catch (err) {
             statusEl.className = "text-sm mt-3 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200";
-            statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> Exception: ' + err.message;
+            statusEl.textContent = 'Connection error: ' + err.message;
         } finally {
             btn.disabled = false;
             btn.classList.remove('opacity-70');
+            setTimeout(() => { statusEl.style.display = 'none'; }, 8000);
         }
     });
 

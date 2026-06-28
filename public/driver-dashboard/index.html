@@ -23,7 +23,10 @@
         <header>
             <div class="header-title">
                 <h1>Driver Absence Timeline Dashboard</h1>
-                <p>Specific timelines of shift hours vs. worked activity (Last 5 Days)</p>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <p>Specific timelines of shift hours vs. worked activity (Last 5 Days)</p>
+                    <span id="active-table-badge" style="background: rgba(99, 102, 241, 0.15); color: var(--accent-indigo); padding: 0.15rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; border: 1px solid rgba(99, 102, 241, 0.3); display: none;">Source: -</span>
+                </div>
             </div>
             <div class="quick-actions">
                 <button id="btn-admin-panel" class="sort-btn" style="color:var(--accent-amber);" onclick="window.location.href='./admin.html'">
@@ -371,6 +374,19 @@
                         }
                     });
                 }
+
+                // Fetch active table to display in header
+                try {
+                    const activeRes = await fetch('./active_table.json');
+                    if (activeRes.ok) {
+                        const activeData = await activeRes.json();
+                        if (activeData && activeData.tableName) {
+                            const badge = document.getElementById('active-table-badge');
+                            badge.textContent = 'Source: ' + activeData.tableName;
+                            badge.style.display = 'inline-block';
+                        }
+                    }
+                } catch(e) {}
 
                 // Load assigned data from local JSON file
                 const res = await fetch('./timeline_data.json');
