@@ -53,6 +53,10 @@ export const TableViewer = () => {
   const fetchTableData = async () => {
     setLoading(true);
     try {
+      if (!/^[a-z0-9_]+$/.test(tableName)) {
+        throw new Error("Tabel invalid. Numele poate conține doar litere mici, cifre și underscore (_).");
+      }
+
       // 1. Fetch Schema to get true columns
       const { data: schemaCols, error: schemaErr } = await supabase.rpc('get_table_columns', { p_table_name: tableName });
       if (schemaErr) throw schemaErr;
