@@ -87,12 +87,18 @@ async function getTimelineDrivers() {
     try {
         const { data, error } = await supabase.from('dashboard_settings').select('timeline_file_path').eq('id', 1).maybeSingle();
         if (!error && data && data.timeline_file_path) {
+            let parsedData = null;
             if (data.timeline_file_path.startsWith('http')) {
                 const fetchRes = await fetch(data.timeline_file_path);
-                if (fetchRes.ok) return await fetchRes.json();
+                if (fetchRes.ok) parsedData = await fetchRes.json();
             } else {
                 let targetPath = path.isAbsolute(data.timeline_file_path) ? data.timeline_file_path : path.resolve(__dirname, data.timeline_file_path);
-                if (fs.existsSync(targetPath)) return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+                if (fs.existsSync(targetPath)) parsedData = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+            }
+            
+            if (parsedData) {
+                if (!Array.isArray(parsedData) && parsedData.drivers) return parsedData.drivers;
+                return Array.isArray(parsedData) ? parsedData : [];
             }
         }
         return [];
