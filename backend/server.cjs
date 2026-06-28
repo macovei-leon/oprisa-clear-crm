@@ -58,8 +58,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 
 // Create default admin on startup
