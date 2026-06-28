@@ -286,17 +286,11 @@ async function processTimelineData(jsonFilePath, supabaseData) {
         const m23 = missedShifts.some(m => m.day === 23 && m.violationType === 'Missed Shift');
         const missedThreeDaysInARow = (m19 && m20 && m21) || (m20 && m21 && m22) || (m21 && m22 && m23);
 
-        let phone = sofer.telefon || '';
-        let email = sofer.email || '';
+        let phone = '';
+        let email = '';
         let companies = [];
         let cities = [];
-        let contractType = sofer.tipContract || '';
-        
-        if (sofer.ture && sofer.ture.length > 0) {
-            const firstTura = sofer.ture[0];
-            if (!contractType && firstTura.tipContract) contractType = firstTura.tipContract;
-            if (firstTura.oras) cities.push(firstTura.oras);
-        }
+        let contractType = '';
 
         const normalizedDriverName = normalizeName(name);
         let matchedInfo = null;
@@ -304,8 +298,8 @@ async function processTimelineData(jsonFilePath, supabaseData) {
         else if (normalizedDriverName && excelMapByName.has(normalizedDriverName)) matchedInfo = excelMapByName.get(normalizedDriverName);
 
         if (matchedInfo) {
-            if (matchedInfo.phone) phone = matchedInfo.phone;
-            if (matchedInfo.email) email = matchedInfo.email;
+            phone = matchedInfo.phone;
+            email = matchedInfo.email;
             if (matchedInfo.company) companies = [matchedInfo.company];
             if (matchedInfo.city) cities = [matchedInfo.city];
             if (matchedInfo.contractType) contractType = matchedInfo.contractType;
