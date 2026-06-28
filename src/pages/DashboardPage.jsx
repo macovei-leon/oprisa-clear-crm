@@ -34,7 +34,6 @@ export const DashboardPage = () => {
       // 1. Fetch normal campaigns and their tasks
       let taskQuery = supabase.from('crm_tasks').select(`
         id, campaign_id, completed, category, assigned_to,
-        profiles:assigned_to ( name, email ),
         crm_campaigns:campaign_id ( name )
       `);
 

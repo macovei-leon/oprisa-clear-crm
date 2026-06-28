@@ -39,11 +39,9 @@ export const RepetitiveHistoryPage = () => {
       let query = supabase
         .from('crm_repetitive_history')
         .select(`
-          id,
-          category,
+          id, category, subcategory, repetitive_flow_id, 
           completed_date,
           worker_id,
-          profiles:worker_id ( id, name, email ),
           flow:repetitive_flow_id ( id, name )
         `)
         .eq('completed_date', selectedDate);

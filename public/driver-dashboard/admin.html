@@ -321,6 +321,9 @@
                             <i class="fa-solid fa-list text-lg"></i>
                         </div>
                         <h2 class="text-xl font-bold">Email Logs & Queue Status</h2>
+                        <div id="cron-status-badge" class="ml-3 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1.5" title="Automation Job Status">
+                            <div class="w-2 h-2 rounded-full bg-slate-400"></div> Loading...
+                        </div>
                     </div>
                     <button onclick="loadLogs()" class="btn btn-secondary py-1.5 px-3 text-sm">
                         <i class="fa-solid fa-rotate-right"></i> Refresh Logs
@@ -372,11 +375,13 @@
             loadEmailTemplates();
             loadQueueStatus();
             loadLogs();
+            loadCronStatus();
             
             // Poll queue status & logs every 10 seconds
             statusInterval = setInterval(() => {
                 loadQueueStatus();
                 loadLogs();
+                loadCronStatus();
             }, 10000);
             
             const res = await fetch('/api/admin/email-settings');
@@ -393,6 +398,29 @@
             }
         } catch (e) {
             console.error(e);
+        }
+    }
+
+    async function loadCronStatus() {
+        try {
+            const res = await fetch('/api/admin/cron-status');
+            const badge = document.getElementById('cron-status-badge');
+            if (res.ok) {
+                const text = await res.text();
+                if(text.trim().startsWith('<')) return;
+                const status = JSON.parse(text);
+                if (status.dailyJobRunning) {
+                    badge.innerHTML = '<div class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div> <span class="text-emerald-700">Running</span>';
+                    badge.className = "ml-3 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 border border-emerald-200 flex items-center gap-1.5";
+                } else {
+                    badge.innerHTML = '<div class="w-2 h-2 rounded-full bg-slate-400"></div> <span class="text-slate-600">Stopped</span>';
+                    badge.className = "ml-3 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-50 border border-slate-200 flex items-center gap-1.5";
+                }
+            } else {
+                badge.innerHTML = '<div class="w-2 h-2 rounded-full bg-rose-500"></div> <span class="text-rose-700">Offline</span>';
+            }
+        } catch(e) {
+            document.getElementById('cron-status-badge').innerHTML = '<div class="w-2 h-2 rounded-full bg-rose-500"></div> <span class="text-rose-700">Offline</span>';
         }
     }
 
@@ -660,21 +688,24 @@
                     
                     return `
                     <tr class="bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-3 whitespace-nowrap text-xs">\${timeStr}</td>
-                        <td class="px-6 py-3 font-medium text-slate-800">\${l.driver_pn || 'N/A'}</td>
-                        <td class="px-6 py-3">\${l.email || 'N/A'}</td>
-                        <td class="px-6 py-3">\${l.category || 'N/A'}</td>
+                        <td class="px-6 py-3 whitespace-nowrap text-xs">${timeStr}</td>
+                        <td class="px-6 py-3 font-medium text-slate-800">${l.driver_pn || 'N/A'}</td>
+                        <td class="px-6 py-3">${l.email || 'N/A'}</td>
+                        <td class="px-6 py-3">${l.category || 'N/A'}</td>
                         <td class="px-6 py-3">
-                            <span class="px-2 py-1 rounded text-xs \${statusClass}">
-                                \${icon} \${l.status || 'N/A'}
+                            <span class="px-2 py-1 rounded text-xs ${statusClass}">
+                                ${icon} ${l.status || 'N/A'}
                             </span>
                         </td>
                     </tr>
                     `;
                 }).join('');
+            } else {
+                document.getElementById('logs-table-body').innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-rose-500">Error loading logs. API may be down.</td></tr>';
             }
         } catch (e) {
-            console.error("Failed to load logs");
+            document.getElementById('logs-table-body').innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-rose-500">Failed to connect to backend.</td></tr>';
+            console.error("Failed to load logs", e);
         }
     }
 

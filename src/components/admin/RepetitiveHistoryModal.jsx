@@ -18,8 +18,7 @@ export const RepetitiveHistoryModal = ({ flow, onClose }) => {
         .from('crm_repetitive_history')
         .select(`
           category,
-          worker_id,
-          profiles:worker_id (name, email)
+          worker_id
         `)
         .eq('repetitive_flow_id', flow.id)
         .eq('completed_date', date);

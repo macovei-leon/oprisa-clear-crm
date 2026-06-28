@@ -358,6 +358,14 @@ async function setupEmailCron() {
 }
 setupEmailCron();
 
+app.get('/api/admin/cron-status', (req, res) => {
+    res.json({
+        queueProcessorRunning: !!queueProcessorTask,
+        dailyJobRunning: !!emailCronTask,
+        serverTime: new Date().toISOString()
+    });
+});
+
 app.get('/api/admin/tables', async (req, res) => {
     // For now return a hardcoded list or fetch from DB if we had a metadata table.
     // Returning the list expected by the UI.
@@ -528,7 +536,11 @@ app.get('/api/proxy/:endpoint', async (req, res) => {
 
     const targetUrl = urlMap[endpoint];
     if (!targetUrl) {
-        // Return dummy data if not configured
+        if (endpoint === 'status') {
+            const { data, error } = await supabase.from('drivers').select('*');
+            if (error) return res.json({ data: [], _warning: "DB Fetch Error: " + error.message });
+            return res.json({ data: data || [], _warning: "API not configured. Falling back to Supabase DB." });
+        }
         return res.json({ data: [], _warning: "Endpoint not configured in .env" });
     }
 
@@ -544,7 +556,9 @@ app.get('/api/proxy/:endpoint', async (req, res) => {
 app.get('/api/state', async (req, res) => {
     const targetUrl = process.env.STATE_API_URL || '';
     if (!targetUrl) {
-        return res.json({ drivers: [], _warning: "State API not configured" });
+        const { data, error } = await supabase.from('drivers').select('*');
+        if (error) return res.json({ drivers: [], _warning: "DB Fetch Error: " + error.message });
+        return res.json({ drivers: data || [], _warning: "State API not configured. Falling back to Supabase DB." });
     }
 
     try {
