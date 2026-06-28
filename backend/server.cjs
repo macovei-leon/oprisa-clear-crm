@@ -365,6 +365,7 @@ app.get('/api/admin/tables', async (req, res) => {
 
 const uploadJson = multer({
     storage: multer.memoryStorage(),
+    limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB
     fileFilter: (req, file, cb) => {
         if (file.mimetype === 'application/json') {
             cb(null, true);
@@ -381,20 +382,21 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
         }
         const jsonFileBuffer = req.file.buffer;
 
-        // Upload RAW JSON to Supabase Storage
+        // Ensure local uploads directory exists
+        const uploadsDir = path.join(__dirname, '../public/uploads');
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+        // Save RAW JSON locally
         const rawFileName = 'raw_timeline.json';
-        const { error: rawUploadError } = await supabase.storage
-            .from('crm-attachments')
-            .upload(rawFileName, jsonFileBuffer, { contentType: 'application/json', upsert: true });
-            
-        if (rawUploadError) throw new Error(`Raw upload failed: ${rawUploadError.message}`);
-        const rawPublicUrl = supabase.storage.from('crm-attachments').getPublicUrl(rawFileName).data.publicUrl;
+        const rawFilePathAbsolute = path.join(uploadsDir, rawFileName);
+        fs.writeFileSync(rawFilePathAbsolute, jsonFileBuffer);
+        const rawFilePath = '../public/uploads/' + rawFileName;
 
         // Fetch active table
         const { data: settingsData } = await supabase.from('dashboard_settings').select('active_table').eq('id', 1).single();
         const tableName = settingsData?.active_table || 'angajati';
 
-        // Fetch driver data from the selected table (paginate to get ALL rows, beyond 1000 limit)
+        // Fetch driver data from the selected table
         let supabaseData = [];
         let page = 0;
         const pageSize = 1000;
@@ -409,22 +411,18 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
         // Process timeline data
         const allDriversResult = await processTimelineData(jsonFileBuffer, supabaseData);
 
-        // Upload processed JSON to Supabase Storage
+        // Save processed JSON locally
         const processedFileName = 'processed_timeline.json';
-        const processedBuffer = Buffer.from(JSON.stringify(allDriversResult, null, 2), 'utf8');
-        const { error: procUploadError } = await supabase.storage
-            .from('crm-attachments')
-            .upload(processedFileName, processedBuffer, { contentType: 'application/json', upsert: true });
+        const processedFilePathAbsolute = path.join(uploadsDir, processedFileName);
+        fs.writeFileSync(processedFilePathAbsolute, JSON.stringify(allDriversResult, null, 2), 'utf8');
+        const processedFilePath = '../public/uploads/' + processedFileName;
 
-        if (procUploadError) throw new Error(`Processed upload failed: ${procUploadError.message}`);
-        const processedPublicUrl = supabase.storage.from('crm-attachments').getPublicUrl(processedFileName).data.publicUrl;
-
-        // Update dashboard_settings with paths
+        // Update dashboard_settings with local paths
         await supabase.from('dashboard_settings').upsert({
             id: 1,
             active_table: tableName,
-            raw_file_path: rawPublicUrl,
-            timeline_file_path: processedPublicUrl,
+            raw_file_path: rawFilePath,
+            timeline_file_path: processedFilePath,
             updated_at: new Date().toISOString()
         });
         
@@ -445,7 +443,14 @@ app.post('/api/admin/set-table', async (req, res) => {
         // Get existing paths
         const { data: settingsData } = await supabase.from('dashboard_settings').select('*').eq('id', 1).maybeSingle();
         
-        if (settingsData && settingsData.raw_file_path && fs.existsSync(settingsData.raw_file_path)) {
+        let rawFilePathAbsolute = null;
+        if (settingsData && settingsData.raw_file_path) {
+            if (!settingsData.raw_file_path.startsWith('http')) {
+                rawFilePathAbsolute = path.resolve(__dirname, settingsData.raw_file_path);
+            }
+        }
+        
+        if (rawFilePathAbsolute && fs.existsSync(rawFilePathAbsolute)) {
             let supabaseData = [];
             let page = 0;
             const pageSize = 1000;
@@ -457,19 +462,18 @@ app.post('/api/admin/set-table', async (req, res) => {
                 page++;
             }
 
-            const allDriversResult = await processTimelineData(settingsData.raw_file_path, supabaseData);
+            const allDriversResult = await processTimelineData(rawFilePathAbsolute, supabaseData);
             
             const processedFileName = 'processed_timeline.json';
-            const processedBuffer = Buffer.from(JSON.stringify(allDriversResult, null, 2), 'utf8');
-            const { error: procUploadError } = await supabase.storage.from('crm-attachments').upload(processedFileName, processedBuffer, { contentType: 'application/json', upsert: true });
-            if (procUploadError) throw new Error(`Processed upload failed: ${procUploadError.message}`);
-            const processedPublicUrl = supabase.storage.from('crm-attachments').getPublicUrl(processedFileName).data.publicUrl;
+            const processedFilePathAbsolute = path.join(__dirname, '../public/uploads', processedFileName);
+            fs.writeFileSync(processedFilePathAbsolute, JSON.stringify(allDriversResult, null, 2), 'utf8');
+            const processedFilePath = '../public/uploads/' + processedFileName;
             
             await supabase.from('dashboard_settings').upsert({
                 id: 1,
                 active_table: tableName,
                 raw_file_path: settingsData.raw_file_path,
-                timeline_file_path: processedPublicUrl,
+                timeline_file_path: processedFilePath,
                 updated_at: new Date().toISOString()
             });
             
@@ -501,12 +505,15 @@ app.get('/api/admin/active-table', async (req, res) => {
                 name: 'raw_timeline.json (Supabase)',
                 updated_at: data.updated_at
             };
-        } else if (data.raw_file_path && fs.existsSync(data.raw_file_path)) {
-            const stats = fs.statSync(data.raw_file_path);
-            fileInfo = {
-                name: path.basename(data.raw_file_path),
-                updated_at: data.updated_at || stats.mtime
-            };
+        } else if (data.raw_file_path) {
+            const rawFilePathAbsolute = path.resolve(__dirname, data.raw_file_path);
+            if (fs.existsSync(rawFilePathAbsolute)) {
+                const stats = fs.statSync(rawFilePathAbsolute);
+                fileInfo = {
+                    name: path.basename(rawFilePathAbsolute),
+                    updated_at: data.updated_at || stats.mtime
+                };
+            }
         }
         res.json({ tableName: data.active_table, fileInfo });
     } catch (e) {
