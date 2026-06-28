@@ -644,6 +644,14 @@ app.post('/api/admin/automation-batches/:id/resume', async (req, res) => {
     res.json({ success: true });
 });
 
+app.delete('/api/admin/automation-batches/:id', async (req, res) => {
+    const { id } = req.params;
+    // driver_email_queue items will be deleted automatically due to ON DELETE CASCADE
+    const { error } = await supabase.from('driver_email_batches').delete().eq('id', id);
+    if (error) return res.status(500).json({ error: 'Database error', details: error.message });
+    res.json({ success: true });
+});
+
 app.post('/api/admin/email-templates/:category/attachment', upload.single('pdf'), async (req, res) => {
     if (!req.file || !req.file.buffer) return res.status(400).json({ error: 'Missing PDF file' });
     const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
