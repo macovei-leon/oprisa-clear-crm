@@ -328,16 +328,16 @@ async function setupEmailCron() {
     // Always start the queue processor (every 5 minutes)
     queueProcessorTask = cron.schedule('*/5 * * * *', () => {
         processEmailQueue();
-    });
-    console.log('[Email Queue] Processor scheduled every 5 minutes.');
+    }, { timezone: "Europe/Berlin" });
+    console.log('[Email Queue] Processor scheduled every 5 minutes (Europe/Berlin).');
 
     if (settings && settings.is_enabled && settings.send_time) {
         const [hour, minute] = settings.send_time.split(':');
         const cronStr = `${minute} ${hour} * * *`;
         emailCronTask = cron.schedule(cronStr, () => {
             runDailyEmailJob();
-        });
-        console.log(`[Email Automation] Daily Job scheduled at: ${settings.send_time} (cron: ${cronStr})`);
+        }, { timezone: "Europe/Berlin" });
+        console.log(`[Email Automation] Daily Job scheduled at: ${settings.send_time} (cron: ${cronStr}, TZ: Europe/Berlin)`);
     } else {
         console.log('[Email Automation] Daily Job is disabled or not configured.');
     }
