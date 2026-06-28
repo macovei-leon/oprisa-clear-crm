@@ -374,10 +374,15 @@
 
                 // Load assigned data from local JSON file
                 const res = await fetch('./timeline_data.json');
-                if (!res.ok) throw new Error('Timeline data not found locally.');
-                const jsonData = await res.json();
+                const contentType = res.headers.get('content-type');
+                if (!res.ok || !contentType || !contentType.includes('application/json')) {
+                    console.warn('Timeline data not found locally or invalid format. Using empty data.');
+                    allDrivers = [];
+                } else {
+                    const jsonData = await res.json();
+                    allDrivers = jsonData;
+                }
                 
-                allDrivers = jsonData;
                 initDashboard();
             } catch (err) {
                 console.error("Failed to load driver data:", err);
