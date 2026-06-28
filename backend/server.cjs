@@ -414,14 +414,9 @@ app.post('/api/admin/process-timeline', uploadJson.single('jsonFile'), async (re
         // Process timeline data
         const allDriversResult = await processTimelineData(jsonFilePath, supabaseData);
 
-        // Save result to driver_timeline_data
-        const { error: upsertError } = await supabase
-            .from('driver_timeline_data')
-            .upsert({ id: 'default', data: allDriversResult });
-
-        if (upsertError) {
-            throw new Error(`Failed to save timeline data: ${upsertError.message}`);
-        }
+        // Save result locally to public/driver-dashboard/timeline_data.json
+        const outputFilePath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json');
+        fs.writeFileSync(outputFilePath, JSON.stringify(allDriversResult, null, 2), 'utf8');
         
         // Clean up the uploaded JSON file
         fs.unlinkSync(jsonFilePath);

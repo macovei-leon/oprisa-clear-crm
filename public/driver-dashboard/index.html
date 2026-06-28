@@ -372,16 +372,12 @@
                     });
                 }
 
-                // Load assigned data from Supabase
-                const { data, error } = await window.supabase
-                    .from('driver_dashboard_data')
-                    .select('data')
-                    .eq('id', 'default')
-                    .single();
-
-                if (error) throw error;
+                // Load assigned data from local JSON file
+                const res = await fetch('./timeline_data.json');
+                if (!res.ok) throw new Error('Timeline data not found locally.');
+                const jsonData = await res.json();
                 
-                allDrivers = data.data;
+                allDrivers = jsonData;
                 initDashboard();
             } catch (err) {
                 console.error("Failed to load driver data:", err);
