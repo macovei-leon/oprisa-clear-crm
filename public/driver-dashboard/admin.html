@@ -192,27 +192,12 @@
                     
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="label-text">Daily Sending Limit</label>
-                            <input type="number" id="email-daily-limit" class="form-input" value="1000">
+                            <label class="label-text">Apply from PN</label>
+                            <input type="number" id="email-pn-start" class="form-input" placeholder="Start PN (Opt)">
                         </div>
                         <div>
-                            <label class="label-text">Apply from PN</label>
-                            <input type="number" id="email-pn-start" class="form-input" placeholder="Optional">
-                        </div>
-                    </div>
-
-                    <!-- Queue Status Widget -->
-                    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mt-2">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-bold text-emerald-800 uppercase tracking-wide"><i class="fa-solid fa-chart-line mr-1"></i> Today's Queue Progress</span>
-                            <span id="queue-status-text" class="text-xs font-bold text-emerald-600">Loading...</span>
-                        </div>
-                        <div class="w-full bg-white rounded-full h-2.5 border border-emerald-100 overflow-hidden">
-                            <div id="queue-progress-bar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                        <div class="flex justify-between mt-2 text-xs text-emerald-700">
-                            <span id="queue-sent-text">Sent: 0</span>
-                            <span id="queue-pending-text">Pending Queue: 0</span>
+                            <label class="label-text">Apply to PN</label>
+                            <input type="number" id="email-pn-end" class="form-input" placeholder="End PN (Opt)">
                         </div>
                     </div>
                     
@@ -339,44 +324,82 @@
 
         </div>
 
-        <!-- Full Width: Email Logs -->
+        <!-- Full Width: Active Automations -->
         <div class="lg:col-span-12 space-y-8">
-            <div class="glass-card p-6 border-t-4 border-t-slate-500">
+            <div class="glass-card p-6 border-t-4 border-t-emerald-500">
                 <div class="flex items-center justify-between mb-6">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
-                            <i class="fa-solid fa-list text-lg"></i>
+                        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                            <i class="fa-solid fa-server text-lg"></i>
                         </div>
-                        <h2 class="text-xl font-bold">Email Logs & Queue Status</h2>
+                        <h2 class="text-xl font-bold">Active Automations</h2>
                         <div id="cron-status-badge" class="ml-3 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1.5" title="Automation Job Status">
                             <div class="w-2 h-2 rounded-full bg-slate-400"></div> Loading...
                         </div>
                     </div>
-                    <button onclick="loadLogs()" class="btn btn-secondary py-1.5 px-3 text-sm">
-                        <i class="fa-solid fa-rotate-right"></i> Refresh Logs
+                    <button onclick="loadBatches()" class="btn btn-secondary py-1.5 px-3 text-sm">
+                        <i class="fa-solid fa-rotate-right"></i> Refresh
                     </button>
                 </div>
                 
-                <div class="overflow-x-auto rounded-lg border border-slate-200">
-                    <table class="min-w-full text-sm text-left text-slate-600">
-                        <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="active-batches-container">
+                    <!-- Batches will be rendered here -->
+                    <div class="text-slate-500 italic text-sm p-4">Loading active automations...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full Width: Pending Queue & Email Logs Split -->
+        <div class="lg:col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Pending Queue -->
+            <div class="glass-card p-6 border-t-4 border-t-amber-500 flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-hourglass-half text-amber-500"></i>
+                        <h3 class="font-bold text-lg">Pending Queue</h3>
+                    </div>
+                </div>
+                <div class="overflow-y-auto flex-1 rounded-lg border border-slate-200 max-h-[400px]">
+                    <table class="min-w-full text-sm text-left text-slate-600 relative">
+                        <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                             <tr>
-                                <th scope="col" class="px-6 py-3">Time</th>
-                                <th scope="col" class="px-6 py-3">Driver PN</th>
-                                <th scope="col" class="px-6 py-3">Email</th>
-                                <th scope="col" class="px-6 py-3">Category</th>
-                                <th scope="col" class="px-6 py-3">Status</th>
+                                <th scope="col" class="px-4 py-2">Driver</th>
+                                <th scope="col" class="px-4 py-2">Category</th>
+                                <th scope="col" class="px-4 py-2">Status</th>
                             </tr>
                         </thead>
-                        <tbody id="logs-table-body">
-                            <!-- Logs will be inserted here -->
-                            <tr>
-                                <td colspan="5" class="px-6 py-4 text-center text-slate-500">Loading logs...</td>
-                            </tr>
+                        <tbody id="queue-table-body">
+                            <tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">Loading queue...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            <!-- Email Logs -->
+            <div class="glass-card p-6 border-t-4 border-t-slate-500 flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-list text-slate-500"></i>
+                        <h3 class="font-bold text-lg">Sent Logs</h3>
+                    </div>
+                </div>
+                <div class="overflow-y-auto flex-1 rounded-lg border border-slate-200 max-h-[400px]">
+                    <table class="min-w-full text-sm text-left text-slate-600 relative">
+                        <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                            <tr>
+                                <th scope="col" class="px-4 py-2">Time</th>
+                                <th scope="col" class="px-4 py-2">Driver</th>
+                                <th scope="col" class="px-4 py-2">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body">
+                            <tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">Loading logs...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
 
     </div>
@@ -400,13 +423,15 @@
         try {
             loadTables();
             loadEmailTemplates();
-            loadQueueStatus();
+            loadBatches();
+            loadQueue();
             loadLogs();
             loadCronStatus();
             
             // Poll queue status & logs every 10 seconds
             statusInterval = setInterval(() => {
-                loadQueueStatus();
+                loadBatches();
+                loadQueue();
                 loadLogs();
                 loadCronStatus();
             }, 10000);
@@ -416,8 +441,8 @@
                 const __txt_ = await res.text(); if(__txt_.trim().startsWith('<')) return; const settings = JSON.parse(__txt_);
                 document.getElementById('email-enabled').value = settings.is_enabled ? 'true' : 'false';
                 document.getElementById('email-time').value = settings.send_time || '09:00';
-                document.getElementById('email-daily-limit').value = settings.daily_limit || '1000';
-                document.getElementById('email-pn-start').value = settings.pn_range_start || '';
+                if (document.getElementById('email-pn-start')) document.getElementById('email-pn-start').value = settings.pn_range_start || '';
+                if (document.getElementById('email-pn-end')) document.getElementById('email-pn-end').value = settings.pn_range_end || '';
                 
                 document.querySelectorAll('input[name="email-category"]').forEach(cb => {
                     cb.checked = (settings.allowed_categories || []).includes(cb.value);
@@ -451,33 +476,113 @@
         }
     }
 
-    async function loadQueueStatus() {
+    async function loadBatches() {
         try {
-            const res = await fetch('/api/admin/email-status');
+            const res = await fetch('/api/admin/automation-batches');
             if (res.ok) {
                 const text = await res.text();
                 if(text.trim().startsWith('<')) return;
-                const status = JSON.parse(text);
-                const limit = parseInt(status.daily_limit) || 1000;
-                const sent = parseInt(status.sent_today) || 0;
-                const pending = parseInt(status.pending_queue) || 0;
+                const batches = JSON.parse(text);
+                const container = document.getElementById('active-batches-container');
                 
-                let percent = (sent / limit) * 100;
-                if (percent > 100) percent = 100;
+                if (!batches || batches.length === 0) {
+                    container.innerHTML = '<div class="col-span-full text-slate-500 italic text-sm p-4">No automations recorded recently.</div>';
+                    return;
+                }
                 
-                document.getElementById('queue-progress-bar').style.width = percent + '%';
-                document.getElementById('queue-status-text').textContent = `${sent} / ${limit} Daily Quota`;
-                document.getElementById('queue-sent-text').textContent = `Sent: ${sent}`;
-                document.getElementById('queue-pending-text').textContent = `Pending Queue: ${pending}`;
-                
-                // Color formatting
-                const pb = document.getElementById('queue-progress-bar');
-                if (percent >= 100) { pb.className = 'h-2.5 rounded-full transition-all duration-500 bg-red-500'; }
-                else if (percent >= 80) { pb.className = 'h-2.5 rounded-full transition-all duration-500 bg-amber-500'; }
-                else { pb.className = 'h-2.5 rounded-full transition-all duration-500 bg-emerald-500'; }
+                container.innerHTML = batches.map(b => {
+                    const timeStr = new Date(b.created_at).toLocaleString();
+                    const total = b.total_emails || 1;
+                    const progress = b.sent_count + b.failed_count;
+                    const percent = Math.min(100, Math.round((progress / total) * 100));
+                    
+                    let statusBadge = '';
+                    let actionBtn = '';
+                    if (b.status === 'Running') {
+                        statusBadge = `<span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-md font-bold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Running</span>`;
+                        actionBtn = `<button onclick="pauseBatch(${b.id})" class="text-xs bg-amber-100 text-amber-700 hover:bg-amber-200 px-2 py-1 rounded font-medium transition-colors"><i class="fa-solid fa-pause"></i> Pause</button>`;
+                    } else if (b.status === 'Paused') {
+                        statusBadge = `<span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-md font-bold"><i class="fa-solid fa-pause mr-1"></i> Paused</span>`;
+                        actionBtn = `<button onclick="resumeBatch(${b.id})" class="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-2 py-1 rounded font-medium transition-colors"><i class="fa-solid fa-play"></i> Resume</button>`;
+                    } else {
+                        statusBadge = `<span class="px-2 py-1 bg-slate-100 text-slate-700 text-xs rounded-md font-bold"><i class="fa-solid fa-check mr-1"></i> Completed</span>`;
+                    }
+                    
+                    return \`
+                        <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-sm truncate">\${b.name}</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5">\${timeStr}</p>
+                                </div>
+                                \${statusBadge}
+                            </div>
+                            
+                            <div class="mb-2 flex justify-between text-xs font-medium text-slate-600">
+                                <span>Progress: \${progress} / \${total}</span>
+                                <span>\${percent}%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2 mb-3 overflow-hidden">
+                                <div class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: \${percent}%"></div>
+                            </div>
+                            
+                            <div class="flex justify-between items-center text-xs text-slate-500 pt-2 border-t border-slate-100">
+                                <div class="flex gap-3">
+                                    <span class="text-emerald-600 font-medium" title="Sent"><i class="fa-solid fa-paper-plane mr-1"></i>\${b.sent_count}</span>
+                                    <span class="text-red-500 font-medium" title="Failed"><i class="fa-solid fa-triangle-exclamation mr-1"></i>\${b.failed_count}</span>
+                                </div>
+                                \${actionBtn}
+                            </div>
+                        </div>
+                    \`;
+                }).join('');
             }
         } catch (e) {
-            console.error("Failed to load queue status");
+            console.error("Failed to load batches");
+        }
+    }
+
+    async function pauseBatch(id) {
+        if(!confirm('Pause this batch? Emails in the queue will stop sending.')) return;
+        try {
+            await fetch(\`/api/admin/automation-batches/\${id}/pause\`, { method: 'POST' });
+            loadBatches();
+        } catch(e){}
+    }
+
+    async function resumeBatch(id) {
+        try {
+            await fetch(\`/api/admin/automation-batches/\${id}/resume\`, { method: 'POST' });
+            loadBatches();
+        } catch(e){}
+    }
+
+    async function loadQueue() {
+        try {
+            const res = await fetch('/api/admin/queue');
+            if (res.ok) {
+                const text = await res.text();
+                if(text.trim().startsWith('<')) return;
+                const queue = JSON.parse(text);
+                const tbody = document.getElementById('queue-table-body');
+                
+                if (queue.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">Queue is empty.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = queue.slice(0, 100).map(q => {
+                    return \`
+                    <tr class="bg-white border-b border-slate-100 hover:bg-slate-50">
+                        <td class="px-4 py-2 font-medium text-slate-800 text-xs">\${q.driver_pn} (\${q.email})</td>
+                        <td class="px-4 py-2 text-xs">\${q.category}</td>
+                        <td class="px-4 py-2 text-xs text-amber-600 font-medium"><i class="fa-solid fa-clock mr-1"></i>\${q.status}</td>
+                    </tr>
+                    \`;
+                }).join('');
+            }
+        } catch (e) {
+            console.error("Failed to load queue");
         }
     }
 
@@ -697,14 +802,14 @@
         e.preventDefault();
         const is_enabled = document.getElementById('email-enabled').value === 'true';
         const send_time = document.getElementById('email-time').value;
-        const daily_limit = document.getElementById('email-daily-limit').value;
-        const pn_range_start = document.getElementById('email-pn-start').value;
+        const pn_range_start = document.getElementById('email-pn-start') ? document.getElementById('email-pn-start').value : '';
+        const pn_range_end = document.getElementById('email-pn-end') ? document.getElementById('email-pn-end').value : '';
         const allowed_categories = Array.from(document.querySelectorAll('input[name="email-category"]:checked')).map(cb => cb.value);
 
         const res = await fetch('/api/admin/email-settings', {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ is_enabled, send_time, daily_limit, pn_range_start, pn_range_end: '', allowed_categories })
+            body: JSON.stringify({ is_enabled, send_time, daily_limit: 1000, pn_range_start, pn_range_end, allowed_categories })
         });
         if (res.ok) alert('Settings saved successfully!');
     });
@@ -729,7 +834,8 @@
         const res = await fetch('/api/admin/test-email', { method: 'POST' });
         if (res.ok) {
             alert('Triggered! Emails have been added to the pending queue and will process momentarily.');
-            loadQueueStatus();
+            loadBatches();
+            loadQueue();
         }
     }
     
@@ -793,19 +899,17 @@
                     } else if (l.status === 'Pending') {
                         statusClass = 'text-amber-700 bg-amber-100 font-medium';
                         icon = '<i class="fa-solid fa-clock mr-1"></i>';
-                    } else if (l.status.startsWith('Failed')) {
+                    } else if (l.status && l.status.startsWith('Failed')) {
                         statusClass = 'text-red-700 bg-red-100 font-medium';
                         icon = '<i class="fa-solid fa-circle-xmark mr-1"></i>';
                     }
                     
                     return `
                     <tr class="bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-3 whitespace-nowrap text-xs">${timeStr}</td>
-                        <td class="px-6 py-3 font-medium text-slate-800">${l.driver_pn || 'N/A'}</td>
-                        <td class="px-6 py-3">${l.email || 'N/A'}</td>
-                        <td class="px-6 py-3">${l.category || 'N/A'}</td>
-                        <td class="px-6 py-3">
-                            <span class="px-2 py-1 rounded text-xs ${statusClass}">
+                        <td class="px-4 py-2 whitespace-nowrap text-xs">${timeStr}</td>
+                        <td class="px-4 py-2 font-medium text-slate-800 text-xs">${l.driver_pn || 'N/A'}</td>
+                        <td class="px-4 py-2 text-xs">
+                            <span class="px-2 py-1 rounded ${statusClass}">
                                 ${icon} ${l.status || 'N/A'}
                             </span>
                         </td>
@@ -813,16 +917,20 @@
                     `;
                 }).join('');
             } else {
-                document.getElementById('logs-table-body').innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-rose-500">Error loading logs. API may be down.</td></tr>';
+                document.getElementById('logs-table-body').innerHTML = '<tr><td colspan="3" class="px-4 py-4 text-center text-rose-500">Error loading logs. API may be down.</td></tr>';
             }
         } catch (e) {
-            document.getElementById('logs-table-body').innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-rose-500">Failed to connect to backend.</td></tr>';
+            document.getElementById('logs-table-body').innerHTML = '<tr><td colspan="3" class="px-4 py-4 text-center text-rose-500">Failed to connect to backend.</td></tr>';
             console.error("Failed to load logs", e);
         }
     }
 
     // Init on load
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', () => {
+        init();
+        loadBatches();
+        loadQueue();
+    });
 </script>
 
 <!-- PDF Editor Modal -->

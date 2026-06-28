@@ -137,22 +137,39 @@ async function runDailyEmailJob() {
         if (lErr) throw new Error('Failed to fetch logs: ' + lErr.message);
         const alreadyProcessedPns = new Set(logsData.map(l => l.driver_pn));
 
-        let queuedCount = 0;
+        const validTargets = [];
         for (const driver of targets) {
             if (alreadyProcessedPns.has(driver.pn)) continue;
             if (!driver.email) continue;
-
-            // Insert as Pending
-            await supabase.from('driver_email_logs').insert([{
-                driver_pn: driver.pn,
-                email: driver.email,
-                category: driver.status,
-                status: 'Pending'
-            }]);
-            queuedCount++;
+            validTargets.push(driver);
         }
 
-        console.log(`[Email Queue] Queued ${queuedCount} emails for sending.`);
+        if (validTargets.length === 0) {
+            console.log('[Email Queue] No valid targets to queue today.');
+            return;
+        }
+
+        // Create batch
+        const batchName = `Automation Run - ${new Date().toLocaleString()}`;
+        const { data: batchData, error: bErr } = await supabase.from('driver_email_batches')
+            .insert([{ name: batchName, total_emails: validTargets.length }])
+            .select()
+            .single();
+            
+        if (bErr) throw new Error('Failed to create batch: ' + bErr.message);
+        
+        const queueEntries = validTargets.map(driver => ({
+            batch_id: batchData.id,
+            driver_pn: driver.pn,
+            email: driver.email,
+            category: driver.status,
+            status: 'Pending'
+        }));
+        
+        const { error: qErr } = await supabase.from('driver_email_queue').insert(queueEntries);
+        if (qErr) throw new Error('Failed to queue emails: ' + qErr.message);
+
+        console.log(`[Email Queue] Created batch ${batchData.id} with ${queueEntries.length} emails.`);
         
         // Immediately try to process the queue
         processEmailQueue();
@@ -171,40 +188,39 @@ async function processEmailQueue() {
     console.log('[Email Queue] Processor started...');
 
     try {
-        const { data: settings } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
-        const dailyLimit = (settings && settings.daily_limit) ? settings.daily_limit : 1000;
-
-        const todayStr = new Date().toISOString().split('T')[0];
-        
-        // Count how many we already SENT today (Success)
-        const { count: sentToday, error: cErr } = await supabase.from('driver_email_logs')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'Success')
-            .gte('sent_at', `${todayStr}T00:00:00Z`)
-            .lt('sent_at', `${todayStr}T23:59:59Z`);
+        // Find ALL active batches
+        const { data: activeBatches, error: bErr } = await supabase.from('driver_email_batches')
+            .select('*')
+            .eq('status', 'Running')
+            .order('created_at', { ascending: true });
             
-        if (cErr) throw new Error('Failed to count sent logs: ' + cErr.message);
+        if (bErr) throw new Error('Failed to fetch active batches: ' + bErr.message);
         
-        const remainingCapacity = dailyLimit - (sentToday || 0);
-        console.log(`[Email Queue] Capacity: limit=${dailyLimit}, sent_today=${sentToday}, remaining=${remainingCapacity}`);
-
-        if (remainingCapacity <= 0) {
-            console.log('[Email Queue] Daily limit reached. Halting processor for today.');
+        if (!activeBatches || activeBatches.length === 0) {
+            console.log('[Email Queue] No active batches.');
             isProcessingQueue = false;
             return;
         }
 
-        // Fetch Pending from today (or earlier, but let's just fetch pending)
-        const { data: pendingData, error: pErr } = await supabase.from('driver_email_logs')
+        // Fetch Pending from active batches
+        const activeBatchIds = activeBatches.map(b => b.id);
+        const { data: pendingData, error: pErr } = await supabase.from('driver_email_queue')
             .select('*')
             .eq('status', 'Pending')
-            .order('sent_at', { ascending: true }) // FIFO
-            .limit(remainingCapacity);
+            .in('batch_id', activeBatchIds)
+            .order('created_at', { ascending: true }) // FIFO
+            .limit(50); // Process 50 at a time
 
         if (pErr) throw new Error('Failed to fetch pending: ' + pErr.message);
 
         if (!pendingData || pendingData.length === 0) {
-            console.log('[Email Queue] No pending emails to send.');
+            console.log('[Email Queue] No pending emails to send. Checking for completed batches.');
+            // Let's mark batches as completed if sent_count + failed_count >= total_emails
+            for (const b of activeBatches) {
+                 if (b.sent_count + b.failed_count >= b.total_emails) {
+                      await supabase.from('driver_email_batches').update({ status: 'Completed' }).eq('id', b.id);
+                 }
+            }
             isProcessingQueue = false;
             return;
         }
@@ -221,11 +237,19 @@ async function processEmailQueue() {
 
         let processCount = 0;
         for (const item of pendingData) {
+            // Check if batch is STILL running (might have been paused by admin during the loop)
+            const { data: currentBatch } = await supabase.from('driver_email_batches').select('status, sent_count, failed_count').eq('id', item.batch_id).single();
+            if (currentBatch && currentBatch.status !== 'Running') {
+                console.log(`[Email Queue] Batch ${item.batch_id} is no longer running. Skipping item.`);
+                continue;
+            }
+
             const template = templates[item.category];
             const driver = driversData.find(d => d.pn === item.driver_pn) || { name: 'Driver', pn: item.driver_pn, missedShifts: [] };
 
             if (!template) {
-                await supabase.from('driver_email_logs').update({ status: 'Failed: No template found' }).eq('id', item.id);
+                await supabase.from('driver_email_queue').update({ status: 'Failed' }).eq('id', item.id);
+                if (currentBatch) await supabase.from('driver_email_batches').update({ failed_count: currentBatch.failed_count + 1 }).eq('id', item.batch_id);
                 continue;
             }
 
@@ -252,19 +276,29 @@ async function processEmailQueue() {
                     attachments: attachments
                 });
 
-                await supabase.from('driver_email_logs')
-                    .update({ status: 'Success', sent_at: new Date().toISOString() }) // Update sent_at to actual send time
-                    .eq('id', item.id);
+                // Success: delete from queue, log, update batch
+                await supabase.from('driver_email_queue').delete().eq('id', item.id);
+                await supabase.from('driver_email_logs').insert([{ driver_pn: item.driver_pn, email: item.email, category: item.category, status: 'Success' }]);
+                if (currentBatch) await supabase.from('driver_email_batches').update({ sent_count: currentBatch.sent_count + 1 }).eq('id', item.batch_id);
 
                 processCount++;
                 await new Promise(resolve => setTimeout(resolve, 1500)); // Google rate limit spacing
             } catch (err) {
                 console.error(`[Email Queue] Failed sending to ${item.email}`, err.message);
-                await supabase.from('driver_email_logs').update({ status: 'Failed: ' + err.message }).eq('id', item.id);
+                await supabase.from('driver_email_queue').update({ status: 'Failed' }).eq('id', item.id);
+                await supabase.from('driver_email_logs').insert([{ driver_pn: item.driver_pn, email: item.email, category: item.category, status: 'Failed: ' + err.message }]);
+                if (currentBatch) await supabase.from('driver_email_batches').update({ failed_count: currentBatch.failed_count + 1 }).eq('id', item.batch_id);
             }
         }
 
-        console.log(`[Email Queue] Processor finished. Sent ${processCount} emails.`);
+        console.log(`[Email Queue] Processor finished batch portion. Sent ${processCount} emails.`);
+        
+        if (pendingData.length === 50) {
+             setTimeout(processEmailQueue, 1000);
+        } else {
+             // Let's run it one more time to mark batches as completed
+             setTimeout(processEmailQueue, 1000);
+        }
     } catch (error) {
         console.error('[Email Queue] Error processing queue:', error);
     } finally {

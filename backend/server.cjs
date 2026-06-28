@@ -573,22 +573,20 @@ app.get('/api/admin/email-settings', async (req, res) => {
     res.json(data || { 
         send_time: '09:00', 
         is_enabled: false,
-        daily_limit: 1000,
-        pn_range_start: '',
-        pn_range_end: '',
+        pn_range_start: null,
+        pn_range_end: null,
         allowed_categories: ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent']
     });
 });
 
 app.put('/api/admin/email-settings', async (req, res) => {
-    const { send_time, is_enabled, daily_limit, pn_range_start, pn_range_end, allowed_categories } = req.body;
+    const { send_time, is_enabled, pn_range_start, pn_range_end, allowed_categories } = req.body;
     const { error } = await supabase.from('driver_email_settings').upsert([{ 
         id: 1, 
         send_time, 
-        daily_limit,
         is_enabled,
-        pn_range_start,
-        pn_range_end,
+        pn_range_start: pn_range_start || null,
+        pn_range_end: pn_range_end || null,
         allowed_categories: allowed_categories || ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent']
     }]);
     if (error) return res.status(500).json({ error: 'Database error' });
@@ -613,6 +611,34 @@ app.get('/api/admin/email-logs', async (req, res) => {
     const { data, error } = await supabase.from('driver_email_logs').select('*').order('sent_at', { ascending: false }).limit(1500);
     if (error) return res.status(500).json({ error: 'Database error' });
     res.json(data);
+});
+
+app.get('/api/admin/automation-batches', async (req, res) => {
+    const { data, error } = await supabase.from('driver_email_batches').select('*').order('created_at', { ascending: false }).limit(20);
+    if (error) return res.status(500).json({ error: 'Database error' });
+    res.json(data);
+});
+
+app.get('/api/admin/queue', async (req, res) => {
+    const { data, error } = await supabase.from('driver_email_queue').select('*').order('created_at', { ascending: true }).limit(1500);
+    if (error) return res.status(500).json({ error: 'Database error' });
+    res.json(data);
+});
+
+app.post('/api/admin/automation-batches/:id/pause', async (req, res) => {
+    const { id } = req.params;
+    const { error } = await supabase.from('driver_email_batches').update({ status: 'Paused' }).eq('id', id);
+    if (error) return res.status(500).json({ error: 'Database error' });
+    res.json({ success: true });
+});
+
+app.post('/api/admin/automation-batches/:id/resume', async (req, res) => {
+    const { id } = req.params;
+    const { error } = await supabase.from('driver_email_batches').update({ status: 'Running' }).eq('id', id);
+    if (error) return res.status(500).json({ error: 'Database error' });
+    const { processEmailQueue } = require('./email_service.cjs');
+    processEmailQueue(); // Trigger immediately
+    res.json({ success: true });
 });
 
 app.post('/api/admin/email-templates/:category/attachment', upload.single('pdf'), async (req, res) => {
