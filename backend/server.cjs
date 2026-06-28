@@ -624,6 +624,28 @@ app.delete('/api/admin/email-templates/:category/attachment', (req, res) => {
     if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
     }
+    const configPath = path.join(__dirname, 'attachments', `${category}_config.json`);
+    if (fs.existsSync(configPath)) {
+        fs.unlinkSync(configPath);
+    }
+    res.json({ success: true });
+});
+
+app.get('/api/admin/email-templates/:category/pdf-config', (req, res) => {
+    const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
+    const configPath = path.join(__dirname, 'attachments', `${category}_config.json`);
+    if (fs.existsSync(configPath)) {
+        const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        res.json({ success: true, config: configData });
+    } else {
+        res.json({ success: true, config: null });
+    }
+});
+
+app.post('/api/admin/email-templates/:category/pdf-config', (req, res) => {
+    const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
+    const configPath = path.join(__dirname, 'attachments', `${category}_config.json`);
+    fs.writeFileSync(configPath, JSON.stringify(req.body.config || []), 'utf8');
     res.json({ success: true });
 });
 
@@ -666,7 +688,7 @@ app.post('/api/admin/send-single-test', async (req, res) => {
         finalBody = finalBody.replace(/{{details}}/g, dummyDetails);
     }
     
-    const result = await sendSingleTestEmail(toEmail, finalSubject, finalBody, category);
+    const result = await sendSingleTestEmail(toEmail, finalSubject, finalBody, category, driver);
     if (result.success) {
         res.json({ success: true, message: 'Test email sent successfully' });
     } else {

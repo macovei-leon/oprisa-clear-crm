@@ -1,6 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const { PDFDocument, rgb } = require('pdf-lib');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const ws = require('ws');
@@ -22,6 +23,55 @@ const transporter = nodemailer.createTransport({
     maxConnections: 3,
     maxMessages: 1500
 });
+
+
+async function stampPdf(attachmentPath, configPath, driver) {
+    if (!fs.existsSync(attachmentPath)) return null;
+    if (!fs.existsSync(configPath)) {
+        return { path: attachmentPath };
+    }
+
+    try {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (!config || config.length === 0) return { path: attachmentPath };
+
+        const pdfBytes = fs.readFileSync(attachmentPath);
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+        const pages = pdfDoc.getPages();
+        const firstPage = pages[0];
+        
+        const { width, height } = firstPage.getSize();
+
+        for (const field of config) {
+            let textToDraw = field.tag;
+            // Replace placeholders
+            textToDraw = textToDraw.replace(/\[Driver Name\]/g, driver.name || '');
+            textToDraw = textToDraw.replace(/\[Driver PN\]/g, driver.pn || '');
+            textToDraw = textToDraw.replace(/\[Phone\]/g, driver.phone || '');
+            textToDraw = textToDraw.replace(/\[Email\]/g, driver.email || '');
+            textToDraw = textToDraw.replace(/\[Company\]/g, (driver.companies || []).join(', ') || '');
+            textToDraw = textToDraw.replace(/\[Contract Type\]/g, driver.contractType || '');
+            textToDraw = textToDraw.replace(/\[Today's Date\]/g, new Date().toLocaleDateString('ro-RO'));
+            
+            const x = (field.x / 100) * width;
+            const y = height - ((field.y / 100) * height) - 12; // offset for font height
+
+            firstPage.drawText(textToDraw, {
+                x: x,
+                y: y,
+                size: 12,
+                color: rgb(0, 0, 0)
+            });
+        }
+
+        const modifiedPdfBytes = await pdfDoc.save();
+        return { buffer: Buffer.from(modifiedPdfBytes) };
+    } catch (err) {
+        console.error('Error stamping PDF:', err);
+        return { path: attachmentPath };
+    }
+}
+
 
 let isProcessingQueue = false;
 
@@ -164,11 +214,17 @@ async function processEmailQueue() {
             try {
                 const catSafe = item.category.replace(/[^a-zA-Z0-9]/g, '_');
                 const attachmentPath = path.join(__dirname, 'attachments', `${catSafe}.pdf`);
-                const attachments = fs.existsSync(attachmentPath) ? [{
-                    filename: `${catSafe}.pdf`,
-                    path: attachmentPath,
-                    contentType: 'application/pdf'
-                }] : [];
+                const configPath = path.join(__dirname, 'attachments', `${catSafe}_config.json`);
+                
+                let attachments = [];
+                const stamped = await stampPdf(attachmentPath, configPath, driver);
+                if (stamped) {
+                    if (stamped.buffer) {
+                        attachments.push({ filename: `${catSafe}.pdf`, content: stamped.buffer, contentType: 'application/pdf' });
+                    } else if (stamped.path) {
+                        attachments.push({ filename: `${catSafe}.pdf`, path: stamped.path, contentType: 'application/pdf' });
+                    }
+                }
 
                 await transporter.sendMail({
                     from: `"Oprisa Team" <${process.env.EMAIL_USER}>`,
@@ -198,14 +254,20 @@ async function processEmailQueue() {
     }
 }
 
-async function sendSingleTestEmail(toEmail, subject, body, category = null) {
+async function sendSingleTestEmail(toEmail, subject, body, category = null, driver = {}) {
     try {
         let attachments = [];
         if (category) {
             const catSafe = category.replace(/[^a-zA-Z0-9]/g, '_');
             const attachmentPath = path.join(__dirname, 'attachments', `${catSafe}.pdf`);
-            if (fs.existsSync(attachmentPath)) {
-                attachments.push({ filename: `${catSafe}.pdf`, path: attachmentPath, contentType: 'application/pdf' });
+            const configPath = path.join(__dirname, 'attachments', `${catSafe}_config.json`);
+            const stamped = await stampPdf(attachmentPath, configPath, driver || {});
+            if (stamped) {
+                if (stamped.buffer) {
+                    attachments.push({ filename: `${catSafe}.pdf`, content: stamped.buffer, contentType: 'application/pdf' });
+                } else if (stamped.path) {
+                    attachments.push({ filename: `${catSafe}.pdf`, path: stamped.path, contentType: 'application/pdf' });
+                }
             }
         }
 
