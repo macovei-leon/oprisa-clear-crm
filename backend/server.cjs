@@ -412,7 +412,7 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
         let page = 0;
         const pageSize = 1000;
         while (true) {
-            const { data: pageData, error } = await supabase.from(tableName).select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+            const { data: pageData, error } = await supabase.rpc('get_table_data', { p_table_name: tableName }).range(page * pageSize, (page + 1) * pageSize - 1);
             if (error) throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
             if (pageData && pageData.length > 0) supabaseData.push(...pageData);
             if (!pageData || pageData.length < pageSize) break;
@@ -457,7 +457,7 @@ app.post('/api/admin/set-table', async (req, res) => {
             let page = 0;
             const pageSize = 1000;
             while (true) {
-                const { data: pageData, error } = await supabase.from(tableName).select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+                const { data: pageData, error } = await supabase.rpc('get_table_data', { p_table_name: tableName }).range(page * pageSize, (page + 1) * pageSize - 1);
                 if (error) throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
                 if (pageData && pageData.length > 0) supabaseData.push(...pageData);
                 if (!pageData || pageData.length < pageSize) break;
@@ -496,11 +496,20 @@ app.post('/api/admin/set-table', async (req, res) => {
 
 app.get('/api/admin/active-table', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('dashboard_settings').select('active_table').eq('id', 1).maybeSingle();
-        if (error || !data || !data.active_table) return res.json({ tableName: 'angajati' });
-        res.json({ tableName: data.active_table });
+        const { data, error } = await supabase.from('dashboard_settings').select('active_table, raw_file_path, updated_at').eq('id', 1).maybeSingle();
+        if (error || !data || !data.active_table) return res.json({ tableName: 'angajati', fileInfo: null });
+        
+        let fileInfo = null;
+        if (data.raw_file_path && fs.existsSync(data.raw_file_path)) {
+            const stats = fs.statSync(data.raw_file_path);
+            fileInfo = {
+                name: path.basename(data.raw_file_path),
+                updated_at: data.updated_at || stats.mtime
+            };
+        }
+        res.json({ tableName: data.active_table, fileInfo });
     } catch (e) {
-        res.json({ tableName: 'angajati' });
+        res.json({ tableName: 'angajati', fileInfo: null });
     }
 });
 
