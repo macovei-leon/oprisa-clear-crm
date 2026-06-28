@@ -3,85 +3,45 @@ import { supabase } from '../../lib/supabase';
 import { X, FolderClosed, Activity, CheckCircle2, Loader2 } from 'lucide-react';
 import { FlashcardModal } from '../campaigns/FlashcardModal';
 
-export const RepetitiveKanbanSnapshotModal = ({ flow, historyData, selectedDate, workerId, onClose }) => {
+export const RepetitiveKanbanSnapshotModal = ({ flow, selectedStampId, workerId, onClose }) => {
   const [activeTabIdx, setActiveTabIdx] = useState(0);
-  const [viewMode, setViewMode] = useState('all');
-  const [liveTasks, setLiveTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [selectedCard, setSelectedCard] = useState(null);
-
-  const steps = flow?.steps || [];
+  const [tasks, setTasks] = useState([]);
+  const [steps, setSteps] = useState(flow?.steps || []);
 
   useEffect(() => {
-    const fetchTasks = async () => {
+    const fetchStamp = async () => {
+      if (!selectedStampId) return;
       setLoadingTasks(true);
       try {
-        let query = supabase
-          .from('crm_repetitive_tasks')
-          .select('id, row_data, assigned_to')
-          .eq('repetitive_flow_id', flow.id);
+        const { data, error } = await supabase
+          .from('crm_repetitive_snapshots')
+          .select('steps_structure, tasks_map')
+          .eq('id', selectedStampId)
+          .single();
           
-        if (workerId) {
-          query = query.eq('assigned_to', workerId);
-        }
-        
-        const { data, error } = await query;
         if (error) throw error;
-        setLiveTasks(data || []);
+        
+        if (data) {
+          if (data.steps_structure) {
+            setSteps(data.steps_structure);
+          }
+          let tasksArr = Object.values(data.tasks_map || {});
+          if (workerId) {
+            tasksArr = tasksArr.filter(t => t.assigned_to === workerId);
+          }
+          setTasks(tasksArr);
+        }
       } catch (err) {
-        console.error('Error fetching live tasks:', err);
+        console.error('Error fetching stamp:', err);
       } finally {
         setLoadingTasks(false);
       }
     };
     
-    if (flow?.id) {
-      fetchTasks();
-    }
-  }, [flow, workerId]);
-
-  // Reconstruct the tasks state based on the latest history entry for each task on that date.
-  // If a live task has no history, assume it was untouched (Step 1).
-  const tasks = useMemo(() => {
-    if (loadingTasks) return [];
-    
-    // Group by task_id to find the latest action
-    const latestActions = {};
-    (historyData || []).forEach(item => {
-      // If we are filtering by worker, ensure we only consider history from this worker? 
-      // Actually, if the card belongs to the worker, we want to see its latest state.
-      const current = latestActions[item.task_id];
-      if (!current || new Date(item.created_at) > new Date(current.created_at)) {
-        latestActions[item.task_id] = item;
-      }
-    });
-
-    return liveTasks.map(task => {
-      const h = latestActions[task.id];
-      let completed = false;
-      let category = null;
-      let active_step_idx = 0; // Default: Step 1
-
-      if (h) {
-        if (h.action_type === 'COMPLETION') {
-          completed = true;
-          category = h.category;
-        } else {
-          // It's an ADVANCEMENT. Find the step it was advanced from, and put it in the next step.
-          const currentStepIdx = steps.findIndex(s => s.name === h.step_name);
-          active_step_idx = currentStepIdx >= 0 ? currentStepIdx + 1 : 0;
-        }
-      }
-
-      return {
-        id: task.id,
-        row_data: h?.card_snapshot || task.row_data || {},
-        completed,
-        category,
-        active_step_idx,
-      };
-    });
-  }, [historyData, steps, liveTasks, loadingTasks]);
+    fetchStamp();
+  }, [selectedStampId, workerId]);
 
   const categories = Array.from(new Set(
     steps.flatMap(s => s.branches.filter(b => b.action.startsWith('category_')).map(b => b.action.replace('category_', '')))
@@ -109,7 +69,7 @@ export const RepetitiveKanbanSnapshotModal = ({ flow, historyData, selectedDate,
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 bg-white shrink-0 flex justify-between items-center z-10">
           <div>
-            <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Snapshot Kanban: {selectedDate}</span>
+            <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Snapshot Kanban Data</span>
             <h1 className="text-xl font-black text-slate-800 flex items-center gap-2 mt-1">
               <FolderClosed className="text-indigo-600" />
               {flow?.name}

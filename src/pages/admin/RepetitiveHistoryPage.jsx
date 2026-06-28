@@ -21,6 +21,8 @@ export const RepetitiveHistoryPage = () => {
   const [showSnapshotModal, setShowSnapshotModal] = useState(false);
   const [selectedSnapshotWorkerId, setSelectedSnapshotWorkerId] = useState(null);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [stamps, setStamps] = useState([]);
+  const [selectedStampId, setSelectedStampId] = useState('');
 
   useEffect(() => {
     fetchFlows();
@@ -68,6 +70,39 @@ export const RepetitiveHistoryPage = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchStamps = async () => {
+      if (selectedFlowId === 'all') {
+        setStamps([]);
+        setSelectedStampId('');
+        return;
+      }
+      try {
+        const localStart = new Date(`${selectedDate}T00:00:00`);
+        const localEnd = new Date(`${selectedDate}T23:59:59.999`);
+        
+        const { data, error } = await supabase
+          .from('crm_repetitive_snapshots')
+          .select('id, stamp_time')
+          .eq('repetitive_flow_id', selectedFlowId)
+          .gte('stamp_time', localStart.toISOString())
+          .lte('stamp_time', localEnd.toISOString())
+          .order('stamp_time', { ascending: true });
+          
+        if (error) throw error;
+        setStamps(data || []);
+        if (data && data.length > 0) {
+          setSelectedStampId(data[data.length - 1].id);
+        } else {
+          setSelectedStampId('');
+        }
+      } catch (err) {
+        console.error('Error fetching stamps:', err);
+      }
+    };
+    fetchStamps();
+  }, [selectedDate, selectedFlowId]);
 
   // Group data by worker
   const statsByWorker = useMemo(() => {
@@ -160,6 +195,23 @@ export const RepetitiveHistoryPage = () => {
                   <option key={f.id} value={f.id}>{f.name} {!f.is_active ? '(Arhivat)' : ''}</option>
                 ))}
               </select>
+              
+              {selectedFlowId !== 'all' && stamps.length > 0 && (
+                <div className="flex flex-col ml-4">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Stamp</label>
+                  <select 
+                    value={selectedStampId}
+                    onChange={e => setSelectedStampId(e.target.value)}
+                    className="px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-700 font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  >
+                    {stamps.map(s => {
+                      const timeStr = new Date(s.stamp_time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+                      return <option key={s.id} value={s.id}>{timeStr}</option>;
+                    })}
+                  </select>
+                </div>
+              )}
+
               {selectedFlowId !== 'all' && (
                 <button
                   onClick={() => {
@@ -358,8 +410,7 @@ export const RepetitiveHistoryPage = () => {
       {showSnapshotModal && selectedFlowId !== 'all' && (
         <RepetitiveKanbanSnapshotModal
           flow={flows.find(f => f.id === selectedFlowId)}
-          historyData={historyData}
-          selectedDate={selectedDate}
+          selectedStampId={selectedStampId}
           workerId={selectedSnapshotWorkerId}
           onClose={() => {
             setShowSnapshotModal(false);

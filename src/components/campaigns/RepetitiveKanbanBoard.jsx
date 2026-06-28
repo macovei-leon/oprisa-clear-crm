@@ -113,6 +113,34 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
 
       if (histErr) console.error('Failed to save history', histErr);
 
+      // Lazy Snapshot Update
+      const totalIntervalMins = (flow.reset_interval_hours || 0) * 60 + (flow.reset_interval_minutes || 0);
+      const effectiveMins = totalIntervalMins > 0 ? totalIntervalMins : 1440; // Default 24h
+      
+      const now = new Date();
+      const minsSinceMidnight = now.getHours() * 60 + now.getMinutes();
+      const bucketMins = Math.floor(minsSinceMidnight / effectiveMins) * effectiveMins;
+      
+      const stampTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(bucketMins / 60), bucketMins % 60, 0, 0);
+
+      const taskPayload = {
+        id: task.id,
+        row_data: task.row_data || {},
+        assigned_to: task.assigned_to,
+        active_step_idx: updatePayload.active_step_idx !== undefined ? updatePayload.active_step_idx : task.active_step_idx,
+        completed: updatePayload.completed !== undefined ? updatePayload.completed : task.completed,
+        category: updatePayload.category !== undefined ? updatePayload.category : task.category
+      };
+
+      const { error: snapErr } = await supabase.rpc('update_kanban_snapshot', {
+        p_flow_id: flow.id,
+        p_stamp_time: stampTime.toISOString(),
+        p_task_id: task.id,
+        p_task_payload: taskPayload
+      });
+
+      if (snapErr) console.error('Failed to save lazy snapshot', snapErr);
+
       // Update local state to immediately move the card
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...updatePayload } : t));
       
