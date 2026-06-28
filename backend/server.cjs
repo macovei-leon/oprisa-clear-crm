@@ -618,6 +618,16 @@ app.get('/api/admin/email-templates/:category/attachment', (req, res) => {
     res.json({ exists: fs.existsSync(filePath) });
 });
 
+app.get('/api/admin/email-templates/:category/pdf', (req, res) => {
+    const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
+    const filePath = path.join(__dirname, 'attachments', `${category}.pdf`);
+    if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+    } else {
+        res.status(404).send('PDF not found');
+    }
+});
+
 app.delete('/api/admin/email-templates/:category/attachment', (req, res) => {
     const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
     const filePath = path.join(__dirname, 'attachments', `${category}.pdf`);

@@ -876,7 +876,7 @@
             currentFields = [];
         }
         
-        const url = '/api/admin/email-templates/' + encodeURIComponent(category) + '/attachment';
+        const url = '/api/admin/email-templates/' + encodeURIComponent(category) + '/pdf';
         const loadingTask = pdfjsLib.getDocument(url);
         try {
             pdfDoc = await loadingTask.promise;
