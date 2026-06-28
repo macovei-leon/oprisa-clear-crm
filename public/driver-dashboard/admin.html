@@ -509,10 +509,10 @@
                     let actionBtn = '';
                     if (b.status === 'Running') {
                         statusBadge = `<span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-md font-bold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Running</span>`;
-                        actionBtn = `<button onclick="pauseBatch(${b.id})" class="text-xs bg-amber-100 text-amber-700 hover:bg-amber-200 px-2 py-1 rounded font-medium transition-colors"><i class="fa-solid fa-pause"></i> Pause</button>`;
+                        actionBtn = `<button onclick="pauseBatch('${b.id}')" class="text-xs bg-amber-100 text-amber-700 hover:bg-amber-200 px-2 py-1 rounded font-medium transition-colors"><i class="fa-solid fa-pause"></i> Pause</button>`;
                     } else if (b.status === 'Paused') {
                         statusBadge = `<span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-md font-bold"><i class="fa-solid fa-pause mr-1"></i> Paused</span>`;
-                        actionBtn = `<button onclick="resumeBatch(${b.id})" class="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-2 py-1 rounded font-medium transition-colors"><i class="fa-solid fa-play"></i> Resume</button>`;
+                        actionBtn = `<button onclick="resumeBatch('${b.id}')" class="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-2 py-1 rounded font-medium transition-colors"><i class="fa-solid fa-play"></i> Resume</button>`;
                     } else {
                         statusBadge = `<span class="px-2 py-1 bg-slate-100 text-slate-700 text-xs rounded-md font-bold"><i class="fa-solid fa-check mr-1"></i> Completed</span>`;
                     }
