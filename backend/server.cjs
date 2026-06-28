@@ -403,17 +403,11 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
             return res.status(400).json({ success: false, message: 'Missing JSON file' });
         }
 
-        // Save as raw_timeline.json
-        const rawFilePath = path.join(__dirname, 'raw_timeline.json');
-        fs.copyFileSync(jsonFilePath, rawFilePath);
+        const rawJsonData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
 
-        // Get active table
-        const activeTablePath = path.join(__dirname, '../public/driver-dashboard/active_table.json');
-        let tableName = 'angajati';
-        if (fs.existsSync(activeTablePath)) {
-            const tableData = JSON.parse(fs.readFileSync(activeTablePath, 'utf8'));
-            tableName = tableData.tableName || 'angajati';
-        }
+        // Fetch active table
+        const { data: settingsData } = await supabase.from('dashboard_settings').select('active_table').eq('id', 1).single();
+        const tableName = settingsData?.active_table || 'angajati';
 
         // Fetch driver data from the selected table
         const { data: supabaseData, error } = await supabase.from(tableName).select('*');
@@ -422,11 +416,16 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
         }
 
         // Process timeline data
-        const allDriversResult = await processTimelineData(rawFilePath, supabaseData);
+        const allDriversResult = await processTimelineData(rawJsonData, supabaseData);
 
-        // Save result locally
-        const outputFilePath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json');
-        fs.writeFileSync(outputFilePath, JSON.stringify(allDriversResult, null, 2), 'utf8');
+        // Update dashboard_settings
+        await supabase.from('dashboard_settings').upsert({
+            id: 1,
+            active_table: tableName,
+            raw_timeline_data: rawJsonData,
+            timeline_data: allDriversResult,
+            updated_at: new Date().toISOString()
+        });
         
         fs.unlinkSync(jsonFilePath);
 
@@ -444,22 +443,32 @@ app.post('/api/admin/set-table', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing table name' });
         }
 
-        // Save active table
-        const activeTablePath = path.join(__dirname, '../public/driver-dashboard/active_table.json');
-        fs.writeFileSync(activeTablePath, JSON.stringify({ tableName }), 'utf8');
-
-        // Re-process if raw_timeline.json exists
-        const rawFilePath = path.join(__dirname, 'raw_timeline.json');
-        if (fs.existsSync(rawFilePath)) {
+        // Get existing raw data
+        const { data: settingsData } = await supabase.from('dashboard_settings').select('raw_timeline_data').eq('id', 1).maybeSingle();
+        
+        if (settingsData && settingsData.raw_timeline_data) {
             const { data: supabaseData, error } = await supabase.from(tableName).select('*');
             if (error) throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
 
-            const allDriversResult = await processTimelineData(rawFilePath, supabaseData);
-            const outputFilePath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json');
-            fs.writeFileSync(outputFilePath, JSON.stringify(allDriversResult, null, 2), 'utf8');
+            const allDriversResult = await processTimelineData(settingsData.raw_timeline_data, supabaseData);
+            
+            await supabase.from('dashboard_settings').upsert({
+                id: 1,
+                active_table: tableName,
+                raw_timeline_data: settingsData.raw_timeline_data,
+                timeline_data: allDriversResult,
+                updated_at: new Date().toISOString()
+            });
             
             return res.json({ success: true, message: 'Table updated and data re-processed!' });
         }
+
+        // No raw data yet, just update table name
+        await supabase.from('dashboard_settings').upsert({
+            id: 1,
+            active_table: tableName,
+            updated_at: new Date().toISOString()
+        });
 
         res.json({ success: true, message: 'Table updated, but no timeline data to process yet.' });
     } catch (err) {
@@ -468,27 +477,21 @@ app.post('/api/admin/set-table', async (req, res) => {
     }
 });
 
-app.get('/api/admin/active-table', (req, res) => {
+app.get('/api/admin/active-table', async (req, res) => {
     try {
-        const activeTablePath = path.join(__dirname, '../public/driver-dashboard/active_table.json');
-        if (fs.existsSync(activeTablePath)) {
-            const tableData = JSON.parse(fs.readFileSync(activeTablePath, 'utf8'));
-            return res.json({ tableName: tableData.tableName || 'angajati' });
-        }
-        res.json({ tableName: 'angajati' });
+        const { data, error } = await supabase.from('dashboard_settings').select('active_table').eq('id', 1).maybeSingle();
+        if (error || !data || !data.active_table) return res.json({ tableName: 'angajati' });
+        res.json({ tableName: data.active_table });
     } catch (e) {
         res.json({ tableName: 'angajati' });
     }
 });
 
-app.get('/api/admin/timeline-data', (req, res) => {
+app.get('/api/admin/timeline-data', async (req, res) => {
     try {
-        const outputFilePath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json');
-        if (fs.existsSync(outputFilePath)) {
-            const data = JSON.parse(fs.readFileSync(outputFilePath, 'utf8'));
-            return res.json(data);
-        }
-        res.json([]);
+        const { data, error } = await supabase.from('dashboard_settings').select('timeline_data').eq('id', 1).maybeSingle();
+        if (error || !data || !data.timeline_data) return res.json([]);
+        res.json(data.timeline_data);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

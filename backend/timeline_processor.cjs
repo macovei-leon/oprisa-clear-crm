@@ -34,7 +34,7 @@ const DAY_MAP = {
     'tuesday': 96   // June 23
 };
 
-async function processTimelineData(jsonFilePath, supabaseData) {
+async function processTimelineData(jsonData, supabaseData) {
     const excelMapByPn = new Map();
     const excelMapByName = new Map();
     
@@ -70,8 +70,7 @@ async function processTimelineData(jsonFilePath, supabaseData) {
         });
     }
 
-    console.log("Loading JSON data file...");
-    const jsonData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
+    console.log("Processing JSON data...");
     const soferi = jsonData.data.soferi;
     
     const allDriversResult = [];
