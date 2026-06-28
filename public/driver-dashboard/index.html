@@ -396,7 +396,13 @@
                     allDrivers = [];
                 } else {
                     const jsonData = await res.json();
-                    allDrivers = jsonData;
+                    if (!Array.isArray(jsonData) && jsonData.settings) {
+                        window.timelineSettings = jsonData.settings;
+                        allDrivers = jsonData.drivers || [];
+                    } else {
+                        window.timelineSettings = null;
+                        allDrivers = jsonData || [];
+                    }
                 }
                 
                 initDashboard();
@@ -500,7 +506,7 @@
         }
 
         function generateVisualTimeline(d, isModal = false) {
-            const days = [
+            const days = window.timelineSettings?.days || [
                 { label: 'Jun 19', start: 0, end: 24 },
                 { label: 'Jun 20', start: 24, end: 48 },
                 { label: 'Jun 21', start: 48, end: 72 },
@@ -518,7 +524,7 @@
                         <div class="card-timeline-container" style="justify-content:center; align-items:center; min-height:120px; background:rgba(255, 255, 255, 0.02); border-radius:12px; border:1px dashed var(--border-color); padding:2rem; margin-top:0.75rem; width:100%;">
                             <div style="text-align:center; color:var(--text-secondary); font-size:0.95rem;">
                                 <i class="fa-solid fa-calendar-minus" style="font-size:2rem; margin-bottom:0.75rem; color:var(--text-muted); display:block;"></i>
-                                No scheduled shifts, worked activities, or leave logs were recorded for this driver during the 5-day window (June 19 - June 23, 2026).
+                                No scheduled shifts, worked activities, or leave logs were recorded for this driver during ${window.timelineSettings ? `the ${window.timelineSettings.totalDays}-day window` : `the 5-day window (June 19 - June 23, 2026)`}.
                             </div>
                         </div>
                     `;
@@ -534,7 +540,7 @@
                 }
             }
 
-            let html = '<div class="card-timeline-container" style="gap: ' + (isModal ? '0.75rem' : '0.4rem') + ';">';
+            let html = '<div class="card-timeline-container" style="gap: ' + (isModal ? '0.75rem' : '0.4rem') + ';' + (isModal ? '' : ' max-height: 180px; overflow-y: auto; overflow-x: hidden; padding-right: 0.5rem;') + '">';
 
             days.forEach(day => {
                 const gridLines = `
@@ -889,7 +895,7 @@
                     <div>
                         <div class="driver-card-header">
                             <div>
-                                <span class="driver-name">${d.name} ${statusPill} ${d.hasConcediu ? '<span style="background:rgba(168, 85, 247, 0.15); color:#a855f7; padding:0.15rem 0.5rem; border-radius:12px; font-size:0.75rem; border:1px solid rgba(168, 85, 247, 0.3); margin-left:0.5rem;" title="Has logged Concediu"><i class="fa-solid fa-umbrella-beach"></i> Also Concediu</span>' : ''}</span>
+                                <span class="driver-name">${d.name} ${statusPill} ${d.hasConcediu ? '<span style="background:rgba(168, 85, 247, 0.15); color:#a855f7; padding:0.15rem 0.5rem; border-radius:12px; font-size:0.75rem; border:1px solid rgba(168, 85, 247, 0.3); margin-left:0.5rem;" title="Has logged Concediu"><i class="fa-solid fa-umbrella-beach"></i> Also Concediu</span>' : ''} ${d.foundInDB === false ? `<span style="background:rgba(239, 68, 68, 0.15); color:var(--accent-coral); padding:0.15rem 0.5rem; border-radius:12px; font-size:0.75rem; border:1px solid rgba(239, 68, 68, 0.3); margin-left:0.5rem;" title="Driver info missing from database table"><i class="fa-solid fa-database"></i> No data in table</span>` : ''}</span>
                                 <span class="driver-pn">${pnDisplay}</span>
                             </div>
                             <span class="status-badge ${cardStatusClass}">${statusLabel}</span>

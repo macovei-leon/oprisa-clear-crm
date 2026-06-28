@@ -1,38 +1,20 @@
 const fs = require('fs');
 
-const BASE_DATE_STR = '2026-06-19T00:00:00+03:00';
-const BASE_DATE = new Date(BASE_DATE_STR);
-
-function getHoursSinceBase(dateStr) {
-    let dStr = dateStr;
-    if (!dStr.includes('+')) dStr += '+03:00';
-    const d = new Date(dStr);
-    return (d.getTime() - BASE_DATE.getTime()) / 3600000;
-}
-
 function normalizeName(name) {
     if (!name) return '';
     return name.replace(/^[-\u2013\u2014\s]+/, '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-function formatHourToDateTime(t) {
-    const timeInMs = t * 60 * 60 * 1000;
-    const d = new Date(BASE_DATE.getTime() + timeInMs);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${day}.${month}.${year} ${hours}:${minutes}`;
-}
-
-const DAY_MAP = {
-    'friday': 0,    // June 19
-    'saturday': 24, // June 20
-    'sunday': 48,   // June 21
-    'monday': 72,   // June 22
-    'tuesday': 96   // June 23
+const LEAVE_NAMES = {
+    '#6366f1': 'Concediu medical copil',
+    '#78716c': 'Somaj tehnic',
+    '#1e3a8a': 'Concediu medical',
+    '#3b82f6': 'Concediu de odihna',
+    '#a855f7': 'Concediu parental',
+    '#bfdbfe': 'Concediu fara plata'
 };
+
+const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 async function processTimelineData(jsonFilePath, supabaseData) {
     const excelMapByPn = new Map();
@@ -54,30 +36,15 @@ async function processTimelineData(jsonFilePath, supabaseData) {
         if (normalizedName) excelMapByName.set(normalizedName, info);
     });
 
-    console.log("Fetching Ture Programate from API...");
-    const apiRes = await fetch('https://oprisa.fluxer.io/rest/Oprisa/getTureProgramateRest', {
-        method: 'POST',
-        headers: { 'X-API-KEY': '2f4f26ea80e689ae2b54138ac45f859cf360871236636819e832fb91938e13ff', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataStart: '2026-06-19', dataEnd: '2026-06-23' })
-    });
-    const apiData = await apiRes.json();
-    const scheduledShiftsMap = new Map();
-    if (apiData.success && apiData.data) {
-        apiData.data.forEach(d => {
-            const angajatId = String(d.driver_id).trim();
-            const s = d.schedules || [];
-            scheduledShiftsMap.set(angajatId, s);
-        });
-    }
-
     console.log("Loading JSON data file...");
     const jsonData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
     
-    // If jsonData is an Array, it means the user uploaded the ALREADY PROCESSED timeline_data.json
-    // Instead of parsing raw HR data, we just update the matching fields (email, company, etc.) and return it!
-    if (Array.isArray(jsonData)) {
-        console.log("Detected already-processed array format. Re-mapping driver fields from Supabase...");
-        jsonData.forEach(driver => {
+    if (Array.isArray(jsonData) || jsonData.settings) {
+        console.log("Detected already-processed format. Re-mapping driver fields from Supabase...");
+        let driverArray = Array.isArray(jsonData) ? jsonData : (jsonData.drivers || []);
+        let settings = Array.isArray(jsonData) ? null : jsonData.settings;
+        
+        driverArray.forEach(driver => {
             const pn = String(driver.pn || '');
             const normalizedDriverName = normalizeName(driver.name || '');
             let matchedInfo = null;
@@ -92,26 +59,127 @@ async function processTimelineData(jsonFilePath, supabaseData) {
                 if (matchedInfo.contractType) driver.contractType = matchedInfo.contractType;
             }
         });
-        return jsonData;
+        return { settings, drivers: driverArray };
     }
 
     const soferi = jsonData.data ? jsonData.data.soferi : [];
     
-    const allDriversResult = [];
+    let minTime = Infinity;
+    let maxTime = -Infinity;
     
-    const LEAVE_NAMES = {
-        '#6366f1': 'Concediu medical copil',
-        '#78716c': 'Somaj tehnic',
-        '#1e3a8a': 'Concediu medical',
-        '#3b82f6': 'Concediu de odihna',
-        '#a855f7': 'Concediu parental',
-        '#bfdbfe': 'Concediu fara plata'
+    const processTimeStr = (tStr) => {
+        if (!tStr) return;
+        let str = tStr;
+        if (!str.includes('+') && !str.includes('Z')) str += '+03:00';
+        const t = new Date(str).getTime();
+        if (!isNaN(t)) {
+            if (t < minTime) minTime = t;
+            if (t > maxTime) maxTime = t;
+        }
     };
+    
+    soferi.forEach(sofer => {
+        if (sofer.timeline) sofer.timeline.forEach(t => { processTimeStr(t.dataOraStart); processTimeStr(t.dataOraEnd); });
+        if (sofer.ture) sofer.ture.forEach(t => { processTimeStr(t.dataOraStart); processTimeStr(t.dataOraEnd); });
+    });
+    
+    if (minTime === Infinity) {
+        minTime = new Date('2026-06-19T00:00:00+03:00').getTime();
+        maxTime = minTime + 5 * 24 * 3600000;
+    }
+
+    const baseDateObj = new Date(minTime);
+    const yyyy = baseDateObj.getFullYear();
+    const mm = String(baseDateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(baseDateObj.getDate()).padStart(2, '0');
+    const baseDateStr = `${yyyy}-${mm}-${dd}T00:00:00+03:00`;
+    const BASE_DATE = new Date(baseDateStr);
+
+    let endMaxDateObj = new Date(maxTime);
+    const max_yyyy = endMaxDateObj.getFullYear();
+    const max_mm = String(endMaxDateObj.getMonth() + 1).padStart(2, '0');
+    const max_dd = String(endMaxDateObj.getDate()).padStart(2, '0');
+    let END_DATE = new Date(`${max_yyyy}-${max_mm}-${max_dd}T00:00:00+03:00`);
+    if (END_DATE.getTime() <= maxTime) {
+        END_DATE = new Date(END_DATE.getTime() + 24 * 3600000); // add one full day to envelope everything
+    }
+    
+    let totalDays = Math.max(1, Math.round((END_DATE.getTime() - BASE_DATE.getTime()) / (24 * 3600000)));
+
+    const getHoursSinceBase = (dateStr) => {
+        let dStr = dateStr;
+        if (!dStr.includes('+') && !dStr.includes('Z')) dStr += '+03:00';
+        const d = new Date(dStr);
+        return (d.getTime() - BASE_DATE.getTime()) / 3600000;
+    };
+
+    const formatHourToDateTime = (t) => {
+        const timeInMs = t * 60 * 60 * 1000;
+        const d = new Date(BASE_DATE.getTime() + timeInMs);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const yr = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day}.${month}.${yr} ${hours}:${minutes}`;
+    };
+
+    const dataStartStr = `${yyyy}-${mm}-${dd}`;
+    const end_yyyy = END_DATE.getFullYear();
+    const end_mm = String(END_DATE.getMonth() + 1).padStart(2, '0');
+    const end_dd = String(END_DATE.getDate()).padStart(2, '0');
+    const dataEndStr = `${end_yyyy}-${end_mm}-${end_dd}`;
+
+    console.log(`Fetching Ture Programate from API... (${dataStartStr} to ${dataEndStr}) | totalDays: ${totalDays}`);
+    
+    let scheduledShiftsMap = new Map();
+    try {
+        const apiRes = await fetch('https://oprisa.fluxer.io/rest/Oprisa/getTureProgramateRest', {
+            method: 'POST',
+            headers: { 'X-API-KEY': '2f4f26ea80e689ae2b54138ac45f859cf360871236636819e832fb91938e13ff', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dataStart: dataStartStr, dataEnd: dataEndStr })
+        });
+        const apiData = await apiRes.json();
+        if (apiData.success && apiData.data) {
+            apiData.data.forEach(d => {
+                const angajatId = String(d.driver_id).trim();
+                const s = d.schedules || [];
+                scheduledShiftsMap.set(angajatId, s);
+            });
+        }
+    } catch (e) {
+        console.error("Failed to fetch scheduled shifts", e);
+    }
+    
+    const dayMappingList = [];
+    const monthShortNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const timelineDaysMeta = [];
+    for (let i = 0; i < totalDays; i++) {
+        const d = new Date(BASE_DATE.getTime() + i * 24 * 3600000);
+        dayMappingList.push({
+            offset: i * 24,
+            dayName: dayNames[d.getDay()],
+            dayIndex: i
+        });
+        timelineDaysMeta.push({
+            label: `${monthShortNames[d.getMonth()]} ${d.getDate()}`,
+            start: i * 24,
+            end: (i + 1) * 24
+        });
+    }
+
+    const settings = {
+        baseDateStr: baseDateStr,
+        totalDays: totalDays,
+        days: timelineDaysMeta
+    };
+
+    const allDriversResult = [];
 
     soferi.forEach(sofer => {
         const name = sofer.nume;
         const pn = String(sofer.pn || '');
-        const key = pn || normalizeName(name);
+        const angajatId = String(sofer.id || '');
         
         const shifts = [];
         const activities = [];
@@ -120,20 +188,34 @@ async function processTimelineData(jsonFilePath, supabaseData) {
         const disponibilitate = [];
         const forecast = [];
         
-        const angajatId = String(sofer.id || '');
-        
         if (angajatId && scheduledShiftsMap.has(angajatId)) {
             const apiSchedules = scheduledShiftsMap.get(angajatId);
+            let currentMapIdx = 0;
+            let prevDayName = null;
+            
             apiSchedules.forEach(s => {
-                const dayOffset = DAY_MAP[s.day.toLowerCase()];
-                if (dayOffset !== undefined) {
+                const sDay = s.day.toLowerCase();
+                if (sDay !== prevDayName && prevDayName !== null) {
+                    currentMapIdx++;
+                    while (currentMapIdx < dayMappingList.length && dayMappingList[currentMapIdx].dayName !== sDay) {
+                        currentMapIdx++;
+                    }
+                } else if (prevDayName === null) {
+                    while (currentMapIdx < dayMappingList.length && dayMappingList[currentMapIdx].dayName !== sDay) {
+                        currentMapIdx++;
+                    }
+                }
+                prevDayName = sDay;
+                
+                if (currentMapIdx < dayMappingList.length) {
+                    const dayOffset = dayMappingList[currentMapIdx].offset;
                     const [startH, startM] = s.start.split(':').map(Number);
                     const [endH, endM] = s.end.split(':').map(Number);
                     let start = dayOffset + startH + startM / 60;
                     let end = dayOffset + endH + endM / 60;
                     if (end < start) end += 24; 
                     shifts.push({ type: 'HR App Shift', start: formatHourToDateTime(start), end: formatHourToDateTime(end), startHour: start, endHour: end });
-                    scheduledShifts.push({ start, end, type: 'HR App Shift' });
+                    scheduledShifts.push({ start, end, type: 'HR App Shift', dayIndex: dayMappingList[currentMapIdx].dayIndex });
                 }
             });
         }
@@ -196,15 +278,10 @@ async function processTimelineData(jsonFilePath, supabaseData) {
             const startStr = formatHourToDateTime(s.start);
             const endStr = formatHourToDateTime(s.end);
             const shiftDur = s.end - s.start;
-
-            let day = 19;
-            if (s.start >= 24 && s.start < 48) day = 20;
-            else if (s.start >= 48 && s.start < 72) day = 21;
-            else if (s.start >= 72 && s.start < 96) day = 22;
-            else if (s.start >= 96) day = 23;
+            const day = s.dayIndex;
 
             let hasLeaveOnSameDay = false;
-            const dayStartOffset = (day - 19) * 24;
+            const dayStartOffset = day * 24;
             const dayEndOffset = dayStartOffset + 24;
 
             leaveSegments.forEach(l => {
@@ -279,12 +356,17 @@ async function processTimelineData(jsonFilePath, supabaseData) {
             status = 'Concediu';
         }
 
-        const m19 = missedShifts.some(m => m.day === 19 && m.violationType === 'Missed Shift');
-        const m20 = missedShifts.some(m => m.day === 20 && m.violationType === 'Missed Shift');
-        const m21 = missedShifts.some(m => m.day === 21 && m.violationType === 'Missed Shift');
-        const m22 = missedShifts.some(m => m.day === 22 && m.violationType === 'Missed Shift');
-        const m23 = missedShifts.some(m => m.day === 23 && m.violationType === 'Missed Shift');
-        const missedThreeDaysInARow = (m19 && m20 && m21) || (m20 && m21 && m22) || (m21 && m22 && m23);
+        let missedConsecutiveStr = 0;
+        let maxConsecutiveStr = 0;
+        for (let i = 0; i < totalDays; i++) {
+            if (missedShifts.some(m => m.day === i && m.violationType === 'Missed Shift')) {
+                missedConsecutiveStr++;
+                if (missedConsecutiveStr > maxConsecutiveStr) maxConsecutiveStr = missedConsecutiveStr;
+            } else {
+                missedConsecutiveStr = 0;
+            }
+        }
+        const missedThreeDaysInARow = maxConsecutiveStr >= 3;
 
         let phone = '';
         let email = '';
@@ -314,11 +396,12 @@ async function processTimelineData(jsonFilePath, supabaseData) {
             timelineShifts: shifts,
             timelineActivities: activities,
             disponibilitate: disponibilitate,
-            forecast: forecast
+            forecast: forecast,
+            foundInDB: !!matchedInfo
         });
     });
 
-    return allDriversResult;
+    return { settings, drivers: allDriversResult };
 }
 
 module.exports = {
