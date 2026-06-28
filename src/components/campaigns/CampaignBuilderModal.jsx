@@ -21,6 +21,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
   
   // Repetitive flow state
   const [resetIntervalHours, setResetIntervalHours] = useState(24);
+  const [resetIntervalMinutes, setResetIntervalMinutes] = useState(0);
   
   // Worker Splits (Array of { id, count })
   const [workerSplits, setWorkerSplits] = useState([]);
@@ -53,8 +54,9 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
             branches: [{ id: generateId(), label: 'Pas Următor', action: 'next', color: 'success' }]
           }
         ]);
-        if (isRepetitive && initialData.reset_interval_hours) {
-          setResetIntervalHours(initialData.reset_interval_hours);
+        if (isRepetitive) {
+          if (initialData.reset_interval_hours !== undefined) setResetIntervalHours(initialData.reset_interval_hours);
+          if (initialData.reset_interval_minutes !== undefined) setResetIntervalMinutes(initialData.reset_interval_minutes);
         }
       }
       fetchWorkers();
@@ -195,7 +197,10 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
           description: description.trim(),
           steps: campaignSteps,
         };
-        if (isRepetitive) updateData.reset_interval_hours = resetIntervalHours;
+        if (isRepetitive) {
+          updateData.reset_interval_hours = resetIntervalHours;
+          updateData.reset_interval_minutes = resetIntervalMinutes;
+        }
 
         const { error } = await supabase.from(tableFlows).update(updateData).eq('id', initialData.id);
         if (error) throw error;
@@ -237,6 +242,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
 
       if (isRepetitive) {
         insertData.reset_interval_hours = resetIntervalHours;
+        insertData.reset_interval_minutes = resetIntervalMinutes;
       }
 
       const { data: campData, error: campErr } = await supabase

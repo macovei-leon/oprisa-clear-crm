@@ -116,7 +116,15 @@ export const CampaignManagement = ({ filterType, isRepetitive, setGlobalAlert })
                       <div className="font-bold text-slate-800">{c.name}</div>
                       <div className="text-xs text-slate-500 mt-1 max-w-md truncate">{c.description || (t.noDescription || 'Fără descriere')}</div>
                       {isRepetitive && (
-                        <div className="mt-1 text-xs font-bold text-emerald-600">Interval resetare: {c.reset_interval_hours || 24} ore</div>
+                        <div className="mt-1 text-xs font-bold text-emerald-600">
+                          Interval resetare: {
+                            (c.reset_interval_hours || 0) === 0 && (c.reset_interval_minutes || 0) > 0 
+                              ? `${c.reset_interval_minutes} minute` 
+                              : (c.reset_interval_hours || 0) > 0 && (c.reset_interval_minutes || 0) === 0
+                              ? `${c.reset_interval_hours} ore`
+                              : `${c.reset_interval_hours || 0} ore, ${c.reset_interval_minutes || 0} minute`
+                          }
+                        </div>
                       )}
                     </td>
                     <td className="p-4 text-right flex justify-end gap-2">
