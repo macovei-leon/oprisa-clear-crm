@@ -698,8 +698,9 @@ app.post('/api/admin/email-templates/:category/pdf-config', async (req, res) => 
 });
 
 app.post('/api/admin/test-email', async (req, res) => {
+    const { categories } = req.body || {};
     // Manually trigger the job immediately for testing
-    runDailyEmailJob();
+    runDailyEmailJob(categories);
     res.json({ success: true, message: 'Email job triggered in background' });
 });
 

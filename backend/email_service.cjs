@@ -105,7 +105,7 @@ async function getTimelineDrivers() {
 let isProcessingQueue = false;
 
 // 1. Queue Emails
-async function runDailyEmailJob() {
+async function runDailyEmailJob(overrideCategories = null) {
     console.log('[Email Queue] Starting daily email queuing job...');
     try {
         const drivers = await getTimelineDrivers();
@@ -115,7 +115,7 @@ async function runDailyEmailJob() {
         }
 
         const { data: settings } = await supabase.from('driver_email_settings').select('*').eq('id', 1).maybeSingle();
-        const targetCategories = settings && settings.allowed_categories ? settings.allowed_categories : ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent', 'Test'];
+        const targetCategories = overrideCategories || (settings && settings.allowed_categories ? settings.allowed_categories : ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent', 'Test']);
         const pnStart = settings && settings.pn_range_start ? parseInt(settings.pn_range_start, 10) : null;
         const pnEnd = settings && settings.pn_range_end ? parseInt(settings.pn_range_end, 10) : null;
 
@@ -139,7 +139,8 @@ async function runDailyEmailJob() {
 
         const validTargets = [];
         for (const driver of targets) {
-            if (alreadyProcessedPns.has(driver.pn)) continue;
+            // Bypass the once-a-day check if the category is 'Test' so users can run multiple tests
+            if (driver.status !== 'Test' && alreadyProcessedPns.has(driver.pn)) continue;
             if (!driver.email) continue;
             validTargets.push(driver);
         }

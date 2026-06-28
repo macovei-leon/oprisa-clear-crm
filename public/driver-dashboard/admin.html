@@ -840,7 +840,14 @@
 
     async function testEmailJob() {
         if (!confirm('This will trigger the daily job immediately in the background, adding users to the queue. Are you sure?')) return;
-        const res = await fetch('/api/admin/test-email', { method: 'POST' });
+        
+        const categories = Array.from(document.querySelectorAll('input[name="email-category"]:checked')).map(cb => cb.value);
+        
+        const res = await fetch('/api/admin/test-email', { 
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ categories })
+        });
         if (res.ok) {
             alert('Triggered! Emails have been added to the pending queue and will process momentarily.');
             loadBatches();
