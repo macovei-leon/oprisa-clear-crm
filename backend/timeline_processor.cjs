@@ -72,7 +72,36 @@ async function processTimelineData(jsonFilePath, supabaseData) {
 
     console.log("Loading JSON data file...");
     const jsonData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
-    const soferi = jsonData.data.soferi;
+    
+    // If jsonData is an Array, it means the user uploaded the ALREADY PROCESSED timeline_data.json
+    // Instead of parsing raw HR data, we just update the matching fields (email, company, etc.) and return it!
+    if (Array.isArray(jsonData)) {
+        console.log("Detected already-processed array format. Re-mapping driver fields from Supabase...");
+        jsonData.forEach(driver => {
+            const pn = String(driver.pn || '');
+            const normalizedDriverName = normalizeName(driver.name || '');
+            let matchedInfo = null;
+            if (pn && excelMapByPn.has(pn)) matchedInfo = excelMapByPn.get(pn);
+            else if (normalizedDriverName && excelMapByName.has(normalizedDriverName)) matchedInfo = excelMapByName.get(normalizedDriverName);
+            
+            if (matchedInfo) {
+                driver.phone = matchedInfo.phone;
+                driver.email = matchedInfo.email;
+                driver.companies = matchedInfo.company ? [matchedInfo.company] : [];
+                driver.cities = matchedInfo.city ? [matchedInfo.city] : [];
+                driver.contractType = matchedInfo.contractType;
+            } else {
+                driver.phone = '';
+                driver.email = '';
+                driver.companies = [];
+                driver.cities = [];
+                driver.contractType = '';
+            }
+        });
+        return jsonData;
+    }
+
+    const soferi = jsonData.data ? jsonData.data.soferi : [];
     
     const allDriversResult = [];
     
