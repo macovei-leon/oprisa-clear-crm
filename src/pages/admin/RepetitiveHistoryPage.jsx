@@ -145,9 +145,10 @@ export const RepetitiveHistoryPage = () => {
   const globalCategories = useMemo(() => {
     const map = {};
     historyData.forEach(item => {
-      if (item.action_type === 'ADVANCEMENT') return; // Do not count advancements in performance stats
-      
-      const cat = item.category || 'Fără Categorie';
+      let cat = item.category || 'Fără Categorie';
+      if (item.action_type === 'ADVANCEMENT') {
+        cat = 'Mutări/Avansări';
+      }
       map[cat] = (map[cat] || 0) + 1;
     });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
@@ -179,7 +180,7 @@ export const RepetitiveHistoryPage = () => {
       {/* Controls */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 flex flex-col sm:flex-row gap-6 items-center justify-between">
         
-        <div className="flex items-center gap-4 w-full sm:w-auto">
+        <div className="flex items-end gap-4 w-full sm:w-auto flex-wrap">
           <div className="flex flex-col">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Alege Data</label>
             <div className="relative">
@@ -195,54 +196,54 @@ export const RepetitiveHistoryPage = () => {
           
           <div className="flex flex-col">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Filtru Flux</label>
-            <div className="flex items-center gap-2">
-              <select 
-                value={selectedFlowId}
-                onChange={e => setSelectedFlowId(e.target.value)}
-                className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all min-w-[200px]"
-              >
-                <option value="all">Toate Fluxurile</option>
-                {displayedFlows.map(f => (
-                  <option key={f.id} value={f.id}>{f.name} {!f.is_active ? '(Arhivat)' : ''}</option>
-                ))}
-              </select>
-              
-              {selectedFlowId !== 'all' && stamps.length > 0 && (
-                <div className="flex flex-col ml-4">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Stamp</label>
-                  <select 
-                    value={selectedStampId}
-                    onChange={e => setSelectedStampId(e.target.value)}
-                    className="px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-700 font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                  >
-                    {stamps.map(s => {
-                      const timeStr = new Date(s.stamp_time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
-                      return <option key={s.id} value={s.id}>{timeStr}</option>;
-                    })}
-                  </select>
-                </div>
-              )}
+            <select 
+              value={selectedFlowId}
+              onChange={e => setSelectedFlowId(e.target.value)}
+              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all min-w-[200px]"
+            >
+              <option value="all">Toate Fluxurile</option>
+              {displayedFlows.map(f => (
+                <option key={f.id} value={f.id}>{f.name} {!f.is_active ? '(Arhivat)' : ''}</option>
+              ))}
+            </select>
+          </div>
 
-              {selectedFlowId !== 'all' && (
-                <button
-                  onClick={() => {
-                    setSelectedSnapshotWorkerId(null);
-                    setShowSnapshotModal(true);
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"
-                  title="Vezi stadiul kanban din această zi"
-                >
-                  <FolderClosed size={16} /> Snapshot Kanban
-                </button>
-              )}
-              <button
-                onClick={() => setShowClearModal(true)}
-                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ml-2"
-                title="Șterge istoricul definitiv"
+          {selectedFlowId !== 'all' && stamps.length > 0 && (
+            <div className="flex flex-col">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Stamp</label>
+              <select 
+                value={selectedStampId}
+                onChange={e => setSelectedStampId(e.target.value)}
+                className="px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-700 font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               >
-                <Trash2 size={16} /> Curăță Istoric
-              </button>
+                {stamps.map(s => {
+                  const timeStr = new Date(s.stamp_time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+                  return <option key={s.id} value={s.id}>{timeStr}</option>;
+                })}
+              </select>
             </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            {selectedFlowId !== 'all' && (
+              <button
+                onClick={() => {
+                  setSelectedSnapshotWorkerId(null);
+                  setShowSnapshotModal(true);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                title="Vezi stadiul kanban din această zi"
+              >
+                <FolderClosed size={16} /> Snapshot Kanban
+              </button>
+            )}
+            <button
+              onClick={() => setShowClearModal(true)}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+              title="Șterge istoricul definitiv"
+            >
+              <Trash2 size={16} /> Curăță Istoric
+            </button>
           </div>
         </div>
 
@@ -278,10 +279,7 @@ export const RepetitiveHistoryPage = () => {
               <div key={worker.name} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
                 <div>
                   <h4 className="text-lg font-bold text-slate-800 mb-1">{worker.name}</h4>
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-sm border border-emerald-200">
-                      <CheckCircle2 size={16} /> Total finalizate: {worker.total}
-                    </div>
+                  <div className="flex items-center gap-2 flex-wrap">
                     {worker.advancements > 0 && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-600 font-bold rounded-lg text-sm border border-slate-200">
                         Mutări/Avansări: {worker.advancements}
