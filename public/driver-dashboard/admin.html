@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -454,32 +455,33 @@
         }
     }
 
+    const supabaseUrl = 'https://odgtubiqvxcszsfifjfd.supabase.co';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kZ3R1Ymlxdnhjc3pzZmlmamZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5NjA5NDksImV4cCI6MjA5NzUzNjk0OX0.qKXx5hsrG5nJu2bfeu6RZeBWKhcpRfY077eygekXy50';
+    window.supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
     async function loadTables() {
         const select = document.getElementById('driver-table-name');
         try {
-            const res = await fetch('/api/admin/tables');
-            if (res.ok) {
-                const text = await res.text();
-                if(text.trim().startsWith('<')) throw new Error("API returned HTML instead of JSON");
-                const tables = JSON.parse(text);
+            const { data: tables, error } = await window.supabase
+                .from('custom_tables')
+                .select('table_name, title_ro')
+                .order('created_at', { ascending: false });
                 
-                select.innerHTML = '<option value="">Select a database table...</option>';
-                if (tables && tables.length > 0) {
-                    tables.forEach(t => {
-                        const opt = document.createElement('option');
-                        opt.value = t.table_name;
-                        opt.textContent = `${t.title_ro} (${t.table_name})`;
-                        select.appendChild(opt);
-                    });
-                } else {
-                    // Fallback if no tables exist in registry
-                    select.innerHTML += '<option value="angajati">Angajati (Fallback)</option>';
-                }
+            if (error) throw error;
+            
+            select.innerHTML = '<option value="">Select a database table...</option>';
+            if (tables && tables.length > 0) {
+                tables.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.table_name;
+                    opt.textContent = `${t.title_ro} (${t.table_name})`;
+                    select.appendChild(opt);
+                });
             } else {
-                throw new Error("API request failed");
+                select.innerHTML += '<option value="angajati">Angajati (Fallback)</option>';
             }
         } catch (e) {
-            console.error("Failed to load tables", e);
+            console.error("Failed to load tables directly from Supabase", e);
             select.innerHTML = '<option value="">Select a database table...</option>';
             select.innerHTML += '<option value="angajati">Angajati (Fallback)</option>';
         }
