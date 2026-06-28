@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { MainLayout } from '../../components/layout/MainLayout';
-import { Calendar as CalendarIcon, Users, Activity, BarChart, CheckCircle2, Clock, MessageSquare, List, FolderClosed } from 'lucide-react';
+import { Calendar as CalendarIcon, Users, Activity, BarChart, CheckCircle2, Clock, MessageSquare, List, FolderClosed, Trash2 } from 'lucide-react';
 import { CardTimelineModal } from '../../components/admin/CardTimelineModal';
 import { RepetitiveKanbanSnapshotModal } from '../../components/admin/RepetitiveKanbanSnapshotModal';
+import { ClearHistoryModal } from '../../components/admin/ClearHistoryModal';
 
 export const RepetitiveHistoryPage = () => {
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -18,6 +19,7 @@ export const RepetitiveHistoryPage = () => {
   const [selectedFlowId, setSelectedFlowId] = useState('all');
   const [selectedTimelineTaskId, setSelectedTimelineTaskId] = useState(null);
   const [showSnapshotModal, setShowSnapshotModal] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
 
   useEffect(() => {
     fetchFlows();
@@ -156,6 +158,13 @@ export const RepetitiveHistoryPage = () => {
                   <FolderClosed size={16} /> Snapshot Kanban
                 </button>
               )}
+              <button
+                onClick={() => setShowClearModal(true)}
+                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ml-2"
+                title="Șterge istoricul definitiv"
+              >
+                <Trash2 size={16} /> Curăță Istoric
+              </button>
             </div>
           </div>
         </div>
@@ -324,6 +333,16 @@ export const RepetitiveHistoryPage = () => {
           historyData={historyData}
           selectedDate={selectedDate}
           onClose={() => setShowSnapshotModal(false)}
+        />
+      )}
+
+      {showClearModal && (
+        <ClearHistoryModal
+          flowId={selectedFlowId}
+          onClose={() => setShowClearModal(false)}
+          onSuccess={() => {
+            fetchHistory();
+          }}
         />
       )}
     </MainLayout>

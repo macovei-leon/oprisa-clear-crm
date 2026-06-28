@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Target, Trash2, Archive, RefreshCw, AlertTriangle, Calendar, Edit } from 'lucide-react';
+import { Target, Trash2, Archive, RefreshCw, AlertTriangle, Calendar, Edit, Pause, Play } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { RepetitiveHistoryModal } from './RepetitiveHistoryModal';
 import { CampaignBuilderModal } from '../campaigns/CampaignBuilderModal';
@@ -33,6 +33,22 @@ export const CampaignManagement = ({ filterType, isRepetitive, setGlobalAlert })
   useEffect(() => {
     fetchCampaigns();
   }, [filterType, isRepetitive]);
+
+  const handleToggleStop = async (item) => {
+    if (!isRepetitive) return;
+    const newStatus = !item.is_stopped;
+    const { error } = await supabase
+      .from('crm_repetitive_flows')
+      .update({ is_stopped: newStatus })
+      .eq('id', item.id);
+      
+    if (error) {
+      setGlobalAlert({ type: 'error', message: error.message });
+    } else {
+      setGlobalAlert({ type: 'success', message: newStatus ? 'Resetarea automată a fost oprită (Pauză).' : 'Resetarea automată a fost pornită (Play).' });
+      fetchCampaigns();
+    }
+  };
 
   const handleArchive = async (id) => {
     if (!confirm(t.confirmArchive || 'Ești sigur că vrei să arhivezi?')) return;
@@ -116,14 +132,21 @@ export const CampaignManagement = ({ filterType, isRepetitive, setGlobalAlert })
                       <div className="font-bold text-slate-800">{c.name}</div>
                       <div className="text-xs text-slate-500 mt-1 max-w-md truncate">{c.description || (t.noDescription || 'Fără descriere')}</div>
                       {isRepetitive && (
-                        <div className="mt-1 text-xs font-bold text-emerald-600">
-                          Interval resetare: {
-                            (c.reset_interval_hours || 0) === 0 && (c.reset_interval_minutes || 0) > 0 
-                              ? `${c.reset_interval_minutes} minute` 
-                              : (c.reset_interval_hours || 0) > 0 && (c.reset_interval_minutes || 0) === 0
-                              ? `${c.reset_interval_hours} ore`
-                              : `${c.reset_interval_hours || 0} ore, ${c.reset_interval_minutes || 0} minute`
-                          }
+                        <div className="mt-1 text-xs font-bold flex items-center gap-2">
+                          <span className="text-emerald-600">
+                            Interval resetare: {
+                              (c.reset_interval_hours || 0) === 0 && (c.reset_interval_minutes || 0) > 0 
+                                ? `${c.reset_interval_minutes} minute` 
+                                : (c.reset_interval_hours || 0) > 0 && (c.reset_interval_minutes || 0) === 0
+                                ? `${c.reset_interval_hours} ore`
+                                : `${c.reset_interval_hours || 0} ore, ${c.reset_interval_minutes || 0} minute`
+                            }
+                          </span>
+                          {c.is_stopped ? (
+                            <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] uppercase">Oprit (Pauză)</span>
+                          ) : (
+                            <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] uppercase">Activ</span>
+                          )}
                         </div>
                       )}
                     </td>
@@ -143,9 +166,22 @@ export const CampaignManagement = ({ filterType, isRepetitive, setGlobalAlert })
                       >
                         <Edit size={14} /> Editează
                       </button>
+                      {isRepetitive && (
+                        <button 
+                          onClick={() => handleToggleStop(c)}
+                          className={`px-3 py-1.5 text-xs font-bold rounded flex items-center gap-1 transition-colors ${
+                            c.is_stopped 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' 
+                              : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                          }`}
+                          title={c.is_stopped ? "Pornește resetarea automată" : "Oprește resetarea automată"}
+                        >
+                          {c.is_stopped ? <><Play size={14} /> Start</> : <><Pause size={14} /> Stop</>}
+                        </button>
+                      )}
                       <button 
                         onClick={() => handleArchive(c.id)}
-                        className="px-3 py-1.5 text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 rounded flex items-center gap-1 transition-colors"
+                        className={`px-3 py-1.5 text-xs font-bold rounded flex items-center gap-1 transition-colors bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100`}
                         title={t.btnArchive || "Arhivează"}
                       >
                         <Archive size={14} /> {t.btnArchive || 'Arhivează'}
