@@ -70,7 +70,7 @@ async function processTimelineData(jsonFilePath, supabaseData) {
     const processTimeStr = (tStr) => {
         if (!tStr) return;
         let str = tStr;
-        if (!str.includes('+') && !str.includes('Z')) str += '+03:00';
+        if (!str.includes('+') && !str.includes('Z')) str += '+02:00';
         const t = new Date(str).getTime();
         if (!isNaN(t)) {
             if (t < minTime) minTime = t;
@@ -83,23 +83,23 @@ async function processTimelineData(jsonFilePath, supabaseData) {
     });
     
     if (minTime === Infinity) {
-        minTime = new Date('2026-06-19T00:00:00+03:00').getTime();
+        minTime = new Date('2026-06-19T00:00:00+02:00').getTime();
         maxTime = minTime + 5 * 24 * 3600000;
     }
 
-    const getBucharestDateParts = (dateObj) => {
-        const str = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(dateObj); // YYYY-MM-DD
+    const getBerlinDateParts = (dateObj) => {
+        const str = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(dateObj); // YYYY-MM-DD
         const parts = str.split('-');
         return { yyyy: parts[0], mm: parts[1], dd: parts[2] };
     };
 
-    const bParts = getBucharestDateParts(new Date(minTime));
-    const baseDateStr = `${bParts.yyyy}-${bParts.mm}-${bParts.dd}T00:00:00+03:00`;
+    const bParts = getBerlinDateParts(new Date(minTime));
+    const baseDateStr = `${bParts.yyyy}-${bParts.mm}-${bParts.dd}T00:00:00+02:00`;
     const BASE_DATE = new Date(baseDateStr);
 
     let endMaxDateObj = new Date(maxTime);
-    const eParts = getBucharestDateParts(endMaxDateObj);
-    let END_DATE = new Date(`${eParts.yyyy}-${eParts.mm}-${eParts.dd}T00:00:00+03:00`);
+    const eParts = getBerlinDateParts(endMaxDateObj);
+    let END_DATE = new Date(`${eParts.yyyy}-${eParts.mm}-${eParts.dd}T00:00:00+02:00`);
     if (END_DATE.getTime() <= maxTime) {
         END_DATE = new Date(END_DATE.getTime() + 24 * 3600000); // add one full day to envelope everything
     }
@@ -108,7 +108,7 @@ async function processTimelineData(jsonFilePath, supabaseData) {
 
     const getHoursSinceBase = (dateStr) => {
         let dStr = dateStr;
-        if (!dStr.includes('+') && !dStr.includes('Z')) dStr += '+03:00';
+        if (!dStr.includes('+') && !dStr.includes('Z')) dStr += '+02:00';
         const d = new Date(dStr);
         return (d.getTime() - BASE_DATE.getTime()) / 3600000;
     };
@@ -116,8 +116,8 @@ async function processTimelineData(jsonFilePath, supabaseData) {
     const formatHourToDateTime = (t) => {
         const timeInMs = t * 60 * 60 * 1000;
         const d = new Date(BASE_DATE.getTime() + timeInMs);
-        const parts = getBucharestDateParts(d);
-        const timeStr = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+        const parts = getBerlinDateParts(d);
+        const timeStr = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
         return `${parts.dd}.${parts.mm}.${parts.yyyy} ${timeStr}`;
     };
 
@@ -149,8 +149,8 @@ async function processTimelineData(jsonFilePath, supabaseData) {
     const timelineDaysMeta = [];
     for (let i = 0; i < totalDays; i++) {
         const d = new Date(BASE_DATE.getTime() + i * 24 * 3600000);
-        const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Bucharest', weekday: 'long' }).format(d).toLowerCase();
-        const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Bucharest', month: 'short', day: 'numeric' }).format(d);
+        const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', weekday: 'long' }).format(d).toLowerCase();
+        const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', month: 'short', day: 'numeric' }).format(d);
         dayMappingList.push({
             offset: i * 24,
             dayName: weekday,
