@@ -12,21 +12,8 @@ const { processTimelineData } = require('./timeline_processor.cjs');
 const multer = require('multer');
 
 // Configure multer for PDF uploads
-const uploadDir = path.join(__dirname, 'attachments');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
-        cb(null, `${category}.pdf`);
-    }
-});
 const upload = multer({ 
-    storage: storage,
+    storage: multer.memoryStorage(),
     fileFilter: (req, file, cb) => {
         if (file.mimetype === 'application/pdf') {
             cb(null, true);
@@ -377,14 +364,7 @@ app.get('/api/admin/tables', async (req, res) => {
 });
 
 const uploadJson = multer({
-    storage: multer.diskStorage({
-        destination: function (req, file, cb) {
-            cb(null, uploadDir);
-        },
-        filename: function (req, file, cb) {
-            cb(null, 'timeline_' + Date.now() + '.json');
-        }
-    }),
+    storage: multer.memoryStorage(),
     fileFilter: (req, file, cb) => {
         if (file.mimetype === 'application/json') {
             cb(null, true);
@@ -396,10 +376,19 @@ const uploadJson = multer({
 
 app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req, res) => {
     try {
-        const jsonFilePath = req.file?.path;
-        if (!jsonFilePath) {
+        if (!req.file || !req.file.buffer) {
             return res.status(400).json({ success: false, message: 'Missing JSON file' });
         }
+        const jsonFileBuffer = req.file.buffer;
+
+        // Upload RAW JSON to Supabase Storage
+        const rawFileName = 'raw_timeline_' + Date.now() + '.json';
+        const { error: rawUploadError } = await supabase.storage
+            .from('crm-attachments')
+            .upload(rawFileName, jsonFileBuffer, { contentType: 'application/json', upsert: true });
+            
+        if (rawUploadError) throw new Error(`Raw upload failed: ${rawUploadError.message}`);
+        const rawPublicUrl = supabase.storage.from('crm-attachments').getPublicUrl(rawFileName).data.publicUrl;
 
         // Fetch active table
         const { data: settingsData } = await supabase.from('dashboard_settings').select('active_table').eq('id', 1).single();
@@ -418,18 +407,24 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
         }
 
         // Process timeline data
-        const allDriversResult = await processTimelineData(jsonFilePath, supabaseData);
+        const allDriversResult = await processTimelineData(jsonFileBuffer, supabaseData);
 
-        // Save processed result locally
-        const processedPath = path.join(__dirname, 'attachments', 'processed_' + path.basename(jsonFilePath));
-        fs.writeFileSync(processedPath, JSON.stringify(allDriversResult, null, 2), 'utf8');
+        // Upload processed JSON to Supabase Storage
+        const processedFileName = 'processed_timeline_' + Date.now() + '.json';
+        const processedBuffer = Buffer.from(JSON.stringify(allDriversResult, null, 2), 'utf8');
+        const { error: procUploadError } = await supabase.storage
+            .from('crm-attachments')
+            .upload(processedFileName, processedBuffer, { contentType: 'application/json', upsert: true });
+
+        if (procUploadError) throw new Error(`Processed upload failed: ${procUploadError.message}`);
+        const processedPublicUrl = supabase.storage.from('crm-attachments').getPublicUrl(processedFileName).data.publicUrl;
 
         // Update dashboard_settings with paths
         await supabase.from('dashboard_settings').upsert({
             id: 1,
             active_table: tableName,
-            raw_file_path: jsonFilePath,
-            timeline_file_path: processedPath,
+            raw_file_path: rawPublicUrl,
+            timeline_file_path: processedPublicUrl,
             updated_at: new Date().toISOString()
         });
         
@@ -464,14 +459,17 @@ app.post('/api/admin/set-table', async (req, res) => {
 
             const allDriversResult = await processTimelineData(settingsData.raw_file_path, supabaseData);
             
-            const processedPath = path.join(__dirname, 'attachments', 'processed_' + Date.now() + '.json');
-            fs.writeFileSync(processedPath, JSON.stringify(allDriversResult, null, 2), 'utf8');
+            const processedFileName = 'processed_timeline_' + Date.now() + '.json';
+            const processedBuffer = Buffer.from(JSON.stringify(allDriversResult, null, 2), 'utf8');
+            const { error: procUploadError } = await supabase.storage.from('crm-attachments').upload(processedFileName, processedBuffer, { contentType: 'application/json', upsert: true });
+            if (procUploadError) throw new Error(`Processed upload failed: ${procUploadError.message}`);
+            const processedPublicUrl = supabase.storage.from('crm-attachments').getPublicUrl(processedFileName).data.publicUrl;
             
             await supabase.from('dashboard_settings').upsert({
                 id: 1,
                 active_table: tableName,
                 raw_file_path: settingsData.raw_file_path,
-                timeline_file_path: processedPath,
+                timeline_file_path: processedPublicUrl,
                 updated_at: new Date().toISOString()
             });
             
@@ -606,54 +604,59 @@ app.get('/api/admin/email-logs', async (req, res) => {
     res.json(data);
 });
 
-app.post('/api/admin/email-templates/:category/attachment', upload.single('pdf'), (req, res) => {
+app.post('/api/admin/email-templates/:category/attachment', upload.single('pdf'), async (req, res) => {
+    if (!req.file || !req.file.buffer) return res.status(400).json({ error: 'Missing PDF file' });
+    const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
+    const { error } = await supabase.storage.from('crm-attachments').upload(`${category}.pdf`, req.file.buffer, { contentType: 'application/pdf', upsert: true });
+    if (error) return res.status(500).json({ success: false, message: error.message });
     res.json({ success: true, message: 'Attachment uploaded successfully' });
 });
 
-app.get('/api/admin/email-templates/:category/attachment', (req, res) => {
+app.get('/api/admin/email-templates/:category/attachment', async (req, res) => {
     const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
-    const filePath = path.join(__dirname, 'attachments', `${category}.pdf`);
-    res.json({ exists: fs.existsSync(filePath) });
+    // For exists check, try fetching the public URL headers
+    const publicUrl = supabase.storage.from('crm-attachments').getPublicUrl(`${category}.pdf`).data.publicUrl;
+    try {
+        const fetchRes = await fetch(publicUrl, { method: 'HEAD' });
+        res.json({ exists: fetchRes.ok });
+    } catch (e) {
+        res.json({ exists: false });
+    }
 });
 
 app.get('/api/admin/email-templates/:category/pdf', (req, res) => {
     const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
-    const filePath = path.join(__dirname, 'attachments', `${category}.pdf`);
-    if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
-    } else {
-        res.status(404).send('PDF not found');
-    }
+    const publicUrl = supabase.storage.from('crm-attachments').getPublicUrl(`${category}.pdf`).data.publicUrl;
+    res.redirect(publicUrl);
 });
 
-app.delete('/api/admin/email-templates/:category/attachment', (req, res) => {
+app.delete('/api/admin/email-templates/:category/attachment', async (req, res) => {
     const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
-    const filePath = path.join(__dirname, 'attachments', `${category}.pdf`);
-    if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-    }
-    const configPath = path.join(__dirname, 'attachments', `${category}_config.json`);
-    if (fs.existsSync(configPath)) {
-        fs.unlinkSync(configPath);
-    }
+    await supabase.storage.from('crm-attachments').remove([`${category}.pdf`, `${category}_config.json`]);
     res.json({ success: true });
 });
 
-app.get('/api/admin/email-templates/:category/pdf-config', (req, res) => {
+app.get('/api/admin/email-templates/:category/pdf-config', async (req, res) => {
     const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
-    const configPath = path.join(__dirname, 'attachments', `${category}_config.json`);
-    if (fs.existsSync(configPath)) {
-        const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        res.json({ success: true, config: configData });
-    } else {
+    const publicUrl = supabase.storage.from('crm-attachments').getPublicUrl(`${category}_config.json`).data.publicUrl;
+    try {
+        const fetchRes = await fetch(publicUrl);
+        if (fetchRes.ok) {
+            const configData = await fetchRes.json();
+            res.json({ success: true, config: configData });
+        } else {
+            res.json({ success: true, config: null });
+        }
+    } catch (e) {
         res.json({ success: true, config: null });
     }
 });
 
-app.post('/api/admin/email-templates/:category/pdf-config', (req, res) => {
+app.post('/api/admin/email-templates/:category/pdf-config', async (req, res) => {
     const category = req.params.category.replace(/[^a-zA-Z0-9]/g, '_');
-    const configPath = path.join(__dirname, 'attachments', `${category}_config.json`);
-    fs.writeFileSync(configPath, JSON.stringify(req.body.config || []), 'utf8');
+    const configBuffer = Buffer.from(JSON.stringify(req.body.config || []), 'utf8');
+    const { error } = await supabase.storage.from('crm-attachments').upload(`${category}_config.json`, configBuffer, { contentType: 'application/json', upsert: true });
+    if (error) return res.status(500).json({ success: false, message: error.message });
     res.json({ success: true });
 });
 

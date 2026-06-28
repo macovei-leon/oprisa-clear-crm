@@ -25,17 +25,26 @@ const transporter = nodemailer.createTransport({
 });
 
 
-async function stampPdf(attachmentPath, configPath, driver) {
-    if (!fs.existsSync(attachmentPath)) return null;
-    if (!fs.existsSync(configPath)) {
-        return { path: attachmentPath };
-    }
-
+async function stampPdf(catSafe, driver) {
     try {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        if (!config || config.length === 0) return { path: attachmentPath };
+        const publicPdfUrl = supabase.storage.from('crm-attachments').getPublicUrl(`${catSafe}.pdf`).data.publicUrl;
+        const pdfFetch = await fetch(publicPdfUrl);
+        if (!pdfFetch.ok) return null;
+        
+        const pdfArrayBuffer = await pdfFetch.arrayBuffer();
+        
+        const publicConfigUrl = supabase.storage.from('crm-attachments').getPublicUrl(`${catSafe}_config.json`).data.publicUrl;
+        const configFetch = await fetch(publicConfigUrl);
+        let config = null;
+        if (configFetch.ok) {
+            try { config = await configFetch.json(); } catch(e) {}
+        }
 
-        const pdfBytes = fs.readFileSync(attachmentPath);
+        if (!config || config.length === 0) {
+            return { buffer: Buffer.from(pdfArrayBuffer) };
+        }
+
+        const pdfBytes = Buffer.from(pdfArrayBuffer);
         const pdfDoc = await PDFDocument.load(pdfBytes);
         const pages = pdfDoc.getPages();
         const firstPage = pages[0];
@@ -69,7 +78,7 @@ async function stampPdf(attachmentPath, configPath, driver) {
         return { buffer: Buffer.from(modifiedPdfBytes) };
     } catch (err) {
         console.error('Error stamping PDF:', err);
-        return { path: attachmentPath };
+        return null;
     }
 }
 
@@ -77,12 +86,14 @@ async function stampPdf(attachmentPath, configPath, driver) {
 async function getTimelineDrivers() {
     try {
         const { data, error } = await supabase.from('dashboard_settings').select('timeline_file_path').eq('id', 1).maybeSingle();
-        let targetPath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json');
         if (!error && data && data.timeline_file_path) {
-            targetPath = path.isAbsolute(data.timeline_file_path) ? data.timeline_file_path : path.resolve(__dirname, data.timeline_file_path);
-        }
-        if (fs.existsSync(targetPath)) {
-            return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+            if (data.timeline_file_path.startsWith('http')) {
+                const fetchRes = await fetch(data.timeline_file_path);
+                if (fetchRes.ok) return await fetchRes.json();
+            } else {
+                let targetPath = path.isAbsolute(data.timeline_file_path) ? data.timeline_file_path : path.resolve(__dirname, data.timeline_file_path);
+                if (fs.existsSync(targetPath)) return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+            }
         }
         return [];
     } catch (e) {
@@ -226,17 +237,11 @@ async function processEmailQueue() {
 
             try {
                 const catSafe = item.category.replace(/[^a-zA-Z0-9]/g, '_');
-                const attachmentPath = path.join(__dirname, 'attachments', `${catSafe}.pdf`);
-                const configPath = path.join(__dirname, 'attachments', `${catSafe}_config.json`);
                 
                 let attachments = [];
-                const stamped = await stampPdf(attachmentPath, configPath, driver);
-                if (stamped) {
-                    if (stamped.buffer) {
-                        attachments.push({ filename: `${catSafe}.pdf`, content: stamped.buffer, contentType: 'application/pdf' });
-                    } else if (stamped.path) {
-                        attachments.push({ filename: `${catSafe}.pdf`, path: stamped.path, contentType: 'application/pdf' });
-                    }
+                const stamped = await stampPdf(catSafe, driver);
+                if (stamped && stamped.buffer) {
+                    attachments.push({ filename: `${catSafe}.pdf`, content: stamped.buffer, contentType: 'application/pdf' });
                 }
 
                 await transporter.sendMail({
@@ -272,15 +277,10 @@ async function sendSingleTestEmail(toEmail, subject, body, category = null, driv
         let attachments = [];
         if (category) {
             const catSafe = category.replace(/[^a-zA-Z0-9]/g, '_');
-            const attachmentPath = path.join(__dirname, 'attachments', `${catSafe}.pdf`);
-            const configPath = path.join(__dirname, 'attachments', `${catSafe}_config.json`);
-            const stamped = await stampPdf(attachmentPath, configPath, driver || {});
-            if (stamped) {
-                if (stamped.buffer) {
-                    attachments.push({ filename: `${catSafe}.pdf`, content: stamped.buffer, contentType: 'application/pdf' });
-                } else if (stamped.path) {
-                    attachments.push({ filename: `${catSafe}.pdf`, path: stamped.path, contentType: 'application/pdf' });
-                }
+            
+            const stamped = await stampPdf(catSafe, driver || {});
+            if (stamped && stamped.buffer) {
+                attachments.push({ filename: `${catSafe}.pdf`, content: stamped.buffer, contentType: 'application/pdf' });
             }
         }
 

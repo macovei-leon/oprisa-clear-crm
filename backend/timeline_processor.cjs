@@ -16,7 +16,7 @@ const LEAVE_NAMES = {
 
 const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
-async function processTimelineData(jsonFilePath, supabaseData) {
+async function processTimelineData(jsonDataRaw, supabaseData) {
     const excelMapByPn = new Map();
     const excelMapByName = new Map();
     
@@ -36,8 +36,13 @@ async function processTimelineData(jsonFilePath, supabaseData) {
         if (normalizedName) excelMapByName.set(normalizedName, info);
     });
 
-    console.log("Loading JSON data file...");
-    const jsonData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
+    // Read the timeline JSON
+    let jsonData;
+    if (typeof jsonDataRaw === 'string' && fs.existsSync(jsonDataRaw)) {
+        jsonData = JSON.parse(fs.readFileSync(jsonDataRaw, 'utf8'));
+    } else {
+        jsonData = JSON.parse(jsonDataRaw.toString('utf8'));
+    }
     
     if (Array.isArray(jsonData) || jsonData.settings) {
         console.log("Detected already-processed format. Re-mapping driver fields from Supabase...");
