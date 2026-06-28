@@ -19,6 +19,7 @@ export const RepetitiveHistoryPage = () => {
   const [selectedFlowId, setSelectedFlowId] = useState('all');
   const [selectedTimelineTaskId, setSelectedTimelineTaskId] = useState(null);
   const [showSnapshotModal, setShowSnapshotModal] = useState(false);
+  const [selectedSnapshotWorkerId, setSelectedSnapshotWorkerId] = useState(null);
   const [showClearModal, setShowClearModal] = useState(false);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export const RepetitiveHistoryPage = () => {
 
   const fetchFlows = async () => {
     try {
-      const { data, error } = await supabase.from('crm_repetitive_flows').select('id, name, steps').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('crm_repetitive_flows').select('id, name, steps, is_active').order('created_at', { ascending: false });
       if (error) throw error;
       setFlows(data || []);
     } catch (err) {
@@ -72,12 +73,15 @@ export const RepetitiveHistoryPage = () => {
   const statsByWorker = useMemo(() => {
     const map = {};
     historyData.forEach(item => {
+      if (item.action_type === 'ADVANCEMENT') return; // Do not count advancements in performance stats
+      
       const wId = item.worker_id;
       const wName = item.profiles?.name || item.profiles?.email || 'Nevalabil';
       const cat = item.category || 'Fără Categorie';
       
       if (!map[wId]) {
         map[wId] = {
+          id: wId,
           name: wName,
           total: 0,
           categories: {}
@@ -95,11 +99,18 @@ export const RepetitiveHistoryPage = () => {
   const globalCategories = useMemo(() => {
     const map = {};
     historyData.forEach(item => {
+      if (item.action_type === 'ADVANCEMENT') return; // Do not count advancements in performance stats
+      
       const cat = item.category || 'Fără Categorie';
       map[cat] = (map[cat] || 0) + 1;
     });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [historyData]);
+
+  const displayedFlows = useMemo(() => {
+    const activeFlowIds = new Set(historyData.map(h => h.repetitive_flow_id));
+    return flows.filter(f => f.is_active || activeFlowIds.has(f.id));
+  }, [flows, historyData]);
 
   // Group data by hour
   const hourlyStats = useMemo(() => {
@@ -145,13 +156,16 @@ export const RepetitiveHistoryPage = () => {
                 className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all min-w-[200px]"
               >
                 <option value="all">Toate Fluxurile</option>
-                {flows.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
+                {displayedFlows.map(f => (
+                  <option key={f.id} value={f.id}>{f.name} {!f.is_active ? '(Arhivat)' : ''}</option>
                 ))}
               </select>
               {selectedFlowId !== 'all' && (
                 <button
-                  onClick={() => setShowSnapshotModal(true)}
+                  onClick={() => {
+                    setSelectedSnapshotWorkerId(null);
+                    setShowSnapshotModal(true);
+                  }}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"
                   title="Vezi stadiul kanban din această zi"
                 >
@@ -201,8 +215,22 @@ export const RepetitiveHistoryPage = () => {
               <div key={worker.name} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
                 <div>
                   <h4 className="text-lg font-bold text-slate-800 mb-1">{worker.name}</h4>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-sm border border-emerald-200">
-                    <CheckCircle2 size={16} /> Total finalizate: {worker.total}
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-sm border border-emerald-200">
+                      <CheckCircle2 size={16} /> Total finalizate: {worker.total}
+                    </div>
+                    {selectedFlowId !== 'all' && worker.id && (
+                      <button
+                        onClick={() => {
+                          setSelectedSnapshotWorkerId(worker.id);
+                          setShowSnapshotModal(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors font-bold rounded-lg text-sm border border-indigo-200"
+                        title="Vezi stadiul kanban doar pentru acest operator"
+                      >
+                        <FolderClosed size={14} /> Snapshot Operator
+                      </button>
+                    )}
                   </div>
                 </div>
                 
@@ -332,7 +360,11 @@ export const RepetitiveHistoryPage = () => {
           flow={flows.find(f => f.id === selectedFlowId)}
           historyData={historyData}
           selectedDate={selectedDate}
-          onClose={() => setShowSnapshotModal(false)}
+          workerId={selectedSnapshotWorkerId}
+          onClose={() => {
+            setShowSnapshotModal(false);
+            setSelectedSnapshotWorkerId(null);
+          }}
         />
       )}
 

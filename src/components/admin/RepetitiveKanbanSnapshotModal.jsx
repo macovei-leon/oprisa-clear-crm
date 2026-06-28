@@ -1,48 +1,85 @@
-import React, { useMemo, useState } from 'react';
-import { X, FolderClosed, Activity, CheckCircle2 } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { X, FolderClosed, Activity, CheckCircle2, Loader2 } from 'lucide-react';
 
-export const RepetitiveKanbanSnapshotModal = ({ flow, historyData, selectedDate, onClose }) => {
+export const RepetitiveKanbanSnapshotModal = ({ flow, historyData, selectedDate, workerId, onClose }) => {
   const [activeTabIdx, setActiveTabIdx] = useState(0);
   const [viewMode, setViewMode] = useState('all');
+  const [liveTasks, setLiveTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
 
   const steps = flow?.steps || [];
 
+  useEffect(() => {
+    const fetchTasks = async () => {
+      setLoadingTasks(true);
+      try {
+        let query = supabase
+          .from('crm_repetitive_tasks')
+          .select('id, row_data, worker_id')
+          .eq('repetitive_flow_id', flow.id);
+          
+        if (workerId) {
+          query = query.eq('worker_id', workerId);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        setLiveTasks(data || []);
+      } catch (err) {
+        console.error('Error fetching live tasks:', err);
+      } finally {
+        setLoadingTasks(false);
+      }
+    };
+    
+    if (flow?.id) {
+      fetchTasks();
+    }
+  }, [flow, workerId]);
+
   // Reconstruct the tasks state based on the latest history entry for each task on that date.
+  // If a live task has no history, assume it was untouched (Step 1).
   const tasks = useMemo(() => {
-    if (!historyData || historyData.length === 0) return [];
+    if (loadingTasks) return [];
     
     // Group by task_id to find the latest action
     const latestActions = {};
-    historyData.forEach(item => {
+    (historyData || []).forEach(item => {
+      // If we are filtering by worker, ensure we only consider history from this worker? 
+      // Actually, if the card belongs to the worker, we want to see its latest state.
       const current = latestActions[item.task_id];
       if (!current || new Date(item.created_at) > new Date(current.created_at)) {
         latestActions[item.task_id] = item;
       }
     });
 
-    return Object.values(latestActions).map(h => {
+    return liveTasks.map(task => {
+      const h = latestActions[task.id];
       let completed = false;
       let category = null;
-      let active_step_idx = 0;
+      let active_step_idx = 0; // Default: Step 1
 
-      if (h.action_type === 'COMPLETION') {
-        completed = true;
-        category = h.category;
-      } else {
-        // It's an ADVANCEMENT. Find the step it was advanced from, and put it in the next step.
-        const currentStepIdx = steps.findIndex(s => s.name === h.step_name);
-        active_step_idx = currentStepIdx >= 0 ? currentStepIdx + 1 : 0;
+      if (h) {
+        if (h.action_type === 'COMPLETION') {
+          completed = true;
+          category = h.category;
+        } else {
+          // It's an ADVANCEMENT. Find the step it was advanced from, and put it in the next step.
+          const currentStepIdx = steps.findIndex(s => s.name === h.step_name);
+          active_step_idx = currentStepIdx >= 0 ? currentStepIdx + 1 : 0;
+        }
       }
 
       return {
-        id: h.task_id,
-        row_data: h.card_snapshot || {},
+        id: task.id,
+        row_data: h?.card_snapshot || task.row_data || {},
         completed,
         category,
         active_step_idx,
       };
     });
-  }, [historyData, steps]);
+  }, [historyData, steps, liveTasks, loadingTasks]);
 
   const categories = Array.from(new Set(
     steps.flatMap(s => s.branches.filter(b => b.action.startsWith('category_')).map(b => b.action.replace('category_', '')))
@@ -128,10 +165,15 @@ export const RepetitiveKanbanSnapshotModal = ({ flow, historyData, selectedDate,
         </div>
 
         {/* Grid Container */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-          {!activeTabConfig ? null : activeTasks.length === 0 ? (
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50 min-h-0">
+          {loadingTasks ? (
+            <div className="h-full flex items-center justify-center text-slate-500 gap-2">
+              <Loader2 size={24} className="animate-spin" />
+              <span className="font-bold">Se încarcă datele panoului...</span>
+            </div>
+          ) : !activeTabConfig || activeTasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-white/50">
-              <CheckCircle2 size={40} className={activeTabConfig.type === 'step' ? 'text-emerald-400' : 'text-slate-300'} />
+              <CheckCircle2 size={40} className={activeTabConfig?.type === 'step' ? 'text-emerald-400' : 'text-slate-300'} />
               <p className="font-bold text-lg text-slate-500">Nicio sarcină în acest stadiu.</p>
             </div>
           ) : (
