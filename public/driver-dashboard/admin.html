@@ -455,23 +455,33 @@
     }
 
     async function loadTables() {
+        const select = document.getElementById('driver-table-name');
         try {
             const res = await fetch('/api/admin/tables');
             if (res.ok) {
                 const text = await res.text();
-                if(text.trim().startsWith('<')) return;
+                if(text.trim().startsWith('<')) throw new Error("API returned HTML instead of JSON");
                 const tables = JSON.parse(text);
-                const select = document.getElementById('driver-table-name');
+                
                 select.innerHTML = '<option value="">Select a database table...</option>';
-                tables.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.table_name;
-                    opt.textContent = `${t.title_ro} (${t.table_name})`;
-                    select.appendChild(opt);
-                });
+                if (tables && tables.length > 0) {
+                    tables.forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.table_name;
+                        opt.textContent = `${t.title_ro} (${t.table_name})`;
+                        select.appendChild(opt);
+                    });
+                } else {
+                    // Fallback if no tables exist in registry
+                    select.innerHTML += '<option value="angajati">Angajati (Fallback)</option>';
+                }
+            } else {
+                throw new Error("API request failed");
             }
         } catch (e) {
             console.error("Failed to load tables", e);
+            select.innerHTML = '<option value="">Select a database table...</option>';
+            select.innerHTML += '<option value="angajati">Angajati (Fallback)</option>';
         }
     }
 
