@@ -403,8 +403,6 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
             return res.status(400).json({ success: false, message: 'Missing JSON file' });
         }
 
-        const rawJsonData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
-
         // Fetch active table
         const { data: settingsData } = await supabase.from('dashboard_settings').select('active_table').eq('id', 1).single();
         const tableName = settingsData?.active_table || 'angajati';
@@ -416,19 +414,21 @@ app.post('/api/admin/upload-timeline', uploadJson.single('jsonFile'), async (req
         }
 
         // Process timeline data
-        const allDriversResult = await processTimelineData(rawJsonData, supabaseData);
+        const allDriversResult = await processTimelineData(jsonFilePath, supabaseData);
 
-        // Update dashboard_settings
+        // Save processed result locally
+        const processedPath = path.join(__dirname, 'attachments', 'processed_' + path.basename(jsonFilePath));
+        fs.writeFileSync(processedPath, JSON.stringify(allDriversResult, null, 2), 'utf8');
+
+        // Update dashboard_settings with paths
         await supabase.from('dashboard_settings').upsert({
             id: 1,
             active_table: tableName,
-            raw_timeline_data: rawJsonData,
-            timeline_data: allDriversResult,
+            raw_file_path: jsonFilePath,
+            timeline_file_path: processedPath,
             updated_at: new Date().toISOString()
         });
         
-        fs.unlinkSync(jsonFilePath);
-
         res.json({ success: true, message: 'Timeline uploaded and processed successfully!' });
     } catch (err) {
         console.error('Timeline upload error:', err);
@@ -443,27 +443,30 @@ app.post('/api/admin/set-table', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing table name' });
         }
 
-        // Get existing raw data
-        const { data: settingsData } = await supabase.from('dashboard_settings').select('raw_timeline_data').eq('id', 1).maybeSingle();
+        // Get existing paths
+        const { data: settingsData } = await supabase.from('dashboard_settings').select('*').eq('id', 1).maybeSingle();
         
-        if (settingsData && settingsData.raw_timeline_data) {
+        if (settingsData && settingsData.raw_file_path && fs.existsSync(settingsData.raw_file_path)) {
             const { data: supabaseData, error } = await supabase.from(tableName).select('*');
             if (error) throw new Error(`Failed to fetch from ${tableName}: ${error.message}`);
 
-            const allDriversResult = await processTimelineData(settingsData.raw_timeline_data, supabaseData);
+            const allDriversResult = await processTimelineData(settingsData.raw_file_path, supabaseData);
+            
+            const processedPath = path.join(__dirname, 'attachments', 'processed_' + Date.now() + '.json');
+            fs.writeFileSync(processedPath, JSON.stringify(allDriversResult, null, 2), 'utf8');
             
             await supabase.from('dashboard_settings').upsert({
                 id: 1,
                 active_table: tableName,
-                raw_timeline_data: settingsData.raw_timeline_data,
-                timeline_data: allDriversResult,
+                raw_file_path: settingsData.raw_file_path,
+                timeline_file_path: processedPath,
                 updated_at: new Date().toISOString()
             });
             
             return res.json({ success: true, message: 'Table updated and data re-processed!' });
         }
 
-        // No raw data yet, just update table name
+        // No raw file yet, just update table name
         await supabase.from('dashboard_settings').upsert({
             id: 1,
             active_table: tableName,
@@ -489,9 +492,17 @@ app.get('/api/admin/active-table', async (req, res) => {
 
 app.get('/api/admin/timeline-data', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('dashboard_settings').select('timeline_data').eq('id', 1).maybeSingle();
-        if (error || !data || !data.timeline_data) return res.json([]);
-        res.json(data.timeline_data);
+        const { data, error } = await supabase.from('dashboard_settings').select('timeline_file_path').eq('id', 1).maybeSingle();
+        let targetPath = path.join(__dirname, '../public/driver-dashboard/timeline_data.json'); // Default fallback
+        if (!error && data && data.timeline_file_path) {
+            targetPath = path.isAbsolute(data.timeline_file_path) ? data.timeline_file_path : path.resolve(__dirname, data.timeline_file_path);
+        }
+        
+        if (fs.existsSync(targetPath)) {
+            const fileData = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+            return res.json(fileData);
+        }
+        res.json([]);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
