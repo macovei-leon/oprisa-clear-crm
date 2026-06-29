@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
-import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap, Code, Network, BookOpen, BellRing } from 'lucide-react';
+import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap, Code, Network, BookOpen, BellRing, MessageSquare } from 'lucide-react';
 
 export const Sidebar = () => {
   const { profile, signOut } = useAuth();
@@ -112,6 +112,14 @@ export const Sidebar = () => {
         >
           <LayoutDashboard size={18} />
           Dashboard
+        </NavLink>
+
+        <NavLink 
+          to="/messages" 
+          className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+        >
+          <MessageSquare size={18} />
+          Mesaje
         </NavLink>
 
         {profile?.role !== 'admin' && (

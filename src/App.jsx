@@ -15,6 +15,7 @@ import { DriverDashboardPage } from './pages/admin/DriverDashboardPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HowToWorkPage } from './pages/HowToWorkPage'
 import { NotificationsPage } from './pages/NotificationsPage'
+import { MessagesPage } from './pages/MessagesPage'
 import { MainLayout } from './components/layout/MainLayout'
 import { ApiWorkspacePage } from './pages/developer/ApiWorkspacePage'
 import { ArchitecturePage } from './pages/developer/ArchitecturePage'
@@ -58,6 +59,11 @@ function App() {
             <Route path="/notifications" element={
               <ProtectedRoute>
                 <NotificationsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/messages" element={
+              <ProtectedRoute>
+                <MessagesPage />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
