@@ -119,9 +119,9 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
       
       const now = new Date();
       const minsSinceMidnight = now.getHours() * 60 + now.getMinutes();
-      const bucketMins = Math.floor(minsSinceMidnight / effectiveMins) * effectiveMins;
+      const nextBucketMins = (Math.floor(minsSinceMidnight / effectiveMins) + 1) * effectiveMins;
       
-      const stampTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(bucketMins / 60), bucketMins % 60, 0, 0);
+      const stampTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(nextBucketMins / 60), nextBucketMins % 60, 0, 0);
 
       const taskPayload = {
         id: task.id,
