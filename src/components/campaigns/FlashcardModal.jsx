@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { X, User, Activity, FileText, Phone, Mail, MapPin, Building, StickyNote, CheckCircle, Database } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
 
 export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibleColumns = [] }) => {
+  const { t } = useLanguage();
   const rowData = task.row_data || {};
   const branches = stepConfig?.branches || [];
   const [notes, setNotes] = useState(task.notes || '');
@@ -25,7 +27,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
   const city = rowData.oras || rowData.city || rowData.localitate || '';
   const status = rowData.status || rowData.stare || '';
 
-  const displayName = rowData.nume || rowData.name || rowData.denumire || 'FIȘĂ DOSAR CAMPANIE SARCINI';
+  const displayName = rowData.nume || rowData.name || rowData.denumire || t.defaultCardTitle || 'FIȘĂ DOSAR CAMPANIE SARCINI';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -34,7 +36,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white shrink-0">
           <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">FIȘĂ DOSAR CAMPANIE SARCINI</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.defaultCardTitle || 'FIȘĂ DOSAR CAMPANIE SARCINI'}</span>
             <div className="flex items-center gap-3 mt-1">
               <h2 className="text-2xl font-black text-slate-800">{displayName}</h2>
               {status && (
@@ -44,7 +46,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
               )}
               {rowData.is_missing && (
                 <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full border border-red-200 flex items-center gap-1">
-                  🚨 Exclus din baza de date
+                  🚨 {t.lblExcludedDb || 'Exclus din baza de date'}
                 </span>
               )}
             </div>
@@ -78,7 +80,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                   {phone ? (
                     <a href={`tel:${phone}`} className="font-mono font-bold text-slate-800 hover:text-emerald-700">{phone}</a>
                   ) : (
-                    <span className="text-emerald-600/50 italic text-sm">Lipsă Telefon</span>
+                    <span className="text-emerald-600/50 italic text-sm">{t.lblMissingPhone || 'Lipsă Telefon'}</span>
                   )}
                 </div>
                 <div className="flex justify-between items-center">
@@ -88,7 +90,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                   {email ? (
                     <a href={`mailto:${email}`} className="font-mono font-bold text-slate-800 hover:text-emerald-700">{email}</a>
                   ) : (
-                    <span className="text-emerald-600/50 italic text-sm">Lipsă Email</span>
+                    <span className="text-emerald-600/50 italic text-sm">{t.lblMissingEmail || 'Lipsă Email'}</span>
                   )}
                 </div>
                 {company && (
@@ -114,7 +116,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                   <div key={key} className="flex flex-col border-b border-slate-100 pb-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{key}</span>
                     <span className="text-sm font-semibold text-slate-800 break-words">
-                      {val !== null && val !== undefined && val !== '' ? String(val) : <em className="text-slate-300 font-normal">Nespecificat</em>}
+                      {val !== null && val !== undefined && val !== '' ? String(val) : <em className="text-slate-300 font-normal">{t.lblUnspecified || 'Nespecificat'}</em>}
                     </span>
                   </div>
                 ))}
@@ -129,9 +131,9 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
             {/* Step Instructions */}
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
               <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Plan Sarcini Campanie</span>
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{t.lblCampaignPlan || 'Plan Sarcini Campanie'}</span>
                 <span className="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
-                  Etapa: {stepConfig?.name}
+                  {t.lblStage || 'Etapa:'} {stepConfig?.name}
                 </span>
               </div>
               <div className="p-4 flex flex-col gap-4">
@@ -141,7 +143,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                     <p className="whitespace-pre-wrap leading-relaxed">{stepConfig.description}</p>
                   </div>
                 ) : (
-                  <div className="text-sm text-slate-500 italic">Nu există instrucțiuni specifice pentru această etapă.</div>
+                  <div className="text-sm text-slate-500 italic">{t.msgNoInstrStage || 'Nu există instrucțiuni specifice pentru această etapă.'}</div>
                 )}
               </div>
             </div>
@@ -149,19 +151,19 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
             {/* Notes Form */}
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col gap-3">
               <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2">
-                <StickyNote size={14} /> {onTransition ? 'Notițe Jurnal (Opțional)' : 'Notițe Salvate în Istoric'}
+                <StickyNote size={14} /> {onTransition ? t.lblLogNotesOpt || 'Notițe Jurnal (Opțional)' : t.lblNotesSavedHist || 'Notițe Salvate în Istoric'}
               </label>
               {onTransition ? (
                 <textarea 
                   className="w-full border border-slate-200 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
                   rows="4"
-                  placeholder="Adaugă observații înainte de a trece la pasul următor..."
+                  placeholder={t.phAddObs || "Adaugă observații înainte de a trece la pasul următor..."}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />
               ) : (
                 <div className="w-full border border-slate-200 rounded-lg p-3 text-sm bg-slate-50 whitespace-pre-wrap text-slate-700 min-h-[4rem]">
-                  {task.notes ? task.notes : <span className="text-slate-400 italic">Nu există notițe salvate pentru acest stadiu.</span>}
+                  {task.notes ? task.notes : <span className="text-slate-400 italic">{t.msgNoNotesStage || 'Nu există notițe salvate pentru acest stadiu.'}</span>}
                 </div>
               )}
             </div>
@@ -187,7 +189,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                   </button>
                 ))}
                 {branches.length === 0 && (
-                  <div className="text-sm text-slate-500 italic text-center py-2">Nu există acțiuni configurate.</div>
+                  <div className="text-sm text-slate-500 italic text-center py-2">{t.msgNoActionsConf || 'Nu există acțiuni configurate.'}</div>
                 )}
               </div>
             </div>

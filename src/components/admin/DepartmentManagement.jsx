@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Building, Trash2, Plus, FileText, X, Save, Eye, Code } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const DepartmentManagement = ({ setGlobalAlert }) => {
+  const { t } = useLanguage();
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newDeptName, setNewDeptName] = useState('');
@@ -44,7 +46,7 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
     if (error) {
       setGlobalAlert({ type: 'error', message: error.message });
     } else {
-      setGlobalAlert({ type: 'success', message: `Departament adăugat cu succes.` });
+      setGlobalAlert({ type: 'success', message: t.msgDeptAdded || `Departament adăugat cu succes.` });
       setNewDeptName('');
       fetchDepartments();
     }
@@ -52,7 +54,7 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Ești sigur că vrei să ștergi acest departament? Utilizatorii asociați nu vor mai avea departament.')) return;
+    if (!confirm(t.confirmDelDept || 'Ești sigur că vrei să ștergi acest departament? Utilizatorii asociați nu vor mai avea departament.')) return;
     
     const { error } = await supabase
       .from('departments')
@@ -62,7 +64,7 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
     if (error) {
       setGlobalAlert({ type: 'error', message: error.message });
     } else {
-      setGlobalAlert({ type: 'success', message: `Departament șters cu succes.` });
+      setGlobalAlert({ type: 'success', message: t.msgDeptDeleted || `Departament șters cu succes.` });
       fetchDepartments();
     }
   };
@@ -83,7 +85,7 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
     if (error) {
       setGlobalAlert({ type: 'error', message: error.message });
     } else {
-      setGlobalAlert({ type: 'success', message: `Instrucțiuni salvate pentru ${editingDept.name}.` });
+      setGlobalAlert({ type: 'success', message: `${t.msgInstSaved || 'Instrucțiuni salvate pentru'} ${editingDept.name}.` });
       setEditingDept(null);
       fetchDepartments();
     }
@@ -95,7 +97,7 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
       <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
         <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
           <Building className="text-indigo-600" size={20} />
-          Management Departamente
+          {t.deptTitle || 'Management Departamente'}
         </h2>
       </div>
       
@@ -103,7 +105,7 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
         <form onSubmit={handleAdd} className="flex gap-3 max-w-md">
           <input 
             type="text" 
-            placeholder="Nume Departament Nou..." 
+            placeholder={t.phNewDept || "Nume Departament Nou..."}
             value={newDeptName}
             onChange={e => setNewDeptName(e.target.value)}
             className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
@@ -113,23 +115,23 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
             disabled={isAdding || !newDeptName.trim()}
             className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
           >
-            <Plus size={18} /> Adaugă
+            <Plus size={18} /> {t.btnAdd || 'Adaugă'}
           </button>
         </form>
-        <p className="text-xs text-slate-500 mt-2">Departamentele vor fi disponibile la înregistrarea noilor utilizatori.</p>
+        <p className="text-xs text-slate-500 mt-2">{t.descDeptReg || 'Departamentele vor fi disponibile la înregistrarea noilor utilizatori.'}</p>
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-slate-500">Se încarcă...</div>
+        <div className="p-8 text-center text-slate-500">{t.loading || 'Se încarcă...'}</div>
       ) : departments.length === 0 ? (
-        <div className="p-8 text-center text-slate-500">Nu există departamente.</div>
+        <div className="p-8 text-center text-slate-500">{t.noDepts || 'Nu există departamente.'}</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                <th className="p-4 font-bold">Nume Departament</th>
-                <th className="p-4 font-bold w-24 text-right">Acțiuni</th>
+                <th className="p-4 font-bold">{t.colDeptName || 'Nume Departament'}</th>
+                <th className="p-4 font-bold w-24 text-right">{t.colActions || 'Acțiuni'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -140,14 +142,14 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
                     <button 
                       onClick={() => handleEditInstructions(d)}
                       className="p-2 text-indigo-500 hover:bg-indigo-50 rounded transition-colors"
-                      title="Editează Instrucțiuni"
+                      title={t.btnEditInst || "Editează Instrucțiuni"}
                     >
                       <FileText size={18} />
                     </button>
                     <button 
                       onClick={() => handleDelete(d.id)}
                       className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors"
-                      title="Șterge"
+                      title={t.delete || "Șterge"}
                     >
                       <Trash2 size={18} />
                     </button>
@@ -166,7 +168,7 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
               <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                 <FileText size={20} className="text-indigo-600" />
-                Instrucțiuni - {editingDept.name}
+                {t.modalInstTitle || 'Instrucțiuni -'} {editingDept.name}
               </h3>
               <button onClick={() => setEditingDept(null)} className="text-slate-400 hover:text-slate-600 p-1">
                 <X size={20} />
@@ -185,7 +187,7 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
                   onClick={() => setPreviewMode(true)}
                   className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border-b-2 transition-colors ${previewMode ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 >
-                  <Eye size={16} /> Previzualizare
+                  <Eye size={16} /> {t.btnPreview || 'Previzualizare'}
                 </button>
               </div>
 
@@ -193,13 +195,13 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
                 <textarea
                   value={instructionsText}
                   onChange={e => setInstructionsText(e.target.value)}
-                  placeholder="Scrie instrucțiunile aici (suportă HTML)..."
+                  placeholder={t.phInst || "Scrie instrucțiunile aici (suportă HTML)..."}
                   className="w-full h-96 p-4 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 font-mono text-sm"
                 />
               ) : (
                 <div 
                   className="w-full h-96 p-4 border border-slate-200 rounded-lg overflow-y-auto prose max-w-none"
-                  dangerouslySetInnerHTML={{ __html: instructionsText || '<p class="text-slate-400 italic">Fără instrucțiuni...</p>' }}
+                  dangerouslySetInnerHTML={{ __html: instructionsText || `<p class="text-slate-400 italic">${t.lblNoInst || 'Fără instrucțiuni...'}</p>` }}
                 />
               )}
             </div>
@@ -209,14 +211,14 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
                 onClick={() => setEditingDept(null)}
                 className="px-4 py-2 text-slate-600 font-semibold hover:bg-slate-200 rounded-lg transition-colors"
               >
-                Anulează
+                {t.btnCancel || 'Anulează'}
               </button>
               <button 
                 onClick={handleSaveInstructions}
                 disabled={isSavingInst}
                 className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
               >
-                <Save size={18} /> {isSavingInst ? 'Se salvează...' : 'Salvează'}
+                <Save size={18} /> {isSavingInst ? (t.btnSaving || 'Se salvează...') : (t.btnSave || 'Salvează')}
               </button>
             </div>
           </div>

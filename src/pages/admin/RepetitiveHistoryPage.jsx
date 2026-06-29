@@ -5,8 +5,10 @@ import { Calendar as CalendarIcon, Users, Activity, BarChart, CheckCircle2, Cloc
 import { CardTimelineModal } from '../../components/admin/CardTimelineModal';
 import { RepetitiveKanbanSnapshotModal } from '../../components/admin/RepetitiveKanbanSnapshotModal';
 import { ClearHistoryModal } from '../../components/admin/ClearHistoryModal';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const RepetitiveHistoryPage = () => {
+  const { t } = useLanguage();
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -115,8 +117,8 @@ export const RepetitiveHistoryPage = () => {
     const map = {};
     historyData.forEach(item => {
       const wId = item.worker_id;
-      const wName = item.profiles?.name || item.profiles?.email || 'Nevalabil';
-      const cat = item.category || 'Fără Categorie';
+      const wName = item.profiles?.name || item.profiles?.email || (t.lblInvalid || 'Nevalabil');
+      const cat = item.category || (t.lblNoCategory || 'Fără Categorie');
       
       if (!map[wId]) {
         map[wId] = {
@@ -145,9 +147,9 @@ export const RepetitiveHistoryPage = () => {
   const globalCategories = useMemo(() => {
     const map = {};
     historyData.forEach(item => {
-      let cat = item.category || 'Fără Categorie';
+      let cat = item.category || (t.lblNoCategory || 'Fără Categorie');
       if (item.action_type === 'ADVANCEMENT') {
-        cat = 'Mutări/Avansări';
+        cat = t.lblMovesAdv || t.lblMovesAdv || 'Mutări/Avansări';
       }
       map[cat] = (map[cat] || 0) + 1;
     });
@@ -175,14 +177,14 @@ export const RepetitiveHistoryPage = () => {
   }, [historyData]);
 
   return (
-    <MainLayout title="Istoric Fluxuri Repetitive" subtitle="Monitorizare activitate pe zile pentru echipele call-center">
+    <MainLayout title={t.pageRepHistTitle || "Istoric Fluxuri Repetitive"} subtitle={t.pageRepHistSub || "Monitorizare activitate pe zile pentru echipele call-center"}>
       
       {/* Controls */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 flex flex-col sm:flex-row gap-6 items-center justify-between">
         
         <div className="flex items-end gap-4 w-full sm:w-auto flex-wrap">
           <div className="flex flex-col">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Alege Data</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{t.lblChooseDate || "Alege Data"}</label>
             <div className="relative">
               <input 
                 type="date" 
@@ -195,13 +197,13 @@ export const RepetitiveHistoryPage = () => {
           </div>
           
           <div className="flex flex-col">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Filtru Flux</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{t.lblFlowFilter || "Filtru Flux"}</label>
             <select 
               value={selectedFlowId}
               onChange={e => setSelectedFlowId(e.target.value)}
               className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all min-w-[200px]"
             >
-              <option value="all">Toate Fluxurile</option>
+              <option value="all">{t.lblAllFlows || "Toate Fluxurile"}</option>
               {displayedFlows.map(f => (
                 <option key={f.id} value={f.id}>{f.name} {!f.is_active ? '(Arhivat)' : ''}</option>
               ))}
@@ -210,7 +212,7 @@ export const RepetitiveHistoryPage = () => {
 
           {selectedFlowId !== 'all' && stamps.length > 0 && (
             <div className="flex flex-col">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Stamp</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{t.lblStamp || "Stamp"}</label>
               <select 
                 value={selectedStampId}
                 onChange={e => setSelectedStampId(e.target.value)}
@@ -232,7 +234,7 @@ export const RepetitiveHistoryPage = () => {
                   setShowSnapshotModal(true);
                 }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"
-                title="Vezi stadiul kanban din această zi"
+                title={t.titleSnapshotKanbanDay || "Vezi stadiul kanban din această zi"}
               >
                 <FolderClosed size={16} /> Snapshot Kanban
               </button>
@@ -240,7 +242,7 @@ export const RepetitiveHistoryPage = () => {
             <button
               onClick={() => setShowClearModal(true)}
               className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-              title="Șterge istoricul definitiv"
+              title={t.titleClearHistPerm || "Șterge istoricul definitiv"}
             >
               <Trash2 size={16} /> Curăță Istoric
             </button>
@@ -250,21 +252,21 @@ export const RepetitiveHistoryPage = () => {
         <div className="bg-indigo-50 p-4 rounded-xl flex items-center gap-4 border border-indigo-100 min-w-[200px] justify-center">
           <Activity size={24} className="text-indigo-600" />
           <div>
-            <div className="text-sm font-bold text-indigo-900">Total Apeluri/Sarcini</div>
+            <div className="text-sm font-bold text-indigo-900">{t.lblTotalCallsTasks || "Total Apeluri/Sarcini"}</div>
             <div className="text-2xl font-black text-indigo-700">{historyData.length}</div>
           </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-slate-500 font-bold text-lg animate-pulse">Se încarcă datele istorice...</div>
+        <div className="text-center py-20 text-slate-500 font-bold text-lg animate-pulse">{t.loadingHist || "Se încarcă datele istorice..."}</div>
       ) : historyData.length === 0 ? (
         <div className="bg-white p-16 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center">
           <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-400">
             <CalendarIcon size={32} />
           </div>
-          <h3 className="text-xl font-bold text-slate-700 mb-2">Nicio activitate înregistrată</h3>
-          <p className="text-slate-500 max-w-md">Nu au fost finalizate sarcini repetitive în ziua de <span className="font-bold text-slate-700">{selectedDate}</span>. Încearcă să selectezi o altă dată sau un alt flux.</p>
+          <h3 className="text-xl font-bold text-slate-700 mb-2">{t.lblNoActivityRec || "Nicio activitate înregistrată"}</h3>
+          <p className="text-slate-500 max-w-md">{t.msgNoRepTasksOn || "Nu au fost finalizate sarcini repetitive în ziua de"} <span className="font-bold text-slate-700">{selectedDate}</span>{t.msgTryAnotherDate || ". Încearcă să selectezi o altă dată sau un alt flux."}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -282,7 +284,7 @@ export const RepetitiveHistoryPage = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     {worker.advancements > 0 && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-600 font-bold rounded-lg text-sm border border-slate-200">
-                        Mutări/Avansări: {worker.advancements}
+                        {t.lblMovesAdvLabel || "Mutări/Avansări:"} {worker.advancements}
                       </div>
                     )}
                     {selectedFlowId !== 'all' && worker.id && (
@@ -292,7 +294,7 @@ export const RepetitiveHistoryPage = () => {
                           setShowSnapshotModal(true);
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors font-bold rounded-lg text-sm border border-indigo-200"
-                        title="Vezi stadiul kanban doar pentru acest operator"
+                        title={t.titleSnapshotOpOnly || "Vezi stadiul kanban doar pentru acest operator"}
                       >
                         <FolderClosed size={14} /> Snapshot Operator
                       </button>
@@ -358,12 +360,12 @@ export const RepetitiveHistoryPage = () => {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-white border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400">
-                          <th className="p-4 font-bold">Ora Exactă</th>
-                          <th className="p-4 font-bold">Operator</th>
-                          <th className="p-4 font-bold">Acțiune / Categorie</th>
-                          <th className="p-4 font-bold">Etapă</th>
-                          <th className="p-4 font-bold">Notițe (Comentariu)</th>
-                          <th className="p-4 font-bold text-right">Card</th>
+                          <th className="p-4 font-bold">{t.colTime || "Ora Exactă"}</th>
+                          <th className="p-4 font-bold">{t.colOperator || "Operator"}</th>
+                          <th className="p-4 font-bold">{t.colActionCat || "Acțiune / Categorie"}</th>
+                          <th className="p-4 font-bold">{t.colStage || "Etapă"}</th>
+                          <th className="p-4 font-bold">{t.colNotes || "Notițe (Comentariu)"}</th>
+                          <th className="p-4 font-bold text-right">{t.colCard || "Card"}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -373,7 +375,7 @@ export const RepetitiveHistoryPage = () => {
                               {new Date(action.created_at).toLocaleTimeString('ro-RO')}
                             </td>
                             <td className="p-4 text-sm font-medium text-slate-700">
-                              {action.profiles?.name || action.profiles?.email || 'Nevalabil'}
+                              {action.profiles?.name || action.profiles?.email || (t.lblInvalid || 'Nevalabil')}
                             </td>
                             <td className="p-4">
                               <span className={`inline-flex px-2 py-1 rounded text-xs font-bold ${action.action_type === 'COMPLETION' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
@@ -390,7 +392,7 @@ export const RepetitiveHistoryPage = () => {
                                   <span className="line-clamp-2" title={action.notes}>{action.notes}</span>
                                 </div>
                               ) : (
-                                <span className="text-xs text-slate-400 italic">Fără notiță</span>
+                                <span className="text-xs text-slate-400 italic">{t.lblNoNotes || "Fără notiță"}</span>
                               )}
                             </td>
                             <td className="p-4 text-right">

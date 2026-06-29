@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const NotificationBell = () => {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -90,13 +92,13 @@ export const NotificationBell = () => {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden flex flex-col max-h-[80vh]">
           <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <h3 className="font-bold text-slate-800">Notificări</h3>
+            <h3 className="font-bold text-slate-800">{t.navNotifications || 'Notificări'}</h3>
             {unreadCount > 0 && (
               <button 
                 onClick={markAllAsRead}
                 className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
               >
-                Marchează toate citite
+                {t.markAllRead || 'Marchează toate citite'}
               </button>
             )}
           </div>
@@ -104,7 +106,7 @@ export const NotificationBell = () => {
           <div className="flex-1 overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-slate-500 text-sm">
-                Nu ai nicio notificare nouă.
+                {t.noNewNotif || 'Nu ai nicio notificare nouă.'}
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
@@ -112,14 +114,14 @@ export const NotificationBell = () => {
                   <div key={notif.id} className={`p-4 transition-colors ${notif.is_read ? 'bg-white' : 'bg-blue-50/50'}`}>
                     <div className="flex justify-between items-start mb-2 gap-2">
                       <span className="text-xs text-slate-400 font-medium">
-                        {new Date(notif.created_at).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}
+                        {new Date(notif.created_at).toLocaleString(t.lang === 'ro' ? 'ro-RO' : 'en-US', { dateStyle: 'short', timeStyle: 'short' })}
                       </span>
                       <div className="flex items-center gap-1">
                         {!notif.is_read && (
                           <button 
                             onClick={() => markAsRead(notif.id)}
                             className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
-                            title="Marchează citită"
+                            title={t.markRead || 'Marchează citită'}
                           >
                             <Check size={14} />
                           </button>
@@ -127,7 +129,7 @@ export const NotificationBell = () => {
                         <button 
                           onClick={() => deleteNotification(notif.id)}
                           className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Șterge"
+                          title={t.delete || 'Șterge'}
                         >
                           <X size={14} />
                         </button>

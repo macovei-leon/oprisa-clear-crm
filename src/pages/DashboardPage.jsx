@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { MainLayout } from '../components/layout/MainLayout';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Activity, Users, CheckCircle2, TrendingUp, BarChart3, Building, ChevronRight, ArrowLeft } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#14b8a6'];
 
 export const DashboardPage = () => {
+  const { t } = useLanguage();
   const { profile, simulatedDepartment, setSimulatedDepartment } = useAuth();
   const [loading, setLoading] = useState(true);
   
@@ -97,17 +99,17 @@ export const DashboardPage = () => {
     const allCatsSet = new Set();
     
     filteredTasks.forEach(t => {
-      const campName = t.crm_campaigns?.name || 'Campanie Ștearsă';
+      const campName = t.crm_campaigns?.name || (t.lblDeletedCampaign || 'Campanie Ștearsă');
       if (!campaignsMap[campName]) {
-        campaignsMap[campName] = { name: campName, 'În Lucru': 0 };
+        campaignsMap[campName] = { name: campName, [t.lblInProgress || 'În Lucru']: 0 };
       }
       
       if (t.completed) {
-        const cat = t.category || 'Fără categorie';
+        const cat = t.category || (t.lblNoCategory || 'Fără categorie');
         allCatsSet.add(cat);
         campaignsMap[campName][cat] = (campaignsMap[campName][cat] || 0) + 1;
       } else {
-        campaignsMap[campName]['În Lucru'] += 1;
+        campaignsMap[campName][t.lblInProgress || 'În Lucru'] += 1;
       }
     });
     
@@ -118,7 +120,7 @@ export const DashboardPage = () => {
     const workersMap = {};
     filteredTasks.forEach(t => {
       if (t.completed) {
-        const workerName = t.profiles?.name || t.profiles?.email || 'Nespecificat';
+        const workerName = t.profiles?.name || t.profiles?.email || (t.lblUnspecifiedWorker || 'Nespecificat');
         workersMap[workerName] = (workersMap[workerName] || 0) + 1;
       }
     });
@@ -134,7 +136,7 @@ export const DashboardPage = () => {
 
   if (loading) {
     return (
-      <MainLayout title="Dashboard" subtitle="Se încarcă datele...">
+      <MainLayout title="Dashboard" subtitle={t.lblLoadingData || "Se încarcă datele..."}>
         <div className="flex items-center justify-center h-64">
           <div className="animate-pulse text-slate-400 font-bold text-lg flex items-center gap-2">
             <Activity className="animate-spin" /> Procesare Analize...
@@ -147,19 +149,19 @@ export const DashboardPage = () => {
   // Admin: Default Overview (All Departments)
   if (profile?.role === 'admin' && !simulatedDepartment) {
     return (
-      <MainLayout title="Dashboard Administrator" subtitle="Prezentare generală a departamentelor">
+      <MainLayout title={t.titleAdminDashboard || "Dashboard Administrator"} subtitle={t.subtitleDeptsOverview || "Prezentare generală a departamentelor"}>
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5 w-fit pr-16">
             <div className="w-14 h-14 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
               <Building size={28} />
             </div>
             <div>
-              <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Departamente</div>
+              <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">{t.lblTotalDepts || 'Total Departamente'}</div>
               <div className="text-3xl font-black text-slate-800">{allDepartments.length}</div>
             </div>
           </div>
 
-          <h3 className="text-xl font-bold text-slate-800 mt-8 mb-4">Alege Departament</h3>
+          <h3 className="text-xl font-bold text-slate-800 mt-8 mb-4">{t.lblChooseDept || 'Alege Departament'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {allDepartments.map(dept => {
               const deptTasks = allTasks.filter(t => t.profiles?.department_id === dept.id);
@@ -182,17 +184,17 @@ export const DashboardPage = () => {
                   
                   <div className="space-y-3 flex-1">
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 font-medium">Sarcini Alocate</span>
+                      <span className="text-slate-500 font-medium">{t.lblAllocatedTasks || 'Sarcini Alocate'}</span>
                       <span className="font-bold text-slate-800">{total}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 font-medium">Sarcini Finalizate</span>
+                      <span className="text-slate-500 font-medium">{t.lblCompletedTasksDashboard || 'Sarcini Finalizate'}</span>
                       <span className="font-bold text-emerald-600">{completed}</span>
                     </div>
                     
                     <div className="mt-5 pt-4 border-t border-slate-50">
                       <div className="flex justify-between items-center text-xs font-bold text-slate-500 mb-1.5">
-                        <span>Rată de succes</span>
+                        <span>{t.lblSuccessRateLower || 'Rată de succes'}</span>
                         <span className={rate > 75 ? 'text-emerald-600' : rate > 40 ? 'text-amber-600' : 'text-red-600'}>{rate}%</span>
                       </div>
                       <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
@@ -215,8 +217,8 @@ export const DashboardPage = () => {
   // Admin Department View OR Normal User View
   return (
     <MainLayout 
-      title={simulatedDepartment ? `Dashboard: ${simulatedDepartment.name}` : "Dashboard Analize"} 
-      subtitle="Prezentare generală a performanței și campaniilor"
+      title={simulatedDepartment ? `${t.titleDashboardPrefix || "Dashboard:"} ${simulatedDepartment.name}` : (t.titleAnalyticsDashboard || "Dashboard Analize")} 
+      subtitle={t.subtitlePerfCamps || "Prezentare generală a performanței și campaniilor"}
     >
       
       {profile?.role === 'admin' && simulatedDepartment && (
@@ -224,7 +226,7 @@ export const DashboardPage = () => {
           onClick={() => setSimulatedDepartment(null)}
           className="mb-6 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm w-fit"
         >
-          <ArrowLeft size={16} /> Înapoi la Departamente
+          <ArrowLeft size={16} /> {t.btnBackToDepts || 'Înapoi la Departamente'}
         </button>
       )}
 
@@ -235,7 +237,7 @@ export const DashboardPage = () => {
             <Activity size={28} />
           </div>
           <div>
-            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Sarcini Alocate</div>
+            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">{t.lblTotalAllocatedTasks || 'Total Sarcini Alocate'}</div>
             <div className="text-3xl font-black text-slate-800">{stats.totalTasks}</div>
           </div>
         </div>
@@ -245,7 +247,7 @@ export const DashboardPage = () => {
             <CheckCircle2 size={28} />
           </div>
           <div>
-            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Sarcini Finalizate</div>
+            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">{t.lblCompletedTasksDashboard || 'Sarcini Finalizate'}</div>
             <div className="text-3xl font-black text-slate-800">{stats.completedTasks}</div>
           </div>
         </div>
@@ -255,7 +257,7 @@ export const DashboardPage = () => {
             <TrendingUp size={28} />
           </div>
           <div>
-            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Rată de Succes</div>
+            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">{t.lblSuccessRate || 'Rată de Succes'}</div>
             <div className="text-3xl font-black text-slate-800">{stats.completionRate}%</div>
           </div>
         </div>
@@ -267,7 +269,7 @@ export const DashboardPage = () => {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
           <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
             <BarChart3 className="text-indigo-600" size={20} /> 
-            Progres Campanii & Categorii
+            {t.titleCampsCatsProgress || 'Progres Campanii & Categorii'}
           </h3>
           <div className="h-80 w-full flex-1">
             {campaignChartData.length > 0 ? (
@@ -281,7 +283,7 @@ export const DashboardPage = () => {
                     contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
                   />
                   <Legend iconType="circle" wrapperStyle={{fontSize: '12px', paddingTop: '20px'}} />
-                  <Bar dataKey="În Lucru" stackId="a" fill="#cbd5e1" radius={[0, 0, 4, 4]} />
+                  <Bar dataKey={t.lblInProgress || 'În Lucru'} stackId="a" fill="#cbd5e1" radius={[0, 0, 4, 4]} />
                   {categoryKeys.map((cat, index) => (
                     <Bar 
                       key={cat} 
@@ -294,7 +296,7 @@ export const DashboardPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 font-bold">Nu există date suficiente.</div>
+              <div className="h-full flex items-center justify-center text-slate-400 font-bold">{t.msgNotEnoughData || 'Nu există date suficiente.'}</div>
             )}
           </div>
         </div>
@@ -303,7 +305,7 @@ export const DashboardPage = () => {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
           <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
             <Users className="text-emerald-600" size={20} /> 
-            Top Operatori (Sarcini Finalizate)
+            {t.titleTopOperators || 'Top Operatori (Sarcini Finalizate)'}
           </h3>
           <div className="h-80 w-full flex-1">
             {workerChartData.length > 0 ? (
@@ -316,11 +318,11 @@ export const DashboardPage = () => {
                     cursor={{fill: '#f1f5f9'}} 
                     contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
                   />
-                  <Bar dataKey="Sarcini" fill="#10b981" radius={[0, 4, 4, 0]} barSize={24} />
+                  <Bar dataKey={t.lblTasksUpper || 'Sarcini'} fill="#10b981" radius={[0, 4, 4, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 font-bold">Nicio sarcină finalizată încă.</div>
+              <div className="h-full flex items-center justify-center text-slate-400 font-bold">{t.msgNoTasksCompletedYet || 'Nicio sarcină finalizată încă.'}</div>
             )}
           </div>
         </div>

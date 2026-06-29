@@ -3,8 +3,10 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { FlashcardModal } from './FlashcardModal';
 import { Activity, Clock, CheckCircle2, FolderClosed, Trash2 } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const KanbanBoard = ({ campaign }) => {
+  const { t } = useLanguage();
   const { profile, simulatedDepartment } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -92,25 +94,25 @@ export const KanbanBoard = ({ campaign }) => {
       setSelectedTask(null);
     } catch (err) {
       console.error(err);
-      alert('Eroare la actualizarea sarcinii: ' + err.message);
+      alert(t.errUpdateTask || 'Eroare la actualizarea sarcinii: ' + err.message);
     }
   };
 
   const handleDeleteTask = async (e, taskId) => {
     e.stopPropagation();
-    if (!window.confirm("Ești sigur că vrei să ștergi acest card din această campanie? Acțiunea este ireversibilă.")) return;
+    if (!window.confirm(t.confirmDeleteCardCamp || "Ești sigur că vrei să ștergi acest card din această campanie? Acțiunea este ireversibilă.")) return;
     try {
       const { error } = await supabase.from('crm_tasks').delete().eq('id', taskId);
       if (error) throw error;
       setTasks(prev => prev.filter(t => t.id !== taskId));
     } catch (err) {
       console.error(err);
-      alert('Eroare la ștergerea cardului: ' + err.message);
+      alert(t.errDeleteCard || 'Eroare la ștergerea cardului: ' + err.message);
     }
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-slate-500 font-bold">Se încarcă sarcinile...</div>;
+    return <div className="p-8 text-center text-slate-500 font-bold">{t.loadingTasks || 'Se încarcă sarcinile...'}</div>;
   }
 
   // Filter tasks for the currently selected tab
@@ -129,7 +131,7 @@ export const KanbanBoard = ({ campaign }) => {
       <div className="px-6 py-5 border-b border-slate-200 bg-white shrink-0 shadow-sm z-10 flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">{campaign.name}</h2>
-          <p className="text-sm text-slate-500 mt-1 font-medium">{campaign.description || 'Nicio descriere adăugată.'}</p>
+          <p className="text-sm text-slate-500 mt-1 font-medium">{campaign.description || t.noDescAdded || 'Nicio descriere adăugată.'}</p>
         </div>
         <div className="flex items-center gap-4">
           {effectiveRole !== 'admin' && (
@@ -149,7 +151,7 @@ export const KanbanBoard = ({ campaign }) => {
             </div>
           )}
           <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold border border-indigo-100 flex items-center gap-2">
-            <Activity size={16} /> Total Sarcini: {tasks.length}
+            <Activity size={16} /> {t.lblTotalTasks || 'Total Sarcini:'} {tasks.length}
           </div>
         </div>
       </div>
@@ -185,7 +187,7 @@ export const KanbanBoard = ({ campaign }) => {
                     <FolderClosed size={12} />
                   </div>
                 )}
-                {isStep ? tab.name : `Categ: ${tab.name}`}
+                {isStep ? tab.name : `${t.lblCategoryShort || 'Categ:'} ${tab.name}`}
                 <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${isActive ? (isStep ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700') : 'bg-slate-100 text-slate-500'}`}>
                   {stepTasksCount}
                 </span>
@@ -200,14 +202,14 @@ export const KanbanBoard = ({ campaign }) => {
         {activeTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-white/50">
             <CheckCircle2 size={40} className={activeTabConfig.type === 'step' ? 'text-emerald-400' : 'text-slate-300'} />
-            <p className="font-bold text-lg text-slate-500">Nicio sarcină în acest stadiu.</p>
-            <p className="text-sm mt-1">{activeTabConfig.type === 'step' ? 'Toate sarcinile din această etapă au fost procesate.' : 'Nicio sarcină închisă în această categorie.'}</p>
+            <p className="font-bold text-lg text-slate-500">{t.msgNoTasksStage || 'Nicio sarcină în acest stadiu.'}</p>
+            <p className="text-sm mt-1">{activeTabConfig.type === 'step' ? t.msgAllTasksProcessed || 'Toate sarcinile din această etapă au fost procesate.' : t.msgNoTasksClosed || 'Nicio sarcină închisă în această categorie.'}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {activeTasks.map(task => {
               const rowData = task.row_data || {};
-              const titleStr = rowData.nume_complet || rowData.nume || rowData.name || rowData.denumire || rowData.titlu || 'FIȘĂ DOSAR CAMPANIE SARCINI';
+              const titleStr = rowData.nume_complet || rowData.nume || rowData.name || rowData.denumire || rowData.titlu || t.defaultCardTitle || 'FIȘĂ DOSAR CAMPANIE SARCINI';
               const isMissing = rowData.is_missing;
               
               const totalSteps = steps.length;
@@ -230,12 +232,12 @@ export const KanbanBoard = ({ campaign }) => {
                     {isMissing && (
                       <div className="mb-2 flex items-center justify-between">
                         <div className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center w-fit">
-                          🚨 Exclus din baza de date
+                          🚨 {t.lblExcludedDb || 'Exclus din baza de date'}
                         </div>
                         <button 
                           onClick={(e) => handleDeleteTask(e, task.id)}
                           className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Șterge card din campanie"
+                          title={t.titleDeleteCard || "Șterge card din campanie"}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -259,14 +261,14 @@ export const KanbanBoard = ({ campaign }) => {
                   <div className="border-t border-slate-100 pt-3 mt-auto flex flex-col gap-2">
                     {isClosed ? (
                       <div className="flex justify-between items-center text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-                        <span>Status Finalizat</span>
+                        <span>{t.lblStatusFinalized || 'Status Finalizat'}</span>
                         <span className="flex items-center gap-1"><CheckCircle2 size={12} /> {task.category}</span>
                       </div>
                     ) : (
                       <>
                         <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                          <span>Progres Campanie</span>
-                          <span className="text-indigo-600">{task.active_step_idx + 1}/{totalSteps} Pași</span>
+                          <span>{t.lblCampaignProgress || 'Progres Campanie'}</span>
+                          <span className="text-indigo-600">{task.active_step_idx + 1}/{totalSteps} {t.lblSteps || 'Pași'}</span>
                         </div>
                         <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                           <div className="bg-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>

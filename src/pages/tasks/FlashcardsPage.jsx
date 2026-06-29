@@ -5,8 +5,10 @@ import { supabase } from '../../lib/supabase';
 import { KanbanBoard } from '../../components/campaigns/KanbanBoard';
 import { Megaphone, Search, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const FlashcardsPage = () => {
+  const { t } = useLanguage();
   const { profile } = useAuth();
   const location = useLocation();
   const [campaigns, setCampaigns] = useState([]);
@@ -56,7 +58,7 @@ export const FlashcardsPage = () => {
   const filteredCampaigns = campaigns.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <MainLayout title="Sarcini Flotă (Flashcards)" subtitle="Gestionare sarcini și campanii active">
+    <MainLayout title={t.titleFleetTasks || "Sarcini Flotă (Flashcards)"} subtitle={t.subFleetTasks || "Gestionare sarcini și campanii active"}>
       <div className="flex h-[calc(100vh-140px)] gap-6">
         
 
@@ -68,8 +70,8 @@ export const FlashcardsPage = () => {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-slate-400">
               <Megaphone size={48} className="mb-4 text-slate-300" />
-              <p className="font-bold text-lg text-slate-500">Nicio campanie selectată</p>
-              <p className="text-sm">Selectează o campanie din meniul din stânga pentru a vizualiza sarcinile.</p>
+              <p className="font-bold text-lg text-slate-500">{t.msgNoCampSelected || "Nicio campanie selectată"}</p>
+              <p className="text-sm">{t.msgSelectCampInfo || "Selectează o campanie din meniul din stânga pentru a vizualiza sarcinile."}</p>
             </div>
           )}
         </div>

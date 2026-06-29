@@ -9,24 +9,26 @@ import { DepartmentManagement } from '../components/admin/DepartmentManagement';
 import { CampaignManagement } from '../components/admin/CampaignManagement';
 import { NotificationSender } from '../components/admin/NotificationSender';
 import { BellRing } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const AdminPage = () => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('users');
   const [globalAlert, setGlobalAlert] = useState(null);
 
   const tabs = [
-    { id: 'users', label: 'Management Utilizatori', icon: <Users size={18} /> },
-    { id: 'workers', label: 'Monitorizare Operatori', icon: <Activity size={18} /> },
-    { id: 'departments', label: 'Departamente', icon: <Building size={18} /> },
-    { id: 'campaigns_active', label: 'Campanii Active', icon: <Target size={18} /> },
-    { id: 'campaigns_archived', label: 'Campanii Arhivate', icon: <Archive size={18} /> },
-    { id: 'repetitive_active', label: 'Fluxuri Repetitive Active', icon: <Target size={18} /> },
-    { id: 'repetitive_archived', label: 'Fluxuri Repetitive Arhivate', icon: <Archive size={18} /> },
-    { id: 'notifications', label: 'Notificări', icon: <BellRing size={18} /> },
+    { id: 'users', label: t.adminTabUsers || 'Management Utilizatori', icon: <Users size={18} /> },
+    { id: 'workers', label: t.adminTabWorkers || 'Monitorizare Operatori', icon: <Activity size={18} /> },
+    { id: 'departments', label: t.adminTabDepartments || 'Departamente', icon: <Building size={18} /> },
+    { id: 'campaigns_active', label: t.adminTabCampActive || 'Campanii Active', icon: <Target size={18} /> },
+    { id: 'campaigns_archived', label: t.adminTabCampArchived || 'Campanii Arhivate', icon: <Archive size={18} /> },
+    { id: 'repetitive_active', label: t.adminTabRepActive || 'Fluxuri Repetitive Active', icon: <Target size={18} /> },
+    { id: 'repetitive_archived', label: t.adminTabRepArchived || 'Fluxuri Repetitive Arhivate', icon: <Archive size={18} /> },
+    { id: 'notifications', label: t.adminTabNotif || 'Notificări', icon: <BellRing size={18} /> },
   ];
 
   return (
-    <MainLayout title="Admin Panel" subtitle="Aprobare utilizatori și setări globale platformă">
+    <MainLayout title={t.adminPanelTitle || 'Admin Panel'} subtitle={t.adminPanelSub || 'Aprobare utilizatori și setări globale platformă'}>
       
       {/* Global Alerts */}
       <Alert message={globalAlert?.message} type={globalAlert?.type} />

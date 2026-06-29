@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, Users, Activity, Plus, Trash2, ArrowRight } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const generateId = () => {
   return (crypto && crypto.randomUUID) 
@@ -9,6 +10,7 @@ const generateId = () => {
 };
 
 export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsData = [], tableName = '', visibleColumns = [], isRepetitive = false, initialData = null }) => {
+  const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [workers, setWorkers] = useState([]);
@@ -180,19 +182,19 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
   };
 
   const launchCampaign = async () => {
-    if (!title.trim()) return alert("Introduceți un titlu.");
+    if (!title.trim()) return alert(t.errEnterTitle || "Introduceți un titlu.");
     
     const totalAvailable = initialData ? existingTasks.length : selectedRowsData.length;
     if (totalAssigned !== totalAvailable) {
-      return alert(`Ați distribuit ${totalAssigned} sarcini din ${totalAvailable}. Trebuie să le distribuiți pe toate.`);
+      return alert((t.msgDistributeCountInfo || "Ați distribuit {totalAssigned} sarcini din {totalAvailable}.").replace("{totalAssigned}", totalAssigned).replace("{totalAvailable}", totalAvailable) + " " + (t.errDistributeAll || "Trebuie să le distribuiți pe toate."));
     }
     
     // Validate steps
     for (let s of campaignSteps) {
-      if (!s.name.trim()) return alert("Fiecare etapă trebuie să aibă un nume.");
+      if (!s.name.trim()) return alert(t.errStepNameReq || "Fiecare etapă trebuie să aibă un nume.");
       for (let b of s.branches) {
-        if (!b.label.trim()) return alert("Fiecare buton de decizie trebuie să aibă o etichetă.");
-        if (b.action.startsWith('category_') && b.action === 'category_') return alert("Completați numele categoriei pentru finalizare.");
+        if (!b.label.trim()) return alert(t.errBtnLabelReq || "Fiecare buton de decizie trebuie să aibă o etichetă.");
+        if (b.action.startsWith('category_') && b.action === 'category_') return alert(t.errCatNameReq || "Completați numele categoriei pentru finalizare.");
       }
     }
 
@@ -235,7 +237,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
           await Promise.all(updates);
         }
 
-        alert("Modificările au fost salvate cu succes!");
+        alert(t.msgChangesSaved || "Modificările au fost salvate cu succes!");
         onClose();
         return;
       }
@@ -304,16 +306,16 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
             .from(tableName)
             .update({ crm_processed: true })
             .in('id', batchIds);
-          if (markErr) console.error("Eroare la marcarea rândurilor ca procesate:", markErr);
+          if (markErr) console.error((t.errMarkProcessed || "Eroare la marcarea rândurilor ca procesate:") + " ", markErr);
         }
       }
 
-      alert(isRepetitive ? "Flux repetitiv lansat cu succes!" : "Campanie lansată cu succes!");
+      alert(isRepetitive ? (t.msgFlowLaunched || "Flux repetitiv lansat cu succes!") : (t.msgCampLaunched || "Campanie lansată cu succes!"));
       if (onSuccess) onSuccess();
       else onClose(); // and trigger a refresh upstream to uncheck rows
     } catch (err) {
       console.error(err);
-      alert("Eroare la operare: " + err.message);
+      alert((t.errOperation || "Eroare la operare: ") + err.message);
     } finally {
       setLoading(false);
     }
@@ -330,8 +332,8 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
             <Activity className="text-indigo-600" />
             {initialData 
-              ? (isRepetitive ? "Editează Flux Repetitiv" : "Editează Campanie")
-              : (isRepetitive ? "Creează Flux Repetitiv" : "Creează Campanie Sarcini")
+              ? (isRepetitive ? (t.titleEditFlow || "Editează Flux Repetitiv") : (t.titleEditCamp || "Editează Campanie"))
+              : (isRepetitive ? (t.titleCreateFlow || "Creează Flux Repetitiv") : (t.titleCreateCamp || "Creează Campanie Sarcini"))
             }
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-white p-1 rounded-full shadow-sm">
@@ -347,30 +349,30 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
             {!initialData && (
               <div className="bg-blue-50 text-blue-800 p-4 rounded-xl font-bold text-sm border border-blue-200 flex justify-between items-center">
                 <span>{selectedRowsData.length} Rânduri Selectate din `{tableName}`</span>
-                <span>Pasul 1 / 2</span>
+                <span>{t.lblStep1Of2 || 'Pasul 1 / 2'}</span>
               </div>
             )}
 
             {initialData && (
               <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl font-bold text-sm border border-emerald-200 flex justify-between items-center">
-                <span>Total Sarcini în {isRepetitive ? "Flux" : "Campanie"}: {existingTasks.length}</span>
-                <span>Editare</span>
+                <span>Total Sarcini în {isRepetitive ? t.lblFlow || "Flux" : t.lblCampaign || "Campanie"}: {existingTasks.length}</span>
+                <span>{t.lblEditing || 'Editare'}</span>
               </div>
             )}
 
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
-              <h3 className="font-bold text-slate-700">{isRepetitive ? "Detalii Flux" : "Detalii Campanie"}</h3>
+              <h3 className="font-bold text-slate-700">{isRepetitive ? (t.lblFlowDetails || "Detalii Flux") : (t.lblCampDetails || "Detalii Campanie")}</h3>
               <div>
-                <label className="block text-sm font-bold text-slate-600 mb-1">Titlu {isRepetitive ? "Flux" : "Campanie"}</label>
-                <input type="text" value={title} onChange={e=>setTitle(e.target.value)} className="w-full p-2 border rounded-lg focus:outline-none focus:border-indigo-500" placeholder="ex: Sunare Șoferi Reactivare" />
+                <label className="block text-sm font-bold text-slate-600 mb-1">{t.lblTitlePrefix || 'Titlu'} {isRepetitive ? t.lblFlow || "Flux" : t.lblCampaign || "Campanie"}</label>
+                <input type="text" value={title} onChange={e=>setTitle(e.target.value)} className="w-full p-2 border rounded-lg focus:outline-none focus:border-indigo-500" placeholder={t.phExCallDrivers || "ex: Sunare Șoferi Reactivare"} />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-600 mb-1">Instrucțiuni Globale</label>
-                <textarea value={description} onChange={e=>setDescription(e.target.value)} className="w-full p-2 border rounded-lg h-20 resize-none focus:outline-none focus:border-indigo-500" placeholder="Instrucțiuni pentru operatori..."></textarea>
+                <label className="block text-sm font-bold text-slate-600 mb-1">{t.lblGlobalInstr || 'Instrucțiuni Globale'}</label>
+                <textarea value={description} onChange={e=>setDescription(e.target.value)} className="w-full p-2 border rounded-lg h-20 resize-none focus:outline-none focus:border-indigo-500" placeholder={t.phInstrOps || "Instrucțiuni pentru operatori..."}></textarea>
               </div>
               {isRepetitive && (
                 <div>
-                  <label className="block text-sm font-bold text-slate-600 mb-1">Interval de Resetare Sarcini</label>
+                  <label className="block text-sm font-bold text-slate-600 mb-1">{t.lblResetInterval || 'Interval de Resetare Sarcini'}</label>
                   <div className="flex items-center gap-2">
                     <input 
                       type="number" 
@@ -379,7 +381,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                       onChange={e => setResetIntervalHours(parseInt(e.target.value) || 0)} 
                       className="w-24 p-2 border rounded-lg focus:outline-none focus:border-indigo-500 text-center font-bold" 
                     />
-                    <span className="text-sm text-slate-500 font-medium">ore</span>
+                    <span className="text-sm text-slate-500 font-medium">{t.lblHours || 'ore'}</span>
 
                     <input 
                       type="number" 
@@ -389,28 +391,28 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                       onChange={e => setResetIntervalMinutes(parseInt(e.target.value) || 0)} 
                       className="w-24 p-2 border rounded-lg focus:outline-none focus:border-indigo-500 text-center font-bold ml-4" 
                     />
-                    <span className="text-sm text-slate-500 font-medium">minute</span>
+                    <span className="text-sm text-slate-500 font-medium">{t.lblMinutes || 'minute'}</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">Sarcina completată se va reseta automat pentru operator după acest interval.</p>
+                  <p className="text-xs text-slate-400 mt-1">{t.msgResetAuto || 'Sarcina completată se va reseta automat pentru operator după acest interval.'}</p>
                 </div>
               )}
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-bold text-slate-700 flex items-center gap-2"><Users size={16}/> {initialData ? "Redistribuire Sarcini Existente" : "Distribuire Sarcini Noi"}</h3>
+                <h3 className="font-bold text-slate-700 flex items-center gap-2"><Users size={16}/> {initialData ? (t.lblRedistribExist || "Redistribuire Sarcini Existente") : (t.lblDistribNew || "Distribuire Sarcini Noi")}</h3>
                 <div className="flex items-center gap-2">
                   <select 
                     value={selectedDept}
                     onChange={(e) => setSelectedDept(e.target.value)}
                     className="text-xs p-1.5 border border-slate-200 rounded font-medium focus:outline-none focus:border-indigo-500"
                   >
-                    <option value="all">Toate Departamentele</option>
+                    <option value="all">{t.optAllDepts || 'Toate Departamentele'}</option>
                     {uniqueDepts.map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
-                  <button onClick={distributeEvenly} className="text-xs bg-slate-100 px-3 py-1 font-bold rounded hover:bg-slate-200 border">Distribuie Egal</button>
+                  <button onClick={distributeEvenly} className="text-xs bg-slate-100 px-3 py-1 font-bold rounded hover:bg-slate-200 border">{t.btnDistribEvenly || 'Distribuie Egal'}</button>
                 </div>
               </div>
               <div className="max-h-48 overflow-y-auto flex flex-col gap-2">
@@ -427,13 +429,13 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                         onChange={(e) => handleSplitChange(w.id, e.target.value)}
                         className="w-16 p-1 text-center border rounded text-sm font-bold"
                       />
-                      <span className="text-xs text-slate-500">sarcini</span>
+                      <span className="text-xs text-slate-500">{t.lblTasksLowercase || 'sarcini'}</span>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="flex justify-between items-center font-bold text-sm border-t pt-2">
-                <span>Total Distribuit:</span>
+                <span>{t.lblTotalDistributed || 'Total Distribuit:'}</span>
                 <span className={totalAssigned !== (initialData ? existingTasks.length : selectedRowsData.length) ? 'text-red-500' : 'text-emerald-600'}>
                   {totalAssigned} / {initialData ? existingTasks.length : selectedRowsData.length}
                 </span>
@@ -444,9 +446,9 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
           {/* Right Column: Dynamic Steps */}
           <div className="flex-[1.2] bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-slate-700 flex items-center gap-2">Constructor Flux de Lucru (Steps)</h3>
+              <h3 className="font-bold text-slate-700 flex items-center gap-2">{t.lblWorkflowBuilder || 'Constructor Flux de Lucru (Steps)'}</h3>
               <button onClick={addStep} className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 font-bold rounded-lg hover:bg-indigo-100 flex items-center gap-1 border border-indigo-200">
-                <Plus size={14}/> Adaugă Etapă
+                <Plus size={14}/> {t.btnAddStage || 'Adaugă Etapă'}
               </button>
             </div>
             
@@ -460,12 +462,12 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                       <input 
                         type="text" value={step.name} onChange={e=>updateStep(step.id, 'name', e.target.value)} 
                         className="w-full p-2 border rounded focus:border-indigo-500 font-bold text-sm" 
-                        placeholder={`Nume Etapă (ex: Apel 1)`} 
+                        placeholder={t.phStageName || "Nume Etapă (ex: Apel 1)"} 
                       />
                       <textarea 
                         value={step.description} onChange={e=>updateStep(step.id, 'description', e.target.value)}
                         className="w-full p-2 border rounded text-sm resize-none h-12" 
-                        placeholder="Instrucțiuni specifice pentru acest pas..." 
+                        placeholder={t.phSpecificInstr || "Instrucțiuni specifice pentru acest pas..."} 
                       />
                     </div>
                     {campaignSteps.length > 1 && (
@@ -477,11 +479,11 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                   <div className="mt-5 border border-indigo-100 rounded-xl overflow-hidden shadow-sm">
                     <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex justify-between items-center">
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-indigo-800 uppercase tracking-wide">Configurare Butoane Acțiune</span>
-                        <span className="text-[10px] text-indigo-600">Setează opțiunile pe care le are operatorul la acest pas</span>
+                        <span className="text-xs font-bold text-indigo-800 uppercase tracking-wide">{t.lblConfigActionBtns || 'Configurare Butoane Acțiune'}</span>
+                        <span className="text-[10px] text-indigo-600">{t.lblSetOpOptions || 'Setează opțiunile pe care le are operatorul la acest pas'}</span>
                       </div>
                       <button onClick={()=>addBranch(step.id)} className="text-xs bg-white text-indigo-600 border border-indigo-200 px-3 py-1 font-bold rounded-lg hover:bg-indigo-100 flex items-center gap-1 shadow-sm">
-                        <Plus size={14} /> Adaugă Buton
+                        <Plus size={14} /> {t.btnAddBtn || 'Adaugă Buton'}
                       </button>
                     </div>
                     
@@ -490,17 +492,17 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                       <div key={branch.id} className="flex items-center gap-2 bg-white p-2 border rounded-lg shadow-sm text-sm">
                         <input 
                           type="text" value={branch.label} onChange={e=>updateBranch(step.id, branch.id, 'label', e.target.value)}
-                          className="w-32 p-1 border-b focus:border-indigo-500 outline-none" placeholder="Etichetă"
+                          className="w-32 p-1 border-b focus:border-indigo-500 outline-none" placeholder={t.phLabel || "Etichetă"}
                         />
                         <select 
                           value={branch.color} onChange={e=>updateBranch(step.id, branch.id, 'color', e.target.value)}
                           className="p-1 border rounded bg-slate-50 w-24"
                         >
-                          <option value="success">Verde</option>
-                          <option value="danger">Roșu</option>
-                          <option value="warning">Galben</option>
-                          <option value="primary">Albastru</option>
-                          <option value="secondary">Gri</option>
+                          <option value="success">{t.colorGreen || 'Verde'}</option>
+                          <option value="danger">{t.colorRed || 'Roșu'}</option>
+                          <option value="warning">{t.colorYellow || 'Galben'}</option>
+                          <option value="primary">{t.colorBlue || 'Albastru'}</option>
+                          <option value="secondary">{t.colorGray || 'Gri'}</option>
                         </select>
                         <select 
                           value={branch.action.startsWith('category_') ? 'category' : 'next'} 
@@ -510,14 +512,14 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                           }}
                           className="p-1 border rounded bg-slate-50 flex-1 font-bold"
                         >
-                          <option value="next">Treci la Pas Următor ➔</option>
-                          <option value="category">Închide în Categorie 🏁</option>
+                          <option value="next">{t.optNextStep || 'Treci la Pas Următor ➔'}</option>
+                          <option value="category">{t.optCloseCategory || 'Închide în Categorie 🏁'}</option>
                         </select>
                         {branch.action.startsWith('category_') && (
                           <input 
                             type="text" value={branch.action.replace('category_', '')} 
                             onChange={e=>updateBranch(step.id, branch.id, 'action', 'category_' + e.target.value)}
-                            className="w-32 p-1 border border-rose-200 bg-rose-50 rounded outline-none placeholder:text-rose-300" placeholder="Nume Categorie Finală"
+                            className="w-32 p-1 border border-rose-200 bg-rose-50 rounded outline-none placeholder:text-rose-300" placeholder={t.phFinalCategory || "Nume Categorie Finală"}
                           />
                         )}
                         {step.branches.length > 1 && (
@@ -535,9 +537,9 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 bg-white flex justify-end gap-3">
-          <button onClick={onClose} disabled={loading} className="px-6 py-2 border rounded-lg font-bold text-slate-600 hover:bg-slate-50">Anulează</button>
+          <button onClick={onClose} disabled={loading} className="px-6 py-2 border rounded-lg font-bold text-slate-600 hover:bg-slate-50">{t.btnCancel || 'Anulează'}</button>
           <button onClick={launchCampaign} disabled={loading} className="px-8 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-50">
-            {loading ? 'Se procesează...' : (initialData ? 'Salvează Modificările' : 'Lansează Campanie')} <ArrowRight size={18} />
+            {loading ? (t.btnProcessing || 'Se procesează...') : (initialData ? (t.btnSaveChanges || 'Salvează Modificările') : (t.btnLaunchCampaign || 'Lansează Campanie'))} <ArrowRight size={18} />
           </button>
         </div>
       </div>

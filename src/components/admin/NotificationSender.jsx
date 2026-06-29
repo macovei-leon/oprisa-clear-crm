@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Send, Users, Building, User, Code, Eye, BellRing } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const NotificationSender = ({ setGlobalAlert }) => {
+  const { t } = useLanguage();
   const [departments, setDepartments] = useState([]);
   const [users, setUsers] = useState([]);
   
@@ -28,7 +30,7 @@ export const NotificationSender = ({ setGlobalAlert }) => {
 
   const handleSend = async () => {
     if (!message.trim()) {
-      setGlobalAlert({ type: 'error', message: 'Mesajul nu poate fi gol.' });
+      setGlobalAlert({ type: 'error', message: t.errEmptyMsg || 'Mesajul nu poate fi gol.' });
       return;
     }
 
@@ -39,15 +41,15 @@ export const NotificationSender = ({ setGlobalAlert }) => {
       if (targetType === 'all') {
         targetUserIds = users.filter(u => u.status !== 'pending').map(u => u.id);
       } else if (targetType === 'department') {
-        if (!selectedDept) throw new Error('Selectează un departament.');
+        if (!selectedDept) throw new Error(t.errSelectDept || 'Selectează un departament.');
         targetUserIds = users.filter(u => u.department_id === selectedDept && u.status !== 'pending').map(u => u.id);
       } else if (targetType === 'user') {
-        if (!selectedUser) throw new Error('Selectează un utilizator.');
+        if (!selectedUser) throw new Error(t.errSelectUser || 'Selectează un utilizator.');
         targetUserIds = [selectedUser];
       }
 
       if (targetUserIds.length === 0) {
-        throw new Error('Niciun utilizator găsit pentru această selecție.');
+        throw new Error(t.errNoUsersFound || 'Niciun utilizator găsit pentru această selecție.');
       }
 
       const inserts = targetUserIds.map(uid => ({
@@ -59,7 +61,7 @@ export const NotificationSender = ({ setGlobalAlert }) => {
       const { error } = await supabase.from('app_notifications').insert(inserts);
       if (error) throw error;
 
-      setGlobalAlert({ type: 'success', message: `Notificare trimisă cu succes către ${targetUserIds.length} utilizator(i).` });
+      setGlobalAlert({ type: 'success', message: `${t.msgNotifSentPart1 || 'Notificare trimisă cu succes către'} ${targetUserIds.length} ${t.msgNotifSentPart2 || 'utilizator(i).'}` });
       setMessage('');
       setTargetType('all');
     } catch (err) {
@@ -82,7 +84,7 @@ export const NotificationSender = ({ setGlobalAlert }) => {
         
         {/* Target Selection */}
         <div>
-          <label className="block text-sm font-bold text-slate-700 mb-3">Destinatar(i)</label>
+          <label className="block text-sm font-bold text-slate-700 mb-3">{t.lblRecipients || 'Destinatar(i)'}</label>
           <div className="flex gap-4 mb-4">
             <button 
               onClick={() => setTargetType('all')}
@@ -110,7 +112,7 @@ export const NotificationSender = ({ setGlobalAlert }) => {
               onChange={e => setSelectedDept(e.target.value)}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
             >
-              <option value="">-- Selectează Departament --</option>
+              <option value="">{t.optSelectDept || '-- Selectează Departament --'}</option>
               {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           )}
@@ -121,7 +123,7 @@ export const NotificationSender = ({ setGlobalAlert }) => {
               onChange={e => setSelectedUser(e.target.value)}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
             >
-              <option value="">-- Selectează Utilizator --</option>
+              <option value="">{t.optSelectUser || '-- Selectează Utilizator --'}</option>
               {users.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
             </select>
           )}
@@ -129,7 +131,7 @@ export const NotificationSender = ({ setGlobalAlert }) => {
 
         {/* Message Editor */}
         <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2">Mesaj Notificare</label>
+          <label className="block text-sm font-bold text-slate-700 mb-2">{t.lblNotifMsg || 'Mesaj Notificare'}</label>
           <div className="border border-slate-200 rounded-xl overflow-hidden">
             <div className="flex border-b border-slate-200 bg-slate-50">
               <button
@@ -150,13 +152,13 @@ export const NotificationSender = ({ setGlobalAlert }) => {
               <textarea
                 value={message}
                 onChange={e => setMessage(e.target.value)}
-                placeholder="Scrie mesajul notificării..."
+                placeholder={t.phWriteNotif || "Scrie mesajul notificării..."}
                 className="w-full h-64 p-4 focus:outline-none font-mono text-sm resize-y"
               />
             ) : (
               <div 
                 className="w-full h-64 p-4 overflow-y-auto prose max-w-none bg-white"
-                dangerouslySetInnerHTML={{ __html: message || '<p class="text-slate-400 italic">Mesajul este gol...</p>' }}
+                dangerouslySetInnerHTML={{ __html: message || `<p class="text-slate-400 italic">${t.lblMsgEmpty || 'Mesajul este gol...'}</p>` }}
               />
             )}
           </div>
@@ -169,7 +171,7 @@ export const NotificationSender = ({ setGlobalAlert }) => {
           disabled={isSending || !message.trim()}
           className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition-colors shadow-md shadow-indigo-600/20"
         >
-          <Send size={18} /> {isSending ? 'Se trimite...' : 'Trimite Notificarea'}
+          <Send size={18} /> {isSending ? (t.btnSending || 'Se trimite...') : (t.btnSendNotif || 'Trimite Notificarea')}
         </button>
       </div>
     </div>

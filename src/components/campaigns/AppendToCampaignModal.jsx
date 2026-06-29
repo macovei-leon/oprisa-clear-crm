@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, Users, Activity, CheckCircle2 } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRowsData = [], tableName = '', isRepetitive = false }) => {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
@@ -62,11 +64,11 @@ export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRows
 
   const appendToCampaign = async () => {
     if (totalAssigned !== selectedRowsData.length) {
-      return alert(`Trebuie să distribuiți exact ${selectedRowsData.length} rânduri. Momentan ați distribuit ${totalAssigned}.`);
+      return alert((t.errDistributeExact || "Trebuie să distribuiți exact {total} rânduri. Momentan ați distribuit {assigned}.").replace("{total}", selectedRowsData.length).replace("{assigned}", totalAssigned));
     }
     
     if (!selectedCampaignId) {
-      return alert('Vă rugăm să selectați o campanie destinație.');
+      return alert(t.errSelectDestCamp || "Vă rugăm să selectați o campanie destinație.");
     }
 
     setLoading(true);
@@ -111,16 +113,16 @@ export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRows
             .from(tableName)
             .update({ crm_processed: true })
             .in('id', batchIds);
-          if (markErr) console.error("Eroare la marcarea rândurilor ca procesate:", markErr);
+          if (markErr) console.error((t.errMarkProcessed || "Eroare la marcarea rândurilor ca procesate:") + " ", markErr);
         }
       }
 
-      alert('Rândurile au fost adăugate cu succes la campania existentă!');
+      alert(t.msgRowsAddedSucc || "Rândurile au fost adăugate cu succes la campania existentă!");
       if (onSuccess) onSuccess();
       else onClose();
     } catch (err) {
       console.error(err);
-      alert('Eroare: ' + err.message);
+      alert((t.errOperation || "Eroare la operare: ") + err.message);
     } finally {
       setLoading(false);
     }
@@ -140,9 +142,9 @@ export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRows
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-800">
-                Adaugă la {isRepetitive ? 'Flux Repetitiv' : 'Campanie Sarcini'} Existent
+                Adaugă la {isRepetitive ? (t.titleAppendFlow || 'Flux Repetitiv') : (t.titleAppendCamp || 'Campanie Sarcini')} Existent
               </h2>
-              <p className="text-sm text-slate-500 font-medium">Distribuie <strong>{selectedRowsData.length}</strong> rânduri noi.</p>
+              <p className="text-sm text-slate-500 font-medium"> {(t.lblDistributeRows || 'Distribuie {count} rânduri noi.').split('{count}').map((part, i) => i === 0 ? part : <React.Fragment key={i}><strong>{selectedRowsData.length}</strong>{part}</React.Fragment>)}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-200 rounded-full">
@@ -154,16 +156,16 @@ export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRows
           
           {/* Select Campaign */}
           <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">1. Selectează Destinația</h3>
+            <h3 className="text-lg font-bold text-slate-800 mb-4">{t.lblSelectDest || '1. Selectează Destinația'}</h3>
             {campaigns.length === 0 ? (
-              <p className="text-amber-600 font-semibold bg-amber-50 p-4 rounded-lg">Nu există campanii active.</p>
+              <p className="text-amber-600 font-semibold bg-amber-50 p-4 rounded-lg">{t.msgNoActiveCamps || 'Nu există campanii active.'}</p>
             ) : (
               <select 
                 value={selectedCampaignId}
                 onChange={e => setSelectedCampaignId(e.target.value)}
                 className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-700 font-medium"
               >
-                <option value="" disabled>Alege o campanie...</option>
+                <option value="" disabled>{t.phChooseCamp || 'Alege o campanie...'}</option>
                 {campaigns.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -176,7 +178,7 @@ export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRows
             <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2">
                 <div className="bg-indigo-100 p-2 rounded-lg text-indigo-700"><Users size={20} /></div>
-                <h3 className="text-lg font-bold text-slate-800">2. Distribuire Sarcini Noi</h3>
+                <h3 className="text-lg font-bold text-slate-800">{t.lblDistribNew || '2. Distribuire Sarcini Noi'}</h3>
               </div>
               <button 
                 onClick={distributeEvenly}
@@ -201,7 +203,7 @@ export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRows
                       </div>
                     </div>
                     <div className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Sarcini:</span>
+                      <span className="text-xs font-bold text-slate-400 uppercase">{t.lblTasksColon || 'Sarcini:'}</span>
                       <input 
                         type="number"
                         min="0"
@@ -219,8 +221,8 @@ export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRows
               <div className="flex items-center gap-3">
                 <Activity size={24} className={totalAssigned === selectedRowsData.length ? "text-emerald-500" : "text-rose-500"} />
                 <div>
-                  <p className="font-bold">Progres Distribuire Sarcini</p>
-                  <p className="text-sm opacity-80">Rânduri selectate: {selectedRowsData.length}</p>
+                  <p className="font-bold">{t.lblDistribProgress || 'Progres Distribuire Sarcini'}</p>
+                  <p className="text-sm opacity-80"> {(t.lblSelectedRowsCount || 'Rânduri selectate: {count}').replace('{count}', selectedRowsData.length)}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -242,7 +244,7 @@ export const AppendToCampaignModal = ({ isOpen, onClose, onSuccess, selectedRows
             disabled={loading || totalAssigned !== selectedRowsData.length || !selectedCampaignId}
             className="px-8 py-2.5 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {loading ? 'Se salvează...' : 'Salvează și Distribuie'}
+            {loading ? t.btnSavingDistrib || 'Se salvează...' : t.btnSaveAndDistrib || 'Salvează și Distribuie'}
           </button>
         </div>
       </div>
