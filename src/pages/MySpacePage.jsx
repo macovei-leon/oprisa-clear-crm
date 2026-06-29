@@ -15,14 +15,19 @@ export const MySpacePage = () => {
   const [loading, setLoading] = useState(true);
   const [workbookData, setWorkbookData] = useState([{ name: 'Sheet1' }]);
   const [users, setUsers] = useState([]);
-  const [selectedUserId, setSelectedUserId] = useState(profile?.id);
+  const [selectedUserId, setSelectedUserId] = useState(null);
   const [saving, setSaving] = useState(false);
   
   const workbookRef = useRef(null);
   
   useEffect(() => {
-    if (profile?.role === 'admin') {
-      fetchUsers();
+    if (profile) {
+      if (profile.role === 'admin') {
+        fetchUsers();
+      }
+      if (!selectedUserId) {
+        setSelectedUserId(profile.id);
+      }
     }
   }, [profile]);
   
@@ -62,12 +67,34 @@ export const MySpacePage = () => {
   const saveWorkbook = async (dataToSave) => {
     if (!selectedUserId) return;
     setSaving(true);
+    
+    // Clean up data: extract `celldata` and remove `data` to avoid storing massive 2D arrays of nulls
+    // and ensure FortuneSheet initializes correctly on reload.
+    const cleanData = dataToSave.map(sheet => {
+      const celldata = [];
+      if (sheet.data) {
+        sheet.data.forEach((row, r) => {
+          if (row) {
+             row.forEach((cell, c) => {
+               if (cell != null && Object.keys(cell).length > 0) {
+                 celldata.push({ r, c, v: cell });
+               }
+             });
+          }
+        });
+      } else if (sheet.celldata) {
+        celldata.push(...sheet.celldata);
+      }
+      const { data, ...rest } = sheet;
+      return { ...rest, celldata };
+    });
+
     try {
       const { error } = await supabase
         .from('user_workbooks')
         .upsert({ 
           user_id: selectedUserId, 
-          data: dataToSave,
+          data: cleanData,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
         
