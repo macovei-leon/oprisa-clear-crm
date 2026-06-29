@@ -13,6 +13,7 @@ import { RepetitiveHistoryPage } from './pages/admin/RepetitiveHistoryPage'
 import { FleetCapPage } from './pages/admin/FleetCapPage'
 import { DriverDashboardPage } from './pages/admin/DriverDashboardPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { HowToWorkPage } from './pages/HowToWorkPage'
 import { MainLayout } from './components/layout/MainLayout'
 import { ApiWorkspacePage } from './pages/developer/ApiWorkspacePage'
 import { ArchitecturePage } from './pages/developer/ArchitecturePage'
@@ -46,6 +47,11 @@ function App() {
             <Route path="/" element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/how-to-work" element={
+              <ProtectedRoute>
+                <HowToWorkPage />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={

@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Building, Trash2, Plus } from 'lucide-react';
+import { Building, Trash2, Plus, FileText, X, Save, Eye, Code } from 'lucide-react';
 
 export const DepartmentManagement = ({ setGlobalAlert }) => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newDeptName, setNewDeptName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  
+  const [editingDept, setEditingDept] = useState(null);
+  const [instructionsText, setInstructionsText] = useState('');
+  const [previewMode, setPreviewMode] = useState(false);
+  const [isSavingInst, setIsSavingInst] = useState(false);
 
   const fetchDepartments = async () => {
     setLoading(true);
@@ -62,6 +67,29 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
     }
   };
 
+  const handleEditInstructions = (dept) => {
+    setEditingDept(dept);
+    setInstructionsText(dept.instructions || '');
+    setPreviewMode(false);
+  };
+
+  const handleSaveInstructions = async () => {
+    setIsSavingInst(true);
+    const { error } = await supabase
+      .from('departments')
+      .update({ instructions: instructionsText })
+      .eq('id', editingDept.id);
+      
+    if (error) {
+      setGlobalAlert({ type: 'error', message: error.message });
+    } else {
+      setGlobalAlert({ type: 'success', message: `Instrucțiuni salvate pentru ${editingDept.name}.` });
+      setEditingDept(null);
+      fetchDepartments();
+    }
+    setIsSavingInst(false);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -108,7 +136,14 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
               {departments.map(d => (
                 <tr key={d.id} className="hover:bg-slate-50/50">
                   <td className="p-4 font-semibold text-slate-800">{d.name}</td>
-                  <td className="p-4 text-right">
+                  <td className="p-4 text-right flex justify-end gap-2">
+                    <button 
+                      onClick={() => handleEditInstructions(d)}
+                      className="p-2 text-indigo-500 hover:bg-indigo-50 rounded transition-colors"
+                      title="Editează Instrucțiuni"
+                    >
+                      <FileText size={18} />
+                    </button>
                     <button 
                       onClick={() => handleDelete(d.id)}
                       className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors"
@@ -121,6 +156,70 @@ export const DepartmentManagement = ({ setGlobalAlert }) => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal Instrucțiuni */}
+      {editingDept && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
+              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <FileText size={20} className="text-indigo-600" />
+                Instrucțiuni - {editingDept.name}
+              </h3>
+              <button onClick={() => setEditingDept(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-5 flex-1 overflow-y-auto">
+              <div className="flex border-b border-slate-200 mb-4">
+                <button
+                  onClick={() => setPreviewMode(false)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border-b-2 transition-colors ${!previewMode ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                >
+                  <Code size={16} /> HTML / Rich Text
+                </button>
+                <button
+                  onClick={() => setPreviewMode(true)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border-b-2 transition-colors ${previewMode ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                >
+                  <Eye size={16} /> Previzualizare
+                </button>
+              </div>
+
+              {!previewMode ? (
+                <textarea
+                  value={instructionsText}
+                  onChange={e => setInstructionsText(e.target.value)}
+                  placeholder="Scrie instrucțiunile aici (suportă HTML)..."
+                  className="w-full h-96 p-4 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 font-mono text-sm"
+                />
+              ) : (
+                <div 
+                  className="w-full h-96 p-4 border border-slate-200 rounded-lg overflow-y-auto prose max-w-none"
+                  dangerouslySetInnerHTML={{ __html: instructionsText || '<p class="text-slate-400 italic">Fără instrucțiuni...</p>' }}
+                />
+              )}
+            </div>
+
+            <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
+              <button 
+                onClick={() => setEditingDept(null)}
+                className="px-4 py-2 text-slate-600 font-semibold hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Anulează
+              </button>
+              <button 
+                onClick={handleSaveInstructions}
+                disabled={isSavingInst}
+                className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+              >
+                <Save size={18} /> {isSavingInst ? 'Se salvează...' : 'Salvează'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
