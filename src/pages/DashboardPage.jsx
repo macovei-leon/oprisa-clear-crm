@@ -33,11 +33,10 @@ export const DashboardPage = () => {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch normal campaigns and their tasks with profiles explicitly joined
+      // 1. Fetch normal campaigns and their tasks
       let taskQuery = supabase.from('crm_tasks').select(`
         id, campaign_id, completed, category, assigned_to,
-        crm_campaigns:campaign_id ( name ),
-        profiles:assigned_to ( name, email, department_id )
+        crm_campaigns:campaign_id ( name )
       `);
 
       // If normal operator, filter by assigned_to
@@ -45,9 +44,24 @@ export const DashboardPage = () => {
         taskQuery = taskQuery.eq('assigned_to', profile.id);
       }
 
-      const { data: tasks, error: tasksError } = await taskQuery;
+      const [{ data: tasks, error: tasksError }, { data: allProfs, error: profsError }] = await Promise.all([
+        taskQuery,
+        supabase.from('profiles').select('id, name, email, department_id')
+      ]);
+      
       if (tasksError) throw tasksError;
-      setAllTasks(tasks || []);
+      if (profsError) throw profsError;
+
+      // Merge profiles into tasks manually
+      const profilesMap = {};
+      (allProfs || []).forEach(p => { profilesMap[p.id] = p; });
+
+      const mergedTasks = (tasks || []).map(t => ({
+        ...t,
+        profiles: profilesMap[t.assigned_to] || null
+      }));
+
+      setAllTasks(mergedTasks);
 
       // 2. If admin, fetch departments
       if (profile.role === 'admin') {
