@@ -19,6 +19,7 @@ import { MessagesPage } from './pages/MessagesPage'
 import { MainLayout } from './components/layout/MainLayout'
 import { ApiWorkspacePage } from './pages/developer/ApiWorkspacePage'
 import { ArchitecturePage } from './pages/developer/ArchitecturePage'
+import { MySpacePage } from './pages/MySpacePage'
 
 function ProtectedRoute({ children, requiredRole }) {
   const { user, profile, loading } = useAuth();
@@ -64,6 +65,11 @@ function App() {
             <Route path="/messages" element={
               <ProtectedRoute>
                 <MessagesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-space" element={
+              <ProtectedRoute>
+                <MySpacePage />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
