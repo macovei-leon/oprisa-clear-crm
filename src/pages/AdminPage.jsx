@@ -7,6 +7,8 @@ import { UserManagement } from '../components/admin/UserManagement';
 import { WorkerMonitoring } from '../components/admin/WorkerMonitoring';
 import { DepartmentManagement } from '../components/admin/DepartmentManagement';
 import { CampaignManagement } from '../components/admin/CampaignManagement';
+import { NotificationSender } from '../components/admin/NotificationSender';
+import { BellRing } from 'lucide-react';
 
 export const AdminPage = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -20,6 +22,7 @@ export const AdminPage = () => {
     { id: 'campaigns_archived', label: 'Campanii Arhivate', icon: <Archive size={18} /> },
     { id: 'repetitive_active', label: 'Fluxuri Repetitive Active', icon: <Target size={18} /> },
     { id: 'repetitive_archived', label: 'Fluxuri Repetitive Arhivate', icon: <Archive size={18} /> },
+    { id: 'notifications', label: 'Notificări', icon: <BellRing size={18} /> },
   ];
 
   return (
@@ -55,6 +58,7 @@ export const AdminPage = () => {
         {activeTab === 'campaigns_archived' && <CampaignManagement filterType="archived" isRepetitive={false} setGlobalAlert={setGlobalAlert} />}
         {activeTab === 'repetitive_active' && <CampaignManagement filterType="active" isRepetitive={true} setGlobalAlert={setGlobalAlert} />}
         {activeTab === 'repetitive_archived' && <CampaignManagement filterType="archived" isRepetitive={true} setGlobalAlert={setGlobalAlert} />}
+        {activeTab === 'notifications' && <NotificationSender setGlobalAlert={setGlobalAlert} />}
       </div>
       
     </MainLayout>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sidebar } from './Sidebar';
 import { LanguageSwitcher } from '../auth/Shared';
+import { NotificationBell } from './NotificationBell';
 
 export const MainLayout = ({ children, title, subtitle }) => {
   return (
@@ -12,8 +13,8 @@ export const MainLayout = ({ children, title, subtitle }) => {
             <h1 className="text-2xl font-bold text-slate-800">{title}</h1>
             {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
           </div>
-          <div className="relative">
-            {/* The language switcher is absolute by default, let's wrap it nicely or just use the same approach */}
+          <div className="flex items-center gap-4">
+            <NotificationBell />
             <div className="relative z-10 w-32 h-10">
                 <LanguageSwitcher />
             </div>

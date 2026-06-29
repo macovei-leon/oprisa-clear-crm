@@ -114,13 +114,15 @@ export const Sidebar = () => {
           Dashboard
         </NavLink>
 
-        <NavLink 
-          to="/how-to-work" 
-          className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-        >
-          <BookOpen size={18} />
-          Cum să lucrezi
-        </NavLink>
+        {profile?.role !== 'admin' && (
+          <NavLink 
+            to="/how-to-work" 
+            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+          >
+            <BookOpen size={18} />
+            Cum să lucrezi
+          </NavLink>
+        )}
 
         <NavLink 
           to="/database" 
