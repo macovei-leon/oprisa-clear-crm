@@ -24,6 +24,9 @@ export const KanbanBoard = ({ campaign }) => {
     ...categories.map(c => ({ type: 'category', name: c }))
   ];
 
+  const isSimulating = !!simulatedDepartment;
+  const effectiveRole = isSimulating ? 'operator' : profile?.role;
+
   useEffect(() => {
     if (campaign) {
       fetchTasks();
@@ -41,9 +44,6 @@ export const KanbanBoard = ({ campaign }) => {
         // We fetch ALL tasks including completed ones now, so we can show them in Category tabs
 
       // If operator and viewMode is 'mine', only see own tasks. Admin sees all.
-      const isSimulating = !!simulatedDepartment;
-      const effectiveRole = isSimulating ? 'operator' : profile?.role;
-
       if (effectiveRole !== 'admin' && viewMode === 'mine') {
         if (isSimulating) {
            // fetch all users in simulated dept
