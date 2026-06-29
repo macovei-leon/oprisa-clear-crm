@@ -71,20 +71,14 @@ export const MySpacePage = () => {
     // Clean up data: extract `celldata` and remove `data` to avoid storing massive 2D arrays of nulls
     // and ensure FortuneSheet initializes correctly on reload.
     const cleanData = dataToSave.map(sheet => {
-      const celldata = [];
-      if (sheet.data) {
-        sheet.data.forEach((row, r) => {
-          if (row) {
-             row.forEach((cell, c) => {
-               if (cell != null && Object.keys(cell).length > 0) {
-                 celldata.push({ r, c, v: cell });
-               }
-             });
-          }
-        });
+      let celldata = [];
+      if (sheet.data && workbookRef.current) {
+        // Use FortuneSheet's built-in converter to safely handle holes and formatting
+        celldata = workbookRef.current.dataToCelldata(sheet.data);
       } else if (sheet.celldata) {
-        celldata.push(...sheet.celldata);
+        celldata = sheet.celldata;
       }
+      
       const { data, ...rest } = sheet;
       return { ...rest, celldata };
     });
@@ -106,13 +100,13 @@ export const MySpacePage = () => {
     }
   };
   
-  const handleOnChange = () => {
+  const handleOnChange = (data) => {
     if (window.saveTimeout) clearTimeout(window.saveTimeout);
     window.saveTimeout = setTimeout(() => {
       if (workbookRef.current) {
-        saveWorkbook(workbookRef.current.getAllSheets());
+        saveWorkbook(data);
       }
-    }, 2000);
+    }, 1000);
   };
   
   const handleExport = () => {
