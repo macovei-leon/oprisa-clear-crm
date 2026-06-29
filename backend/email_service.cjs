@@ -126,11 +126,16 @@ async function runDailyEmailJob(overrideCategories = null) {
         const pnEnd = settings && settings.pn_range_end ? parseInt(settings.pn_range_end, 10) : null;
 
         const targets = drivers.filter(d => {
-            if (!targetCategories.includes(d.status)) return false;
+            // Treat drivers with missedThreeDaysInARow as 'Fireable'
+            const isFireable = d.status === 'Fireable' || d.missedThreeDaysInARow;
+            const effectiveStatus = (isFireable && targetCategories.includes('Fireable')) ? 'Fireable' : d.status;
+
+            if (!targetCategories.includes(effectiveStatus)) return false;
             if (pnStart && pnEnd && d.pn) {
                 const driverPn = parseInt(d.pn, 10);
                 if (driverPn < pnStart || driverPn > pnEnd) return false;
             }
+            d.effectiveStatusForEmail = effectiveStatus;
             return true;
         });
 
@@ -186,7 +191,7 @@ async function runDailyEmailJob(overrideCategories = null) {
             batch_id: batchData.id,
             driver_pn: driver.pn,
             email: driver.email,
-            category: driver.status,
+            category: driver.effectiveStatusForEmail || driver.status,
             status: 'Pending'
         }));
         
