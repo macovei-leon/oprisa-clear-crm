@@ -3,7 +3,7 @@ import { Sidebar } from './Sidebar';
 import { LanguageSwitcher } from '../auth/Shared';
 import { NotificationBell } from './NotificationBell';
 
-export const MainLayout = ({ children, title, subtitle }) => {
+export const MainLayout = ({ children, title, subtitle, noPadding = false }) => {
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-900">
       <Sidebar />
@@ -20,7 +20,7 @@ export const MainLayout = ({ children, title, subtitle }) => {
             </div>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-8 bg-slate-50">
+        <div className={`flex-1 overflow-y-auto bg-slate-50 ${noPadding ? '' : 'p-8'}`}>
           <div className="w-full h-full">
             {children}
           </div>

@@ -5,6 +5,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { Workbook } from '@fortune-sheet/react';
 import '@fortune-sheet/react/dist/index.css';
+import * as XLSX from 'xlsx';
+import { Download } from 'lucide-react';
 
 export const MySpacePage = () => {
   const { t } = useLanguage();
@@ -77,16 +79,56 @@ export const MySpacePage = () => {
     }
   };
   
-  const handleOnChange = (data) => {
+  const handleOnChange = () => {
     if (window.saveTimeout) clearTimeout(window.saveTimeout);
     window.saveTimeout = setTimeout(() => {
-      saveWorkbook(data);
+      if (workbookRef.current) {
+        saveWorkbook(workbookRef.current.getAllSheets());
+      }
     }, 2000);
+  };
+  
+  const handleExport = () => {
+    if (!workbookRef.current) return;
+    const sheets = workbookRef.current.getAllSheets();
+    const wb = XLSX.utils.book_new();
+    
+    sheets.forEach(sheet => {
+      // Data in fortune-sheet is usually in `data` (a 2D array of cells) or `celldata` (1D array of {r, c, v})
+      // The easiest way is to use `data` if it exists, or build from `celldata`.
+      const rows = [];
+      if (sheet.data) {
+        sheet.data.forEach((row, r) => {
+          rows[r] = [];
+          row.forEach((cell, c) => {
+            rows[r][c] = cell?.m || cell?.v || "";
+          });
+        });
+      } else if (sheet.celldata) {
+        sheet.celldata.forEach(cell => {
+          if (!rows[cell.r]) rows[cell.r] = [];
+          rows[cell.r][cell.c] = cell.v?.m || cell.v?.v || "";
+        });
+      }
+      
+      // Clean up undefined rows/cells
+      for (let i = 0; i < rows.length; i++) {
+        if (!rows[i]) rows[i] = [];
+        for (let j = 0; j < rows[i].length; j++) {
+           if (rows[i][j] === undefined) rows[i][j] = "";
+        }
+      }
+      
+      const ws = XLSX.utils.aoa_to_sheet(rows.length ? rows : [[]]);
+      XLSX.utils.book_append_sheet(wb, ws, sheet.name || 'Sheet');
+    });
+    
+    XLSX.writeFile(wb, `MySpace_${profile?.name || 'Export'}.xlsx`);
   };
 
   return (
-    <MainLayout title={t.navMySpace || "Spațiul Meu"} subtitle={t.subMySpace || "Spațiul tău personal de lucru (Excel)"}>
-      <div className="flex flex-col h-[calc(100vh-140px)] bg-white border border-slate-200 rounded-xl overflow-hidden relative shadow-sm">
+    <MainLayout title={t.navMySpace || "Spațiul Meu"} subtitle={t.subMySpace || "Spațiul tău personal de lucru (Excel)"} noPadding>
+      <div className="flex flex-col h-full bg-white relative">
         
         {/* Admin Controls */}
         <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
@@ -108,10 +150,17 @@ export const MySpacePage = () => {
               <span className="text-sm font-bold text-slate-700">{profile?.name} - {t.navMySpace || 'Spațiul Meu'}</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
              <span className={`text-xs font-bold px-2 py-1 rounded-full ${saving ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
                {saving ? (t.lblSaving || 'Se salvează...') : (t.lblSaved || 'Salvat')}
              </span>
+             <button 
+                onClick={handleExport}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors"
+             >
+                <Download size={14} />
+                {t.btnExportExcel || 'Export Excel'}
+             </button>
           </div>
         </div>
 
