@@ -3,7 +3,7 @@ import { X, User, Activity, FileText, Phone, Mail, MapPin, Building, StickyNote,
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
 
-export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibleColumns = [] }) => {
+export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onRevert, visibleColumns = [] }) => {
   const { t } = useLanguage();
   const rowData = task.row_data || {};
   const branches = stepConfig?.branches || [];
@@ -192,6 +192,14 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                 </span>
               </div>
               <div className="p-4 flex flex-col gap-3">
+                {onRevert && task.previous_state && (
+                  <button
+                    onClick={() => onRevert(task)}
+                    className="w-full py-3 mb-2 rounded-xl text-sm font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-200 flex items-center justify-center gap-2"
+                  >
+                    ⬅️ Anulează ultima acțiune
+                  </button>
+                )}
                 {branches.map(branch => (
                   <button
                     key={branch.id}

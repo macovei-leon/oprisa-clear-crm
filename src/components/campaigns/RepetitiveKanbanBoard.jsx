@@ -86,7 +86,15 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
 
   const handleTaskTransition = async (task, actionLabel, actionType, notes, badgeConfig = null) => {
     try {
-      let updatePayload = { updated_at: new Date().toISOString() };
+      let updatePayload = { 
+        updated_at: new Date().toISOString(),
+        previous_state: {
+          active_step_idx: task.active_step_idx,
+          category: task.category,
+          completed: task.completed,
+          badges: task.badges || []
+        }
+      };
       
       if (badgeConfig) {
         updatePayload.badges = [...(task.badges || []), badgeConfig];
@@ -122,7 +130,8 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
           step_name: stepName,
           action_type: actionTypeVal,
           notes: notes || null,
-          card_snapshot: task.row_data || {}
+          card_snapshot: task.row_data || {},
+          previous_state: updatePayload.previous_state
         }]);
 
       if (histErr) console.error('Failed to save history', histErr);
@@ -168,6 +177,47 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
     } catch (err) {
       console.error(err);
       alert(t.errUpdateTask || 'Eroare la actualizarea sarcinii: ' + err.message);
+    }
+  };
+
+  const handleRevertTask = async (task) => {
+    if (!task.previous_state) return;
+    try {
+      const revertPayload = {
+        active_step_idx: task.previous_state.active_step_idx,
+        category: task.previous_state.category,
+        completed: task.previous_state.completed,
+        badges: task.previous_state.badges,
+        previous_state: null,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('crm_repetitive_tasks')
+        .update(revertPayload)
+        .eq('id', task.id);
+
+      if (error) throw error;
+
+      const { error: histErr } = await supabase
+        .from('crm_repetitive_history')
+        .insert([{
+          repetitive_flow_id: flow.id,
+          task_id: task.id,
+          worker_id: profile?.id,
+          category: '[Anulare]',
+          step_name: 'Revenire la starea anterioară',
+          action_type: 'REVERT',
+          card_snapshot: task.row_data || {}
+        }]);
+
+      if (histErr) console.error('Failed to save history for revert', histErr);
+
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...revertPayload } : t));
+      setSelectedTask(null);
+    } catch (err) {
+      console.error(err);
+      alert('Eroare la anularea acțiunii: ' + err.message);
     }
   };
 
@@ -394,6 +444,7 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
           visibleColumns={flow.visible_columns}
           onClose={() => setSelectedTask(null)} 
           onTransition={handleTaskTransition}
+          onRevert={handleRevertTask}
         />
       )}
     </div>

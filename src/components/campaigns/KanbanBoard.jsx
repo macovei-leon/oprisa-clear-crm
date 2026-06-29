@@ -73,7 +73,14 @@ export const KanbanBoard = ({ campaign }) => {
 
   const handleTaskTransition = async (task, actionLabel, actionType, notes, badgeConfig = null) => {
     try {
-      let updatePayload = {};
+      let updatePayload = {
+        previous_state: {
+          active_step_idx: task.active_step_idx,
+          category: task.category,
+          completed: task.completed,
+          badges: task.badges || []
+        }
+      };
       
       if (badgeConfig) {
         updatePayload.badges = [...(task.badges || []), badgeConfig];
@@ -100,6 +107,32 @@ export const KanbanBoard = ({ campaign }) => {
     } catch (err) {
       console.error(err);
       alert(t.errUpdateTask || 'Eroare la actualizarea sarcinii: ' + err.message);
+    }
+  };
+
+  const handleRevertTask = async (task) => {
+    if (!task.previous_state) return;
+    try {
+      const revertPayload = {
+        active_step_idx: task.previous_state.active_step_idx,
+        category: task.previous_state.category,
+        completed: task.previous_state.completed,
+        badges: task.previous_state.badges,
+        previous_state: null
+      };
+
+      const { error } = await supabase
+        .from('crm_tasks')
+        .update(revertPayload)
+        .eq('id', task.id);
+
+      if (error) throw error;
+
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...revertPayload } : t));
+      setSelectedTask(null);
+    } catch (err) {
+      console.error(err);
+      alert('Eroare la anularea acțiunii: ' + err.message);
     }
   };
 
@@ -323,6 +356,7 @@ export const KanbanBoard = ({ campaign }) => {
           visibleColumns={campaign.visible_columns}
           onClose={() => setSelectedTask(null)} 
           onTransition={handleTaskTransition}
+          onRevert={handleRevertTask}
         />
       )}
     </div>
