@@ -25,6 +25,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
   
   // Worker Splits (Array of { id, count })
   const [workerSplits, setWorkerSplits] = useState([]);
+  const [selectedDept, setSelectedDept] = useState('all');
   
   // Existing tasks when editing
   const [existingTasks, setExistingTasks] = useState([]);
@@ -102,17 +103,27 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
     setWorkerSplits(prev => prev.map(s => s.id === workerId ? { ...s, count: num } : s));
   };
 
+  const uniqueDepts = Array.from(new Set(workers.map(w => w.departments?.name).filter(Boolean)));
+  const filteredWorkers = workers.filter(w => selectedDept === 'all' || w.departments?.name === selectedDept);
+
   const distributeEvenly = () => {
     const total = initialData ? existingTasks.length : selectedRowsData.length;
-    if (total === 0 || workers.length === 0) return;
+    if (total === 0 || filteredWorkers.length === 0) return;
     
-    const base = Math.floor(total / workers.length);
-    const remainder = total % workers.length;
+    const base = Math.floor(total / filteredWorkers.length);
+    const remainder = total % filteredWorkers.length;
     
-    setWorkerSplits(workers.map((w, idx) => ({
-      id: w.id,
-      count: base + (idx < remainder ? 1 : 0)
-    })));
+    const newSplits = [...workerSplits];
+    // Reset filtered workers to 0 before distributing? No, better reset ALL to 0
+    newSplits.forEach(s => s.count = 0);
+    
+    filteredWorkers.forEach((w, idx) => {
+      const s = newSplits.find(x => x.id === w.id);
+      if (s) {
+        s.count = base + (idx < remainder ? 1 : 0);
+      }
+    });
+    setWorkerSplits(newSplits);
   };
 
   const totalAssigned = workerSplits.reduce((sum, split) => sum + split.count, 0);
@@ -388,10 +399,22 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-slate-700 flex items-center gap-2"><Users size={16}/> {initialData ? "Redistribuire Sarcini Existente" : "Distribuire Sarcini Noi"}</h3>
-                <button onClick={distributeEvenly} className="text-xs bg-slate-100 px-3 py-1 font-bold rounded hover:bg-slate-200 border">Distribuie Egal</button>
+                <div className="flex items-center gap-2">
+                  <select 
+                    value={selectedDept}
+                    onChange={(e) => setSelectedDept(e.target.value)}
+                    className="text-xs p-1.5 border border-slate-200 rounded font-medium focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="all">Toate Departamentele</option>
+                    {uniqueDepts.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <button onClick={distributeEvenly} className="text-xs bg-slate-100 px-3 py-1 font-bold rounded hover:bg-slate-200 border">Distribuie Egal</button>
+                </div>
               </div>
               <div className="max-h-48 overflow-y-auto flex flex-col gap-2">
-                {workers.map(w => (
+                {filteredWorkers.map(w => (
                   <div key={w.id} className="flex justify-between items-center p-2 bg-slate-50 border rounded-lg">
                     <div>
                       <div className="font-bold text-sm text-slate-800">{w.name || w.email}</div>

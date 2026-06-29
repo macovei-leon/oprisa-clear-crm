@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibleColumns = [] }) => {
   const rowData = task.row_data || {};
   const branches = stepConfig?.branches || [];
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(task.notes || '');
 
   const getColorClass = (colorName) => {
     const map = {
@@ -149,15 +149,21 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
             {/* Notes Form */}
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col gap-3">
               <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2">
-                <StickyNote size={14} /> Notițe Jurnal (Opțional)
+                <StickyNote size={14} /> {onTransition ? 'Notițe Jurnal (Opțional)' : 'Notițe Salvate în Istoric'}
               </label>
-              <textarea 
-                className="w-full border border-slate-200 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
-                rows="4"
-                placeholder="Adaugă observații înainte de a trece la pasul următor..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+              {onTransition ? (
+                <textarea 
+                  className="w-full border border-slate-200 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
+                  rows="4"
+                  placeholder="Adaugă observații înainte de a trece la pasul următor..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              ) : (
+                <div className="w-full border border-slate-200 rounded-lg p-3 text-sm bg-slate-50 whitespace-pre-wrap text-slate-700 min-h-[4rem]">
+                  {task.notes ? task.notes : <span className="text-slate-400 italic">Nu există notițe salvate pentru acest stadiu.</span>}
+                </div>
+              )}
             </div>
 
             {/* Dynamic Action Branches moved to Right Column */}

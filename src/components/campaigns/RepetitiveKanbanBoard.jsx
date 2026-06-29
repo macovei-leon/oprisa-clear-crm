@@ -129,7 +129,8 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
         assigned_to: task.assigned_to,
         active_step_idx: updatePayload.active_step_idx !== undefined ? updatePayload.active_step_idx : task.active_step_idx,
         completed: updatePayload.completed !== undefined ? updatePayload.completed : task.completed,
-        category: updatePayload.category !== undefined ? updatePayload.category : task.category
+        category: updatePayload.category !== undefined ? updatePayload.category : task.category,
+        notes: notes || task.notes
       };
 
       const { error: snapErr } = await supabase.rpc('update_kanban_snapshot', {
@@ -141,8 +142,8 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
 
       if (snapErr) console.error('Failed to save lazy snapshot', snapErr);
 
-      // Update local state to immediately move the card
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...updatePayload } : t));
+      // Update local state to immediately move the card and save notes for next snapshot
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...updatePayload, notes: notes || t.notes } : t));
       
       setSelectedTask(null);
     } catch (err) {
