@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap, Code, Network, BookOpen, BellRing, MessageSquare } from 'lucide-react';
 
 export const Sidebar = () => {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, simulatedDepartment, setSimulatedDepartment } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
 
@@ -15,17 +15,20 @@ export const Sidebar = () => {
   const [isCampaignsOpen, setIsCampaignsOpen] = useState(true);
   const [isRepetitiveOpen, setIsRepetitiveOpen] = useState(true);
 
+  const isSimulating = !!simulatedDepartment;
+  const effectiveRole = isSimulating ? 'operator' : profile?.role;
+
   useEffect(() => {
     if (profile) {
       fetchUserCampaigns();
     }
-  }, [profile]);
+  }, [profile, simulatedDepartment]);
 
   const fetchUserCampaigns = async () => {
     try {
       let campaignIds = [];
 
-      if (profile.role === 'admin') {
+      if (effectiveRole === 'admin') {
         const { data: camps, error: campsError } = await supabase
           .from('crm_campaigns')
           .select('id, name')
@@ -45,10 +48,32 @@ export const Sidebar = () => {
         setRepetitiveFlows(flows || []);
         return;
       } else {
+        let userIds = [profile.id];
+        
+        if (isSimulating) {
+          const { data: deptUsers, error: deptUsersError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('department_id', simulatedDepartment.id);
+            
+          if (deptUsersError) throw deptUsersError;
+          if (deptUsers && deptUsers.length > 0) {
+            userIds = deptUsers.map(u => u.id);
+          } else {
+            userIds = [];
+          }
+        }
+        
+        if (userIds.length === 0) {
+          setCampaigns([]);
+          setRepetitiveFlows([]);
+          return;
+        }
+
         const { data: tasks, error: tasksError } = await supabase
           .from('crm_tasks')
           .select('campaign_id')
-          .eq('assigned_to', profile.id);
+          .in('assigned_to', userIds);
 
         if (tasksError) throw tasksError;
         campaignIds = [...new Set(tasks.map(t => t.campaign_id))];
@@ -56,7 +81,7 @@ export const Sidebar = () => {
         const { data: repTasks, error: repTasksError } = await supabase
           .from('crm_repetitive_tasks')
           .select('repetitive_flow_id')
-          .eq('assigned_to', profile.id);
+          .in('assigned_to', userIds);
 
         if (repTasksError) throw repTasksError;
         const flowIds = [...new Set(repTasks.map(t => t.repetitive_flow_id))];
@@ -94,7 +119,7 @@ export const Sidebar = () => {
 
   return (
     <aside className="w-64 border-r border-slate-200 bg-white flex flex-col h-screen shrink-0 sticky top-0 shadow-sm z-20">
-      <div className="p-6 flex items-center gap-3 border-b border-slate-100">
+      <div className="p-6 flex items-center gap-3 border-b border-slate-100 relative">
         <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20">
           <Bolt size={24} />
         </div>
@@ -103,6 +128,17 @@ export const Sidebar = () => {
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Workspace</span>
         </div>
       </div>
+
+      {isSimulating && (
+        <div className="bg-indigo-50 border-b border-indigo-100 px-4 py-3 flex flex-col items-center justify-center gap-2">
+          <div className="text-xs font-bold text-indigo-800 text-center uppercase tracking-wide">
+            Mod Vizualizare Depart.
+          </div>
+          <div className="text-sm font-bold text-indigo-600 text-center">
+            {simulatedDepartment.name}
+          </div>
+        </div>
+      )}
 
       <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto">
         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-2 px-3">General</div>
@@ -122,7 +158,7 @@ export const Sidebar = () => {
           Mesaje
         </NavLink>
 
-        {profile?.role !== 'admin' && (
+        {effectiveRole !== 'admin' && (
           <>
             <NavLink 
               to="/how-to-work" 
@@ -211,7 +247,7 @@ export const Sidebar = () => {
             )}
           </div>
 
-        {profile?.role === 'admin' && (
+        {effectiveRole === 'admin' && (
           <>
             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-6 px-3">Administrare</div>
             <NavLink 
@@ -262,7 +298,7 @@ export const Sidebar = () => {
           </>
         )}
 
-        {profile?.role === 'admin' && (
+        {effectiveRole === 'admin' && (
           <>
             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-6 px-3">Developer</div>
             <NavLink 

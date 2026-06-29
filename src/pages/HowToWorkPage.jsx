@@ -5,17 +5,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { BookOpen } from 'lucide-react';
 
 export const HowToWorkPage = () => {
-  const { profile } = useAuth();
+  const { profile, simulatedDepartment } = useAuth();
   const [instructions, setInstructions] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (profile?.department_id) {
-      fetchInstructions(profile.department_id);
+    const deptId = simulatedDepartment ? simulatedDepartment.id : profile?.department_id;
+    if (deptId) {
+      fetchInstructions(deptId);
     } else {
       setLoading(false);
     }
-  }, [profile]);
+  }, [profile, simulatedDepartment]);
 
   const fetchInstructions = async (deptId) => {
     setLoading(true);
@@ -47,7 +48,7 @@ export const HowToWorkPage = () => {
         <div className="p-8">
           {loading ? (
             <div className="text-center text-slate-500 py-12">Se încarcă instrucțiunile...</div>
-          ) : !profile?.department_id ? (
+          ) : !(simulatedDepartment ? simulatedDepartment.id : profile?.department_id) ? (
             <div className="text-center text-slate-500 py-12">
               <p className="font-semibold text-lg">Nu ești alocat niciunui departament.</p>
               <p className="mt-2">Contactează un administrator pentru a-ți seta departamentul.</p>

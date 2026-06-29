@@ -5,7 +5,7 @@ import { FlashcardModal } from './FlashcardModal';
 import { Activity, Clock, CheckCircle2, FolderClosed, Trash2 } from 'lucide-react';
 
 export const RepetitiveKanbanBoard = ({ flow }) => {
-  const { profile } = useAuth();
+  const { profile, simulatedDepartment } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -54,8 +54,22 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
         // We fetch ALL tasks including completed ones now, so we can show them in Category tabs
 
       // If operator and viewMode is 'mine', only see own tasks. Admin sees all.
-      if (profile?.role !== 'admin' && viewMode === 'mine') {
-        query = query.eq('assigned_to', profile?.id);
+      const isSimulating = !!simulatedDepartment;
+      const effectiveRole = isSimulating ? 'operator' : profile?.role;
+
+      if (effectiveRole !== 'admin' && viewMode === 'mine') {
+        if (isSimulating) {
+           // fetch all users in simulated dept
+           const { data: deptUsers } = await supabase.from('profiles').select('id').eq('department_id', simulatedDepartment.id);
+           if (deptUsers && deptUsers.length > 0) {
+             query = query.in('assigned_to', deptUsers.map(u => u.id));
+           } else {
+             // force no results
+             query = query.eq('assigned_to', 'nobody');
+           }
+        } else {
+          query = query.eq('assigned_to', profile?.id);
+        }
       }
 
       const { data, error } = await query;
@@ -196,7 +210,7 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">{flow?.description}</p>
         </div>
         <div className="flex items-center gap-4">
-          {profile?.role !== 'admin' && (
+          {effectiveRole !== 'admin' && (
             <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
               <button 
                 onClick={() => setViewMode('mine')}

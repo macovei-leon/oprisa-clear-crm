@@ -8,6 +8,8 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [simulatedDepartment, setSimulatedDepartment] = useState(null);
+
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -25,6 +27,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           setUser(null);
           setProfile(null);
+          setSimulatedDepartment(null);
           setLoading(false);
         }
       }
@@ -50,6 +53,7 @@ export const AuthProvider = ({ children }) => {
       await supabase.auth.signOut();
       setUser(null);
       setProfile(null);
+      setSimulatedDepartment(null);
     } else {
       setProfile(data);
     }
@@ -90,6 +94,8 @@ export const AuthProvider = ({ children }) => {
       user,
       profile,
       loading,
+      simulatedDepartment,
+      setSimulatedDepartment,
       signIn,
       signUp,
       signOut,

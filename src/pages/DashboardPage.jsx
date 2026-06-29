@@ -8,16 +8,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#14b8a6'];
 
 export const DashboardPage = () => {
-  const { profile } = useAuth();
+  const { profile, simulatedDepartment, setSimulatedDepartment } = useAuth();
   const [loading, setLoading] = useState(true);
   
   // Raw Data State
   const [allTasks, setAllTasks] = useState([]);
   const [allDepartments, setAllDepartments] = useState([]);
   
-  // UI State
-  const [selectedDepartment, setSelectedDepartment] = useState(null);
-
   // Derived Dashboard state
   const [stats, setStats] = useState({ totalTasks: 0, completedTasks: 0, completionRate: 0 });
   const [campaignChartData, setCampaignChartData] = useState([]);
@@ -84,8 +81,8 @@ export const DashboardPage = () => {
     let filteredTasks = allTasks;
     
     // If Admin and in Department View, filter by that department's users
-    if (profile?.role === 'admin' && selectedDepartment) {
-      filteredTasks = allTasks.filter(t => t.profiles?.department_id === selectedDepartment.id);
+    if (profile?.role === 'admin' && simulatedDepartment) {
+      filteredTasks = allTasks.filter(t => t.profiles?.department_id === simulatedDepartment.id);
     }
 
     // Global stats
@@ -133,7 +130,7 @@ export const DashboardPage = () => {
 
     setWorkerChartData(workerDataArray);
 
-  }, [allTasks, selectedDepartment, profile]);
+  }, [allTasks, simulatedDepartment, profile]);
 
   if (loading) {
     return (
@@ -148,7 +145,7 @@ export const DashboardPage = () => {
   }
 
   // Admin: Default Overview (All Departments)
-  if (profile?.role === 'admin' && !selectedDepartment) {
+  if (profile?.role === 'admin' && !simulatedDepartment) {
     return (
       <MainLayout title="Dashboard Administrator" subtitle="Prezentare generală a departamentelor">
         <div className="space-y-6">
@@ -173,7 +170,7 @@ export const DashboardPage = () => {
               return (
                 <div 
                   key={dept.id}
-                  onClick={() => setSelectedDepartment(dept)}
+                  onClick={() => setSimulatedDepartment(dept)}
                   className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group flex flex-col"
                 >
                   <h4 className="text-lg font-bold text-slate-800 group-hover:text-indigo-600 transition-colors mb-5 flex items-center justify-between">
@@ -218,13 +215,13 @@ export const DashboardPage = () => {
   // Admin Department View OR Normal User View
   return (
     <MainLayout 
-      title={selectedDepartment ? `Dashboard: ${selectedDepartment.name}` : "Dashboard Analize"} 
+      title={simulatedDepartment ? `Dashboard: ${simulatedDepartment.name}` : "Dashboard Analize"} 
       subtitle="Prezentare generală a performanței și campaniilor"
     >
       
-      {profile?.role === 'admin' && selectedDepartment && (
+      {profile?.role === 'admin' && simulatedDepartment && (
         <button 
-          onClick={() => setSelectedDepartment(null)}
+          onClick={() => setSimulatedDepartment(null)}
           className="mb-6 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm w-fit"
         >
           <ArrowLeft size={16} /> Înapoi la Departamente
