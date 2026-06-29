@@ -6,10 +6,13 @@ import { ArrowLeft, Upload, Search, Filter, Trash2, CheckCircle2, AlertCircle, X
 import * as XLSX from 'xlsx';
 import { CampaignBuilderModal } from '../../components/campaigns/CampaignBuilderModal';
 import { AppendToCampaignModal } from '../../components/campaigns/AppendToCampaignModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const TableViewer = () => {
   const { tableName } = useParams();
   const navigate = useNavigate();
+  const { profile, simulatedDepartment } = useAuth();
+  const effectiveRole = simulatedDepartment ? 'operator' : profile?.role;
   
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
@@ -511,18 +514,22 @@ export const TableViewer = () => {
         </div>
 
         <div className="flex gap-2">
-          <button 
-            onClick={deleteTable}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-rose-100 text-rose-700 font-bold border border-rose-200 rounded-lg hover:bg-rose-200 transition-colors shadow-sm"
-          >
-            <Trash2 size={18} /> Șterge Tabel
-          </button>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-          >
-            <Upload size={18} /> Încărcare Date
-          </button>
+          {effectiveRole === 'admin' && (
+            <>
+              <button 
+                onClick={deleteTable}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-rose-100 text-rose-700 font-bold border border-rose-200 rounded-lg hover:bg-rose-200 transition-colors shadow-sm"
+              >
+                <Trash2 size={18} /> Șterge Tabel
+              </button>
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+              >
+                <Upload size={18} /> Încărcare Date
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -696,36 +703,38 @@ export const TableViewer = () => {
           <div className="flex items-center gap-3">
             <button onClick={() => setSelectedRowIds(new Set())} className="text-slate-300 hover:text-white text-sm font-semibold transition-colors">Deselectează</button>
             
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2 justify-end">
-                <button 
-                  onClick={() => setShowAppendCampaignModal(true)}
-                  className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg transition-colors flex items-center gap-2"
-                >
-                  + Campanie Existentă
-                </button>
-                <button 
-                  onClick={() => setShowAppendRepetitiveModal(true)}
-                  className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg transition-colors flex items-center gap-2"
-                >
-                  + Flux Existent
-                </button>
+            {effectiveRole === 'admin' && (
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2 justify-end">
+                  <button 
+                    onClick={() => setShowAppendCampaignModal(true)}
+                    className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg transition-colors flex items-center gap-2"
+                  >
+                    + Campanie Existentă
+                  </button>
+                  <button 
+                    onClick={() => setShowAppendRepetitiveModal(true)}
+                    className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg transition-colors flex items-center gap-2"
+                  >
+                    + Flux Existent
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setShowCampaignModal(true)}
+                    className="bg-indigo-500 hover:bg-indigo-400 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg transition-colors flex items-center gap-2"
+                  >
+                    Campanie Nouă
+                  </button>
+                  <button 
+                    onClick={() => setShowRepetitiveModal(true)}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg transition-colors flex items-center gap-2"
+                  >
+                    Flux Repetitiv Nou
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setShowCampaignModal(true)}
-                  className="bg-indigo-500 hover:bg-indigo-400 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg transition-colors flex items-center gap-2"
-                >
-                  Campanie Nouă
-                </button>
-                <button 
-                  onClick={() => setShowRepetitiveModal(true)}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg transition-colors flex items-center gap-2"
-                >
-                  Flux Repetitiv Nou
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

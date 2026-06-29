@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { supabase } from '../../lib/supabase';
-import { Database, Plus, Table, AlertCircle, CheckCircle2, ChevronRight, X, Upload } from 'lucide-react';
+import { Plus, Table, AlertCircle, CheckCircle2, ChevronRight, X, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Only custom tables will be used now
 
 
 export const DatabasePage = () => {
   const navigate = useNavigate();
+  const { profile, simulatedDepartment } = useAuth();
+  const effectiveRole = simulatedDepartment ? 'operator' : profile?.role;
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -219,16 +222,18 @@ export const DatabasePage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         
         {/* Create Table Card */}
-        <div 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-white border-2 border-dashed border-indigo-300 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-indigo-50 hover:border-indigo-500 transition-all min-h-[160px] group shadow-sm"
-        >
-          <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <Plus size={24} />
+        {effectiveRole === 'admin' && (
+          <div 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-white border-2 border-dashed border-indigo-300 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-indigo-50 hover:border-indigo-500 transition-all min-h-[160px] group shadow-sm"
+          >
+            <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <Plus size={24} />
+            </div>
+            <h3 className="font-bold text-slate-800">Creare Tabel Nou</h3>
+            <p className="text-sm text-slate-500 mt-1">Importă din Excel sau CSV</p>
           </div>
-          <h3 className="font-bold text-slate-800">Creare Tabel Nou</h3>
-          <p className="text-sm text-slate-500 mt-1">Importă din Excel sau CSV</p>
-        </div>
+        )}
 
         {/* Render Existing Tables */}
         {tables.map(t => (

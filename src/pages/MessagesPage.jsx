@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { MessageSquare, Send, Inbox, Users, Building, Code, Eye, ArrowLeft, Reply, CornerDownRight } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 export const MessagesPage = () => {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   
   const [activeTab, setActiveTab] = useState('inbox'); // 'inbox', 'sent', 'compose', 'thread'
   const [loading, setLoading] = useState(false);
@@ -100,7 +102,7 @@ export const MessagesPage = () => {
   };
 
   const handleSendCompose = async () => {
-    if (!subject.trim() || !messageBody.trim()) return alert('Subiectul și mesajul sunt obligatorii.');
+    if (!subject.trim() || !messageBody.trim()) return alert(t.msgReqSubjectBody || 'Subiectul și mesajul sunt obligatorii.');
 
     setIsSending(true);
     let targetUserIds = [];
@@ -131,7 +133,7 @@ export const MessagesPage = () => {
       const { error } = await supabase.from('app_messages').insert(inserts);
       if (error) throw error;
 
-      alert(`Mesaj trimis cu succes către ${targetUserIds.length} utilizator(i).`);
+      alert(`${t.msgSentSuccess || 'Mesaj trimis cu succes către'} ${targetUserIds.length} utilizator(i).`);
       setSubject('');
       setMessageBody('');
       setActiveTab('sent');
@@ -143,7 +145,7 @@ export const MessagesPage = () => {
   };
 
   const handleReply = async () => {
-    if (!replyBody.trim()) return alert('Mesajul nu poate fi gol.');
+    if (!replyBody.trim()) return alert(t.msgEmptyReply || 'Mesajul nu poate fi gol.');
     if (threadMessages.length === 0) return;
 
     setIsSending(true);
@@ -174,7 +176,7 @@ export const MessagesPage = () => {
 
   const renderMessageList = () => {
     if (loading) return <div className="p-8 text-center text-slate-500">Se încarcă...</div>;
-    if (messages.length === 0) return <div className="p-8 text-center text-slate-500">Nu există mesaje aici.</div>;
+    if (messages.length === 0) return <div className="p-8 text-center text-slate-500">{t.msgNoMessages || 'Nu există mesaje aici.'}</div>;
 
     return (
       <div className="divide-y divide-slate-100">
@@ -299,7 +301,7 @@ export const MessagesPage = () => {
             ) : (
               <div 
                 className="w-full h-32 p-3 overflow-y-auto prose prose-sm max-w-none bg-white"
-                dangerouslySetInnerHTML={{ __html: replyBody || '<p class="text-slate-400 italic">Mesajul este gol...</p>' }}
+                dangerouslySetInnerHTML={{ __html: replyBody || `<p class="text-slate-400 italic">${t.lblMsgEmpty || 'Mesajul este gol...'}</p>` }}
               />
             )}
             
@@ -322,7 +324,7 @@ export const MessagesPage = () => {
     <div className="p-6 max-w-4xl mx-auto">
       <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
         <Send className="text-indigo-600" size={24} />
-        Mesaj Nou
+        {t.tabCompose || 'Mesaj Nou'}
       </h2>
       
       <div className="space-y-6">
@@ -367,7 +369,7 @@ export const MessagesPage = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2">Subiect</label>
+          <label className="block text-sm font-bold text-slate-700 mb-2">{t.lblSubject || 'Subiect'}</label>
           <input
             type="text"
             value={subject}
@@ -378,7 +380,7 @@ export const MessagesPage = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2">Conținut Mesaj</label>
+          <label className="block text-sm font-bold text-slate-700 mb-2">{t.lblMsgContent || 'Conținut Mesaj'}</label>
           <div className="border border-slate-200 rounded-xl overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
             <div className="flex border-b border-slate-100 bg-slate-50">
               <button
@@ -399,13 +401,13 @@ export const MessagesPage = () => {
               <textarea
                 value={messageBody}
                 onChange={e => setMessageBody(e.target.value)}
-                placeholder="Scrie corpul mesajului aici..."
+                placeholder={t.phMsgBody || "Scrie corpul mesajului aici..."}
                 className="w-full h-64 p-4 focus:outline-none text-sm resize-y font-mono"
               />
             ) : (
               <div 
                 className="w-full h-64 p-4 overflow-y-auto prose max-w-none bg-white"
-                dangerouslySetInnerHTML={{ __html: messageBody || '<p class="text-slate-400 italic">Mesajul este gol...</p>' }}
+                dangerouslySetInnerHTML={{ __html: messageBody || `<p class="text-slate-400 italic">${t.lblMsgEmpty || 'Mesajul este gol...'}</p>` }}
               />
             )}
           </div>
@@ -417,7 +419,7 @@ export const MessagesPage = () => {
             disabled={isSending || !subject.trim() || !messageBody.trim()}
             className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition-colors shadow-md shadow-indigo-600/20"
           >
-            <Send size={18} /> {isSending ? 'Se trimite...' : 'Trimite Mesaj'}
+            <Send size={18} /> {isSending ? (t.btnSendingMsg || 'Se trimite...') : (t.btnSendMsg || 'Trimite Mesaj')}
           </button>
         </div>
       </div>
@@ -425,7 +427,7 @@ export const MessagesPage = () => {
   );
 
   return (
-    <MainLayout title="Mesaje Interne" subtitle="Sistem de comunicare tip ticket">
+    <MainLayout title={t.navMessagesInternal || "Mesaje Interne"} subtitle={t.subMessages || "Sistem de comunicare tip ticket"}>
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[600px] h-full">
         {activeTab !== 'thread' && (
           <div className="flex border-b border-slate-200 bg-slate-50 p-2 gap-2">
@@ -433,19 +435,19 @@ export const MessagesPage = () => {
               onClick={() => setActiveTab('inbox')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'inbox' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200/50'}`}
             >
-              <Inbox size={18} /> Inbox
+              <Inbox size={18} /> {t.tabInbox || 'Inbox'}
             </button>
             <button
               onClick={() => setActiveTab('sent')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'sent' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200/50'}`}
             >
-              <CornerDownRight size={18} /> Trimise
+              <CornerDownRight size={18} /> {t.tabSent || 'Trimise'}
             </button>
             <button
               onClick={() => setActiveTab('compose')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'compose' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
             >
-              <MessageSquare size={18} /> Mesaj Nou
+              <MessageSquare size={18} /> {t.tabCompose || 'Mesaj Nou'}
             </button>
           </div>
         )}
