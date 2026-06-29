@@ -237,17 +237,32 @@ export const MessagesPage = () => {
 
         {/* Thread Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
-          {threadMessages.map(msg => {
+          {threadMessages.map((msg, index) => {
             const isMe = msg.sender_id === profile.id;
+            const senderName = isMe ? 'Tu' : (msg.sender?.name || msg.sender?.email);
+            const isFirst = index === 0;
+
             return (
-              <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold text-slate-500">{isMe ? 'Tu' : msg.sender?.name || msg.sender?.email}</span>
-                  <span className="text-xs text-slate-400">{new Date(msg.created_at).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}</span>
+              <div key={msg.id} className="w-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+                      {senderName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800 text-sm">{senderName}</div>
+                      <div className="text-xs text-slate-500">
+                        {isMe ? profile.email : msg.sender?.email}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">
+                    {new Date(msg.created_at).toLocaleString('ro-RO', { dateStyle: 'full', timeStyle: 'short' })}
+                  </div>
                 </div>
-                <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm'}`}>
+                <div className="p-6">
                   <div 
-                    className={`prose prose-sm max-w-none ${isMe ? 'prose-invert prose-p:text-white prose-a:text-indigo-200' : ''}`}
+                    className="prose prose-slate max-w-none prose-a:text-indigo-600 prose-headings:text-slate-800 text-sm text-slate-700"
                     dangerouslySetInnerHTML={{ __html: msg.message }}
                   />
                 </div>
