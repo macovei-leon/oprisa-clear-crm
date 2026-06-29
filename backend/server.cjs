@@ -156,6 +156,7 @@ app.get('/api/driver/status', async (req, res) => {
     res.json(latestStatus);
 });
 
+
 // ------------------------------------------
 // API Routes: Admin Panel
 // ------------------------------------------
@@ -861,6 +862,18 @@ app.get('/fleetcap.css', (req, res) => {
     res.sendFile(path.join(__dirname, 'fleetcap.css'));
 });
 
-app.listen(PORT, () => {
+// Serve static frontend files if in production (e.g. deployed on Coolify)
+const distPath = path.join(__dirname, '../dist');
+if (fs.existsSync(distPath)) {
+    console.log('Serving static files from', distPath);
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+        if (!req.path.startsWith('/api/')) {
+            res.sendFile(path.join(distPath, 'index.html'));
+        }
+    });
+}
+
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
 });
