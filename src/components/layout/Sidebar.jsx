@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
-import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap, Code, Network, BookOpen } from 'lucide-react';
+import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap, Code, Network, BookOpen, BellRing } from 'lucide-react';
 
 export const Sidebar = () => {
   const { profile, signOut } = useAuth();
@@ -115,13 +115,22 @@ export const Sidebar = () => {
         </NavLink>
 
         {profile?.role !== 'admin' && (
-          <NavLink 
-            to="/how-to-work" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-          >
-            <BookOpen size={18} />
-            Cum să lucrezi
-          </NavLink>
+          <>
+            <NavLink 
+              to="/how-to-work" 
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              <BookOpen size={18} />
+              Cum să lucrezi
+            </NavLink>
+            <NavLink 
+              to="/notifications" 
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              <BellRing size={18} />
+              Notificări
+            </NavLink>
+          </>
         )}
 
         <NavLink 

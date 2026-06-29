@@ -14,6 +14,7 @@ import { FleetCapPage } from './pages/admin/FleetCapPage'
 import { DriverDashboardPage } from './pages/admin/DriverDashboardPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HowToWorkPage } from './pages/HowToWorkPage'
+import { NotificationsPage } from './pages/NotificationsPage'
 import { MainLayout } from './components/layout/MainLayout'
 import { ApiWorkspacePage } from './pages/developer/ApiWorkspacePage'
 import { ArchitecturePage } from './pages/developer/ArchitecturePage'
@@ -52,6 +53,11 @@ function App() {
             <Route path="/how-to-work" element={
               <ProtectedRoute>
                 <HowToWorkPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/notifications" element={
+              <ProtectedRoute>
+                <NotificationsPage />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
