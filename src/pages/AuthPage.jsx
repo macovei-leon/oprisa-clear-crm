@@ -65,7 +65,7 @@ export const AuthPage = ({ forceView }) => {
     if (error) return showAlert(error.message, 'error');
 
     if (data?.user && !data?.session) {
-      setView('check-email');
+      setView('pending');
     }
   };
 
@@ -207,19 +207,6 @@ export const AuthPage = ({ forceView }) => {
                 {loading ? 'Se actualizează...' : 'Actualizează Parola'}
               </button>
             </form>
-          )}
-
-          {view === 'check-email' && (
-            <div className="text-center w-full">
-              <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4">
-                <CheckCircle size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">Verifică-ți emailul</h3>
-              <p className="text-slate-600 mb-6">Am trimis un link de confirmare către adresa ta de email. Te rugăm să îl accesezi pentru a continua.</p>
-              <button onClick={() => setView('login')} className="text-indigo-600 font-bold hover:underline">
-                Înapoi la autentificare
-              </button>
-            </div>
           )}
 
           {view === 'pending' && (
