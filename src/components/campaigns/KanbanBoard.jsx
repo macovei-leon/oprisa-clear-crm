@@ -122,6 +122,15 @@ export const KanbanBoard = ({ campaign }) => {
 
   // Filter tasks for the currently selected tab
   const activeTabConfig = allTabs[activeTabIdx];
+  
+  if (!activeTabConfig) {
+    return (
+      <div className="flex flex-col h-full bg-slate-50/50 justify-center items-center">
+        <p className="text-slate-500 font-bold">{t.msgNoTasksStage || 'Nu există etape configurate pentru această campanie.'}</p>
+      </div>
+    );
+  }
+
   const activeTasks = tasks.filter(t => {
     if (activeTabConfig.type === 'step') {
       return !t.completed && t.active_step_idx === activeTabIdx;
