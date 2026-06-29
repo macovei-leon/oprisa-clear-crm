@@ -123,27 +123,32 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
       
       const stampTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(nextBucketMins / 60), nextBucketMins % 60, 0, 0);
 
-      const taskPayload = {
-        id: task.id,
-        row_data: task.row_data || {},
-        assigned_to: task.assigned_to,
-        active_step_idx: updatePayload.active_step_idx !== undefined ? updatePayload.active_step_idx : task.active_step_idx,
-        completed: updatePayload.completed !== undefined ? updatePayload.completed : task.completed,
-        category: updatePayload.category !== undefined ? updatePayload.category : task.category,
-        notes: notes || task.notes
-      };
+      // Build full tasks map to ensure completely synchronized snapshot
+      const tasksMap = {};
+      const updatedTasksLocal = tasks.map(t => t.id === task.id ? { ...t, ...updatePayload, notes: notes || t.notes } : t);
+      
+      for (const t of updatedTasksLocal) {
+        tasksMap[t.id] = {
+          id: t.id,
+          row_data: t.row_data || {},
+          assigned_to: t.assigned_to,
+          active_step_idx: t.active_step_idx,
+          completed: t.completed,
+          category: t.category,
+          notes: t.notes
+        };
+      }
 
-      const { error: snapErr } = await supabase.rpc('update_kanban_snapshot', {
+      const { error: snapErr } = await supabase.rpc('upsert_kanban_snapshot_map', {
         p_flow_id: flow.id,
         p_stamp_time: stampTime.toISOString(),
-        p_task_id: task.id,
-        p_task_payload: taskPayload
+        p_tasks_map: tasksMap
       });
 
-      if (snapErr) console.error('Failed to save lazy snapshot', snapErr);
+      if (snapErr) console.error('Failed to save lazy snapshot map', snapErr);
 
       // Update local state to immediately move the card and save notes for next snapshot
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...updatePayload, notes: notes || t.notes } : t));
+      setTasks(updatedTasksLocal);
       
       setSelectedTask(null);
     } catch (err) {
