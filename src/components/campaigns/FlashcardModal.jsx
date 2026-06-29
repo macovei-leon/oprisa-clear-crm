@@ -7,6 +7,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
   const { t } = useLanguage();
   const rowData = task.row_data || {};
   const branches = stepConfig?.branches || [];
+  const badges = task.badges || [];
   const [notes, setNotes] = useState(task.notes || '');
 
   const getColorClass = (colorName) => {
@@ -44,6 +45,21 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                   {status}
                 </span>
               )}
+              {badges.map((b, i) => {
+                const colorMap = {
+                  blue: 'bg-blue-100 text-blue-800 border-blue-200',
+                  red: 'bg-red-100 text-red-800 border-red-200',
+                  orange: 'bg-orange-100 text-orange-800 border-orange-200',
+                  gray: 'bg-gray-100 text-gray-800 border-gray-200',
+                  green: 'bg-green-100 text-green-800 border-green-200'
+                };
+                const classes = colorMap[b.color] || colorMap.blue;
+                return (
+                  <span key={i} className={`text-xs font-bold px-2.5 py-1 rounded-full border ${classes}`}>
+                    🏷️ {b.text}
+                  </span>
+                );
+              })}
               {rowData.is_missing && (
                 <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full border border-red-200 flex items-center gap-1">
                   🚨 {t.lblExcludedDb || 'Exclus din baza de date'}
@@ -180,7 +196,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, visibl
                   <button
                     key={branch.id}
                     onClick={() => {
-                      onTransition(task, branch.label, branch.action, notes);
+                      onTransition(task, branch.label, branch.action, notes, branch.badge);
                     }}
                     className={`w-full py-3 rounded-xl text-sm font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${getColorClass(branch.color)} flex items-center justify-center gap-2`}
                   >

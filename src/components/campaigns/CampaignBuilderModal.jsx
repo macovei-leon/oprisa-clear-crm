@@ -505,15 +505,25 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                           <option value="secondary">{t.colorGray || 'Gri'}</option>
                         </select>
                         <select 
-                          value={branch.action.startsWith('category_') ? 'category' : 'next'} 
+                          value={
+                            branch.action.startsWith('category_') ? 'category' 
+                            : branch.action === 'add_badge_remain' ? 'add_badge_remain'
+                            : branch.action === 'add_badge_next' ? 'add_badge_next'
+                            : 'next'
+                          } 
                           onChange={e=>{
                             const val = e.target.value;
-                            updateBranch(step.id, branch.id, 'action', val === 'category' ? 'category_' : 'next');
+                            updateBranch(step.id, branch.id, 'action', val === 'category' ? 'category_' : val);
+                            if(val.startsWith('add_badge') && !branch.badge) {
+                              updateBranch(step.id, branch.id, 'badge', { text: '', color: 'blue', persist: false });
+                            }
                           }}
                           className="p-1 border rounded bg-slate-50 flex-1 font-bold"
                         >
                           <option value="next">{t.optNextStep || 'Treci la Pas Următor ➔'}</option>
                           <option value="category">{t.optCloseCategory || 'Închide în Categorie 🏁'}</option>
+                          <option value="add_badge_remain">Adaugă Insignă &amp; Rămâi 🏷️</option>
+                          <option value="add_badge_next">Adaugă Insignă &amp; Pas Următor 🏷️➔</option>
                         </select>
                         {branch.action.startsWith('category_') && (
                           <input 
@@ -521,6 +531,30 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                             onChange={e=>updateBranch(step.id, branch.id, 'action', 'category_' + e.target.value)}
                             className="w-32 p-1 border border-rose-200 bg-rose-50 rounded outline-none placeholder:text-rose-300" placeholder={t.phFinalCategory || "Nume Categorie Finală"}
                           />
+                        )}
+                        {branch.action.startsWith('add_badge') && branch.badge && (
+                          <div className="flex items-center gap-2 border-l pl-2">
+                            <input 
+                              type="text" value={branch.badge.text} 
+                              onChange={e => updateBranch(step.id, branch.id, 'badge', { ...branch.badge, text: e.target.value })}
+                              className="w-24 p-1 border border-indigo-200 bg-indigo-50 rounded outline-none placeholder:text-indigo-300" placeholder="Nume Insignă"
+                            />
+                            <select
+                              value={branch.badge.color}
+                              onChange={e => updateBranch(step.id, branch.id, 'badge', { ...branch.badge, color: e.target.value })}
+                              className="w-20 p-1 border border-indigo-200 bg-indigo-50 rounded outline-none"
+                            >
+                              <option value="blue">Albastru</option>
+                              <option value="red">Roșu</option>
+                              <option value="orange">Portocaliu</option>
+                              <option value="gray">Gri</option>
+                              <option value="green">Verde</option>
+                            </select>
+                            <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer">
+                              <input type="checkbox" checked={branch.badge.persist} onChange={e => updateBranch(step.id, branch.id, 'badge', { ...branch.badge, persist: e.target.checked })} />
+                              Persistă
+                            </label>
+                          </div>
                         )}
                         {step.branches.length > 1 && (
                           <button onClick={()=>removeBranch(step.id, branch.id)} className="text-red-400 hover:text-red-600"><X size={14}/></button>

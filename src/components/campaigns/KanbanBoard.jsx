@@ -71,14 +71,19 @@ export const KanbanBoard = ({ campaign }) => {
     }
   };
 
-  const handleTaskTransition = async (task, actionLabel, actionType, actionTarget) => {
+  const handleTaskTransition = async (task, actionLabel, actionType, notes, badgeConfig = null) => {
     try {
       let updatePayload = {};
+      
+      if (badgeConfig) {
+        updatePayload.badges = [...(task.badges || []), badgeConfig];
+      }
 
-      if (actionType === 'next') {
-        updatePayload = { active_step_idx: task.active_step_idx + 1 };
+      if (actionType === 'next' || actionType === 'add_badge_next') {
+        updatePayload.active_step_idx = task.active_step_idx + 1;
       } else if (actionType.startsWith('category_')) {
-        updatePayload = { completed: true, category: actionType.replace('category_', '') };
+        updatePayload.completed = true; 
+        updatePayload.category = actionType.replace('category_', '');
       }
 
       const { error } = await supabase
@@ -229,6 +234,25 @@ export const KanbanBoard = ({ campaign }) => {
                     <div className="flex justify-between items-start mb-3 mt-1">
                       <span className="font-black text-slate-800 line-clamp-1 text-base">{titleStr}</span>
                     </div>
+                    {task.badges && task.badges.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {task.badges.map((b, i) => {
+                          const colorMap = {
+                            blue: 'bg-blue-100 text-blue-800 border-blue-200',
+                            red: 'bg-red-100 text-red-800 border-red-200',
+                            orange: 'bg-orange-100 text-orange-800 border-orange-200',
+                            gray: 'bg-gray-100 text-gray-800 border-gray-200',
+                            green: 'bg-green-100 text-green-800 border-green-200'
+                          };
+                          const classes = colorMap[b.color] || colorMap.blue;
+                          return (
+                            <span key={i} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${classes}`}>
+                              🏷️ {b.text}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                     {isMissing && (
                       <div className="mb-2 flex items-center justify-between">
                         <div className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center w-fit">
