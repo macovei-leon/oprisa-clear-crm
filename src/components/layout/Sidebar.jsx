@@ -147,7 +147,7 @@ export const Sidebar = () => {
           className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
         >
           <LayoutDashboard size={18} />
-          Dashboard
+          {t.navDashboard || 'Dashboard'}
         </NavLink>
 
         <NavLink 
@@ -155,7 +155,7 @@ export const Sidebar = () => {
           className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
         >
           <MessageSquare size={18} />
-          Mesaje
+          {t.navMessages || 'Mesaje'}
         </NavLink>
 
         {effectiveRole !== 'admin' && (
@@ -165,14 +165,14 @@ export const Sidebar = () => {
               className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
             >
               <BookOpen size={18} />
-              Cum să lucrezi
+              {t.navHowToWork || 'Cum să lucrezi'}
             </NavLink>
             <NavLink 
               to="/notifications" 
               className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
             >
               <BellRing size={18} />
-              Notificări
+              {t.navNotifications || 'Notificări'}
             </NavLink>
           </>
         )}
@@ -182,7 +182,7 @@ export const Sidebar = () => {
           className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
         >
           <Database size={18} />
-          Bază de Date
+          {t.navDatabase || 'Bază de Date'}
         </NavLink>
 
         <div className="flex flex-col">
@@ -258,7 +258,7 @@ export const Sidebar = () => {
               {({ isActive }) => (
                 <>
                   <ShieldAlert size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
-                  Admin Panel
+                  {t.navAdminPanel || 'Admin Panel'}
                 </>
               )}
             </NavLink>
@@ -269,7 +269,7 @@ export const Sidebar = () => {
               {({ isActive }) => (
                 <>
                   <ClipboardList size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
-                  Istoric Repetitiv
+                  {t.navRepetitiveHistory || 'Istoric Repetitiv'}
                 </>
               )}
             </NavLink>
@@ -280,7 +280,7 @@ export const Sidebar = () => {
               {({ isActive }) => (
                 <>
                   <Zap size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
-                  Fleet Optimization
+                  {t.navFleetOptimization || 'Fleet Optimization'}
                 </>
               )}
             </NavLink>
@@ -291,7 +291,7 @@ export const Sidebar = () => {
               {({ isActive }) => (
                 <>
                   <Users size={18} className={isActive ? 'text-amber-600' : 'text-amber-500'} />
-                  Driver Dashboard
+                  {t.navDriverDashboard || 'Driver Dashboard'}
                 </>
               )}
             </NavLink>
