@@ -32,7 +32,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onReve
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white shrink-0">
@@ -86,12 +86,12 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onReve
             {/* Quick Contact Box */}
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 shadow-sm">
               <h3 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <User size={14} /> Contact Rapid
+                <User size={14} /> {t.lblQuickContact || 'Contact Rapid'}
               </h3>
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-center">
                   <span className="text-emerald-700 font-medium flex items-center gap-2 text-sm">
-                    <Phone size={14} /> Telefon
+                    <Phone size={14} /> {t.lblPhone || 'Telefon'}
                   </span>
                   {phone ? (
                     <a href={`tel:${phone}`} className="font-mono font-bold text-slate-800 hover:text-emerald-700">{phone}</a>
@@ -101,7 +101,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onReve
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-emerald-700 font-medium flex items-center gap-2 text-sm">
-                    <Mail size={14} /> Email
+                    <Mail size={14} /> {t.lblEmail || 'Email'}
                   </span>
                   {email ? (
                     <a href={`mailto:${email}`} className="font-mono font-bold text-slate-800 hover:text-emerald-700">{email}</a>
@@ -112,7 +112,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onReve
                 {company && (
                   <div className="flex justify-between items-center">
                     <span className="text-emerald-700 font-medium flex items-center gap-2 text-sm">
-                      <Building size={14} /> Companie
+                      <Building size={14} /> {t.lblCompany || 'Companie'}
                     </span>
                     <span className="font-bold text-slate-800 text-sm">{company}</span>
                   </div>
@@ -123,7 +123,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onReve
             {/* Full Database Info */}
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Database size={14} /> Date Complete Înregistrare
+                <Database size={14} /> {t.lblFullDataRec || 'Date Complete Înregistrare'}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {Object.entries(rowData)
@@ -142,7 +142,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onReve
           </div>
 
           {/* Column 2: Plan & Notes */}
-          <div className="w-full md:w-96 flex flex-col gap-6 shrink-0">
+          <div className="w-full md:w-[28rem] flex flex-col gap-6 shrink-0">
             
             {/* Step Instructions */}
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
@@ -152,7 +152,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onReve
                   {t.lblStage || 'Etapa:'} {stepConfig?.name}
                 </span>
               </div>
-              <div className="p-4 flex flex-col gap-4">
+              <div className="p-4 flex flex-col gap-4 max-h-48 overflow-y-auto">
                 {stepConfig?.description ? (
                   <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-amber-900 text-sm flex items-start gap-3">
                     <FileText className="shrink-0 mt-0.5 text-amber-600" size={16} />
@@ -188,16 +188,16 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onReve
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col mt-auto overflow-hidden">
               <div className="bg-slate-100 px-4 py-3 border-b border-slate-200">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  Acțiuni Disponibile
+                  {t.lblAvailActions || 'Acțiuni Disponibile'}
                 </span>
               </div>
-              <div className="p-4 flex flex-col gap-3">
+              <div className="p-4 flex flex-col gap-3 max-h-72 overflow-y-auto">
                 {onRevert && task.previous_state && (
                   <button
                     onClick={() => onRevert(task)}
                     className="w-full py-3 mb-2 rounded-xl text-sm font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-200 flex items-center justify-center gap-2"
                   >
-                    ⬅️ Anulează ultima acțiune
+                    ⬅️ {t.btnUndoAction || 'Anulează ultima acțiune'}
                   </button>
                 )}
                 {branches.map(branch => (
