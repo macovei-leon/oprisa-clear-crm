@@ -375,6 +375,10 @@ async function processTimelineData(jsonDataRaw, supabaseData) {
         }
         const missedThreeDaysInARow = maxConsecutiveStr >= 3;
 
+        if (missedThreeDaysInARow) {
+            status = 'Fireable';
+        }
+
         let phone = '';
         let email = '';
         let companies = [];

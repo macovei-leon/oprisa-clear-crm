@@ -575,7 +575,7 @@ app.get('/api/admin/email-settings', async (req, res) => {
         is_enabled: false,
         pn_range_start: null,
         pn_range_end: null,
-        allowed_categories: ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent']
+        allowed_categories: ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent', 'Fireable']
     });
 });
 
@@ -587,7 +587,7 @@ app.put('/api/admin/email-settings', async (req, res) => {
         is_enabled,
         pn_range_start: pn_range_start || null,
         pn_range_end: pn_range_end || null,
-        allowed_categories: allowed_categories || ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent']
+        allowed_categories: allowed_categories || ['Started Late', 'Left Early / Big Gaps', 'No Shifts', 'Absent', 'Fireable']
     }]);
     if (error) {
         console.error("Supabase Error on email-settings PUT:", error);
