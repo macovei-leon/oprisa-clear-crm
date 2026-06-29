@@ -181,8 +181,6 @@ async function processTimelineData(jsonDataRaw, supabaseData) {
         days: timelineDaysMeta
     };
 
-    const currentHourOffset = (Date.now() - BASE_DATE.getTime()) / 3600000;
-
     const allDriversResult = [];
 
     soferi.forEach(sofer => {
@@ -284,9 +282,6 @@ async function processTimelineData(jsonDataRaw, supabaseData) {
         let totalScheduledShiftsCount = scheduledShifts.length;
 
         scheduledShifts.forEach(s => {
-            // Ignore future shifts that haven't started yet
-            if (s.start > currentHourOffset) return;
-
             const startStr = formatHourToDateTime(s.start);
             const endStr = formatHourToDateTime(s.end);
             const shiftDur = s.end - s.start;
