@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: oprisa-clear-crm
     ports:
-      - "3050:80"
+      - "3051:80"
     restart: unless-stopped
     depends_on:
       - backend
