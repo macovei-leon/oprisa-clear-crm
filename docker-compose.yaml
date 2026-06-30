@@ -18,7 +18,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: oprisa-clear-crm-backend
     ports:
-      - "3001:3001"
+      - "3002:3001"
     volumes:
       - attachments_data:/app/attachments
     restart: unless-stopped
