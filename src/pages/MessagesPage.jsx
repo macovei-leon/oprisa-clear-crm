@@ -179,7 +179,8 @@ export const MessagesPage = () => {
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
               <th className="px-4 py-3 font-semibold w-12 text-center">{t.msgStatus}</th>
-              <th className="px-4 py-3 font-semibold w-1/4">{t.msgFrom}</th>
+              <th className="px-4 py-3 font-semibold w-1/6">{t.msgFrom}</th>
+              <th className="px-4 py-3 font-semibold w-1/6">{t.msgToCol}</th>
               <th className="px-4 py-3 font-semibold">{t.msgSubject}</th>
               <th className="px-4 py-3 font-semibold w-40 text-right">{t.msgDate}</th>
             </tr>
@@ -188,7 +189,8 @@ export const MessagesPage = () => {
             {messages.map(msg => {
               const isSentByMe = msg.sender_id === profile.id;
               const isUnread = !isSentByMe && !msg.is_read;
-              const otherPerson = isSentByMe ? msg.receiver?.name || msg.receiver?.email : msg.sender?.name || msg.sender?.email;
+              const senderDisplay = msg.sender?.name || msg.sender?.email || 'System';
+              const receiverDisplay = msg.receiver?.name || msg.receiver?.email || 'Unknown';
               
               return (
                 <tr 
@@ -197,24 +199,23 @@ export const MessagesPage = () => {
                   className={`hover:bg-slate-50 cursor-pointer transition-colors ${isUnread ? 'bg-indigo-50/20' : 'bg-white'}`}
                 >
                   <td className="px-4 py-4 align-top text-center">
-                    <div className="flex justify-center">
+                    <div className="flex justify-center flex-col items-center gap-1">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${!isSentByMe ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'}`}>
                         {!isSentByMe ? <Inbox size={16} /> : <Send size={16} />}
                       </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        {isSentByMe ? (msg.is_read ? t.msgSeen : t.msgUnread) : (msg.is_read ? t.msgRead : t.msgUnread)}
+                      </span>
                     </div>
                   </td>
-                  <td className={`px-4 py-4 align-top text-sm ${isUnread ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
-                    <div className="flex items-center gap-2">
-                      {otherPerson}
-                      {isSentByMe && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 whitespace-nowrap">
-                          {t.msgSentByMe}
-                        </span>
-                      )}
-                    </div>
+                  <td className={`px-4 py-4 align-top text-sm ${isUnread && !isSentByMe ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
+                    {senderDisplay}
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm text-slate-600 font-medium">
+                    {receiverDisplay}
                   </td>
                   <td className="px-4 py-4 align-top">
-                    <div className={`text-sm mb-1 ${isUnread ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'}`}>
+                    <div className={`text-sm mb-1 ${isUnread && !isSentByMe ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'}`}>
                       {msg.subject}
                     </div>
                     <div className="text-xs text-slate-500 line-clamp-1" dangerouslySetInnerHTML={{ __html: msg.message.substring(0, 100) + '...' }}></div>
@@ -261,7 +262,7 @@ export const MessagesPage = () => {
             onClick={() => setActiveTab('inbox')}
             className="px-4 py-2 bg-white border border-slate-300 shadow-sm rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-bold text-sm"
           >
-            Înapoi la Inbox
+            Înapoi la {t.msgInbox}
           </button>
         </div>
 
@@ -287,8 +288,15 @@ export const MessagesPage = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="text-xs font-medium text-slate-400">
-                    {new Date(msg.created_at).toLocaleString('ro-RO', { dateStyle: 'full', timeStyle: 'short' })}
+                  <div className="flex flex-col items-end">
+                    <div className="text-xs font-medium text-slate-400">
+                      {new Date(msg.created_at).toLocaleString('ro-RO', { dateStyle: 'full', timeStyle: 'short' })}
+                    </div>
+                    {isMe && (
+                      <div className={`text-[10px] mt-1 font-bold ${msg.is_read ? 'text-green-500' : 'text-slate-400'}`}>
+                        {msg.is_read ? `✔ ${t.msgSeen}` : t.msgUnread}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="px-6 py-5">
