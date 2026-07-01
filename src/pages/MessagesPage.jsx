@@ -240,9 +240,9 @@ export const MessagesPage = () => {
     const otherPersonName = firstMsg.sender_id === profile.id ? firstMsg.receiver?.name || firstMsg.receiver?.email : firstMsg.sender?.name || firstMsg.sender?.email;
 
     return (
-      <div className="w-full flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="w-full flex flex-col bg-white flex-1 min-h-full">
         {/* Thread Header */}
-        <div className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex items-start justify-between">
+        <div className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex items-start justify-between sticky top-0 z-20 shadow-sm">
           <div>
             <div className="flex items-center gap-3 mb-3">
               <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-700 tracking-wider">
@@ -267,7 +267,7 @@ export const MessagesPage = () => {
         </div>
 
         {/* Thread Messages */}
-        <div className="flex flex-col p-8 space-y-6 bg-slate-50/30">
+        <div className="flex flex-col p-8 space-y-6 bg-slate-50/50 flex-1">
           {threadMessages.map((msg, index) => {
             const isMe = msg.sender_id === profile.id;
             const senderName = isMe ? 'Tu' : (msg.sender?.name || msg.sender?.email);
@@ -311,7 +311,7 @@ export const MessagesPage = () => {
         </div>
 
         {/* Reply Area */}
-        <div className="p-8 bg-white border-t border-slate-200">
+        <div className="p-8 bg-white border-t border-slate-200 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] mt-auto">
           <div className="border border-slate-300 rounded-lg overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all shadow-sm">
             <div className="flex border-b border-slate-200 bg-slate-50">
               <button
@@ -477,8 +477,8 @@ export const MessagesPage = () => {
   );
 
   return (
-    <MainLayout title={t.msgInternalMessages} subtitle={t.msgTicketSystem}>
-      <div className="w-full">
+    <MainLayout title={t.msgInternalMessages} subtitle={t.msgTicketSystem} noPadding={activeTab === 'thread'}>
+      <div className="w-full flex-1 flex flex-col">
         {activeTab === 'inbox' && (
           <div className="flex justify-between items-center mb-6 w-full">
             <h2 className="text-xl font-bold text-slate-800">{t.msgInbox}</h2>
