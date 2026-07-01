@@ -207,6 +207,7 @@ export const MessagesPage = () => {
               <th className="px-4 py-3 font-semibold w-12 text-center">{t.msgStatus}</th>
               <th className="px-4 py-3 font-semibold w-1/6">{t.msgFrom}</th>
               <th className="px-4 py-3 font-semibold w-1/6">{t.msgToCol}</th>
+              <th className="px-4 py-3 font-semibold w-24">Etichetă</th>
               <th className="px-4 py-3 font-semibold">{t.msgSubject}</th>
               <th className="px-4 py-3 font-semibold w-40 text-right">{t.msgDate}</th>
             </tr>
@@ -254,15 +255,17 @@ export const MessagesPage = () => {
                     {receiverDisplay}
                   </td>
                   <td className="px-4 py-4 align-top">
+                    {msg.badge && (
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${msg.badge === 'Urgent' || msg.badge === 'Important' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {msg.badge}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 align-top">
                     <div className="flex items-center gap-3">
                       <div className={`text-sm ${isUnread && !isMe ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'}`}>
                         {msg.subject}
                       </div>
-                      {msg.badge && (
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${msg.badge === 'Urgent' || msg.badge === 'Important' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {msg.badge}
-                        </span>
-                      )}
                     </div>
                     <div className="text-xs text-slate-500 line-clamp-1" dangerouslySetInnerHTML={{ __html: msg.message.substring(0, 100) + '...' }}></div>
                   </td>
@@ -294,11 +297,6 @@ export const MessagesPage = () => {
               <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-700 tracking-wider">
                 TKT-{activeThreadId.substring(0, 8).toUpperCase()}
               </span>
-              {firstMsg.badge && (
-                <span className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wider ${firstMsg.badge === 'Urgent' || firstMsg.badge === 'Important' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {firstMsg.badge.toUpperCase()}
-                </span>
-              )}
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 leading-tight flex items-center gap-3">
@@ -313,12 +311,19 @@ export const MessagesPage = () => {
               </div>
             </div>
           </div>
-          <button 
-            onClick={() => setActiveTab('inbox')}
-            className="px-4 py-2 bg-white border border-slate-300 shadow-sm rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-bold text-sm"
-          >
-            Înapoi la {t.msgInbox}
-          </button>
+          <div className="flex items-center gap-4">
+            {firstMsg.badge && (
+              <span className={`px-3 py-1.5 rounded-md text-xs font-bold tracking-wider shadow-sm ${firstMsg.badge === 'Urgent' || firstMsg.badge === 'Important' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                {firstMsg.badge.toUpperCase()}
+              </span>
+            )}
+            <button 
+              onClick={() => setActiveTab('inbox')}
+              className="px-4 py-2 bg-white border border-slate-300 shadow-sm rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-bold text-sm"
+            >
+              Înapoi la {t.msgInbox}
+            </button>
+          </div>
         </div>
 
         {/* Thread Messages */}

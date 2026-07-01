@@ -13,6 +13,10 @@ export const NotificationBell = () => {
 
   useEffect(() => {
     if (profile?.id) {
+      if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
+
       fetchNotifications();
       
       const channel = supabase.channel('schema-db-changes')
@@ -26,6 +30,31 @@ export const NotificationBell = () => {
           },
           (payload) => {
             setNotifications(prev => [payload.new, ...prev]);
+
+            if ("Notification" in window && Notification.permission === "granted") {
+              const temp = document.createElement("div");
+              temp.innerHTML = payload.new.message;
+              const textContent = temp.textContent || temp.innerText || "";
+              new Notification("Notificare Nouă", {
+                body: textContent.substring(0, 100)
+              });
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'app_messages',
+            filter: `receiver_id=eq.${profile.id}`
+          },
+          (payload) => {
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification(`Mesaj Nou: ${payload.new.subject}`, {
+                body: payload.new.message.replace(/<[^>]*>?/gm, '').substring(0, 100)
+              });
+            }
           }
         )
         .subscribe();
