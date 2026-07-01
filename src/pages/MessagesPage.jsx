@@ -3,7 +3,7 @@ import { MainLayout } from '../components/layout/MainLayout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { MessageSquare, Send, Inbox, Users, Building, Code, Eye, ArrowLeft, Reply } from 'lucide-react';
+import { MessageSquare, Send, Inbox, Users, Building, Code, Eye, ArrowLeft, Reply, Check, CheckCheck, Tag } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 export const MessagesPage = () => {
@@ -22,6 +22,7 @@ export const MessagesPage = () => {
   const [selectedUser, setSelectedUser] = useState('');
   const [subject, setSubject] = useState('');
   const [messageBody, setMessageBody] = useState('');
+  const [badge, setBadge] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
   const [isSending, setIsSending] = useState(false);
   
@@ -143,7 +144,8 @@ export const MessagesPage = () => {
         receiver_id: uid,
         subject: subject,
         message: messageBody,
-        is_read: false
+        is_read: false,
+        badge: badge || null
       }));
 
       const { error } = await supabase.from('app_messages').insert(inserts);
@@ -211,8 +213,8 @@ export const MessagesPage = () => {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {messages.map(msg => {
-              const isSentByMe = msg.sender_id === profile.id;
-              const isUnread = !isSentByMe && !msg.is_read;
+              const isMe = msg.sender_id === profile.id;
+              const isUnread = !isMe && !msg.is_read;
               const senderDisplay = msg.sender?.name || msg.sender?.email || 'System';
               const receiverDisplay = msg.receiver?.name || msg.receiver?.email || 'Unknown';
               
@@ -220,27 +222,47 @@ export const MessagesPage = () => {
                 <tr 
                   key={msg.id} 
                   onClick={() => { setActiveThreadId(msg.thread_id); setActiveTab('thread'); }}
-                  className={`hover:bg-slate-50 cursor-pointer transition-colors ${isUnread ? 'bg-indigo-50/20' : 'bg-white'}`}
+                  className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${isUnread ? 'bg-indigo-50/50' : 'bg-white'}`}
                 >
-                  <td className="px-4 py-4 align-top text-center">
-                    <div className="flex justify-center flex-col items-center gap-1">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${!isSentByMe ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'}`}>
-                        {!isSentByMe ? <Inbox size={16} /> : <Send size={16} />}
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">
-                        {isSentByMe ? (msg.is_read ? t.msgSeen : t.msgUnread) : (msg.is_read ? t.msgRead : t.msgUnread)}
-                      </span>
-                    </div>
+                  <td className="px-4 py-4 w-12 text-center">
+                    {isMe ? (
+                      msg.is_read ? (
+                        <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center mx-auto" title="Citit de destinatar">
+                          <CheckCheck size={16} className="text-green-500" />
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center mx-auto border border-slate-200" title="Trimis">
+                          <Check size={14} className="text-slate-400" />
+                        </div>
+                      )
+                    ) : (
+                      isUnread ? (
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center mx-auto shadow-sm" title="Mesaj Nou">
+                          <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full animate-pulse"></div>
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center mx-auto" title="Citit">
+                          <Eye size={16} className="text-slate-400" />
+                        </div>
+                      )
+                    )}
                   </td>
-                  <td className={`px-4 py-4 align-top text-sm ${isUnread && !isSentByMe ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
+                  <td className={`px-4 py-4 align-top text-sm ${isUnread && !isMe ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
                     {senderDisplay}
                   </td>
                   <td className="px-4 py-4 align-top text-sm text-slate-600 font-medium">
                     {receiverDisplay}
                   </td>
                   <td className="px-4 py-4 align-top">
-                    <div className={`text-sm mb-1 ${isUnread && !isSentByMe ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'}`}>
-                      {msg.subject}
+                    <div className="flex items-center gap-3">
+                      <div className={`text-sm ${isUnread && !isMe ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'}`}>
+                        {msg.subject}
+                      </div>
+                      {msg.badge && (
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${msg.badge === 'Urgent' || msg.badge === 'Important' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {msg.badge}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-500 line-clamp-1" dangerouslySetInnerHTML={{ __html: msg.message.substring(0, 100) + '...' }}></div>
                   </td>
@@ -268,9 +290,16 @@ export const MessagesPage = () => {
         {/* Thread Header */}
         <div className="px-8 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between sticky top-0 z-20 shadow-sm">
           <div className="flex items-center gap-6">
-            <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-700 tracking-wider">
-              TKT-{activeThreadId.substring(0, 8).toUpperCase()}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-700 tracking-wider">
+                TKT-{activeThreadId.substring(0, 8).toUpperCase()}
+              </span>
+              {firstMsg.badge && (
+                <span className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wider ${firstMsg.badge === 'Urgent' || firstMsg.badge === 'Important' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {firstMsg.badge.toUpperCase()}
+                </span>
+              )}
+            </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 leading-tight flex items-center gap-3">
                 {firstMsg.subject}
@@ -477,6 +506,21 @@ export const MessagesPage = () => {
           />
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] items-center gap-4">
+          <label className="text-sm font-bold text-slate-700">Etichetă (Opțional)</label>
+          <div className="flex gap-3 flex-wrap">
+            {['Task', 'Info', 'Important', 'Urgent'].map(b => (
+              <button
+                key={b}
+                onClick={() => setBadge(badge === b ? '' : b)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${badge === b ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="pt-2">
           <label className="block text-sm font-bold text-slate-700 mb-2">{t.msgMessageContent}</label>
           <div className="border border-slate-300 rounded-md overflow-hidden focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all shadow-sm">
@@ -500,22 +544,22 @@ export const MessagesPage = () => {
                 value={messageBody}
                 onChange={e => setMessageBody(e.target.value)}
                 placeholder={t.msgMessagePlaceholder}
-                className="w-full h-64 p-4 focus:outline-none text-sm resize-y font-mono"
+                className="w-full h-40 p-4 focus:outline-none text-sm resize-y font-mono"
               />
             ) : (
               <div 
-                className="w-full h-64 p-4 overflow-y-auto prose max-w-none bg-white"
+                className="w-full h-40 p-4 overflow-y-auto prose max-w-none bg-white"
                 dangerouslySetInnerHTML={{ __html: messageBody || `<p class="text-slate-400 italic">${t.msgMessageEmpty}</p>` }}
               />
             )}
           </div>
         </div>
 
-        <div className="flex justify-end pt-6 border-t border-slate-200 mt-6">
+        <div className="flex justify-end pt-4 border-t border-slate-200 mt-4">
           <button 
             onClick={handleSendCompose}
             disabled={isSending || !subject.trim() || !messageBody.trim()}
-            className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition-colors shadow-md shadow-indigo-600/20"
+            className="px-8 py-2 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition-colors shadow-md shadow-indigo-600/20"
           >
             <Send size={18} /> {isSending ? t.msgSending : t.msgOpenTicketBtn}
           </button>
