@@ -13,6 +13,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
   const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [distributionChanged, setDistributionChanged] = useState(false);
   const [workers, setWorkers] = useState([]);
   
   // Campaign Metadata
@@ -103,6 +104,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
   const handleSplitChange = (workerId, value) => {
     const num = parseInt(value) || 0;
     setWorkerSplits(prev => prev.map(s => s.id === workerId ? { ...s, count: num } : s));
+    setDistributionChanged(true);
   };
 
   const uniqueDepts = Array.from(new Set(workers.map(w => w.departments?.name).filter(Boolean)));
@@ -116,7 +118,6 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
     const remainder = total % filteredWorkers.length;
     
     const newSplits = [...workerSplits];
-    // Reset filtered workers to 0 before distributing? No, better reset ALL to 0
     newSplits.forEach(s => s.count = 0);
     
     filteredWorkers.forEach((w, idx) => {
@@ -126,6 +127,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
       }
     });
     setWorkerSplits(newSplits);
+    setDistributionChanged(true);
   };
 
   const totalAssigned = workerSplits.reduce((sum, split) => sum + split.count, 0);
@@ -230,25 +232,6 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
 
         const { error } = await supabase.from(tableFlows).update(updateData).eq('id', initialData.id);
         if (error) throw error;
-
-        // Reassign tasks if distribution changed
-        let taskIdx = 0;
-        const updates = [];
-        for (let split of workerSplits) {
-          for (let i = 0; i < split.count; i++) {
-            const task = existingTasks[taskIdx];
-            if (task && task.assigned_to !== split.id) {
-              updates.push(
-                supabase.from(tableTasks).update({ assigned_to: split.id }).eq('id', task.id)
-              );
-            }
-            taskIdx++;
-          }
-        }
-        
-        if (updates.length > 0) {
-          await Promise.all(updates);
-        }
 
         alert(t.msgChangesSaved || "Modificările au fost salvate cu succes!");
         onClose();
@@ -412,6 +395,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
               )}
             </div>
 
+            {!initialData && (
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-slate-700 flex items-center gap-2"><Users size={16}/> {initialData ? (t.lblRedistribExist || "Redistribuire Sarcini Existente") : (t.lblDistribNew || "Distribuire Sarcini Noi")}</h3>
@@ -455,6 +439,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                 </span>
               </div>
             </div>
+            )}
           </div>
 
           {/* Right Column: Dynamic Steps */}
