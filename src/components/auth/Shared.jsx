@@ -7,16 +7,16 @@ export const LanguageSwitcher = () => {
   const { lang, changeLanguage } = useLanguage();
 
   return (
-    <div className="absolute top-4 right-6 flex bg-white/50 border border-white/50 rounded-full overflow-hidden z-20">
+    <div className="flex bg-slate-100 border border-slate-200 rounded-lg p-0.5 overflow-hidden">
       <button 
         onClick={() => changeLanguage('ro')}
-        className={`px-3 py-1.5 text-xs font-semibold flex items-center gap-1 transition-all ${lang === 'ro' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-white/50'}`}
+        className={`px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-all rounded-md ${lang === 'ro' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
       >
         <span>🇷🇴</span> RO
       </button>
       <button 
         onClick={() => changeLanguage('en')}
-        className={`px-3 py-1.5 text-xs font-semibold flex items-center gap-1 transition-all ${lang === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-white/50'}`}
+        className={`px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-all rounded-md ${lang === 'en' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
       >
         <span>🇬🇧</span> EN
       </button>

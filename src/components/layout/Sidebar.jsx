@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
-import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap, Code, Network, BookOpen, BellRing, MessageSquare } from 'lucide-react';
+import { Bolt, LayoutDashboard, ShieldAlert, LogOut, Users, UserCog, Database, ClipboardList, Megaphone, ChevronDown, ChevronRight, Zap, Code, Network, BookOpen, BellRing, MessageSquare, Edit2 } from 'lucide-react';
 
 export const Sidebar = () => {
   const { profile, signOut, simulatedDepartment, setSimulatedDepartment } = useAuth();
@@ -336,6 +336,13 @@ export const Sidebar = () => {
             <p className="text-sm font-bold text-slate-800 truncate">{profile?.name || 'User'}</p>
             <p className="text-xs text-slate-500 truncate capitalize">{profile?.role}</p>
           </div>
+          <NavLink 
+            to="/profile"
+            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+            title="Edit Profile"
+          >
+            <Edit2 size={16} />
+          </NavLink>
         </div>
         <button 
           onClick={() => signOut()} 

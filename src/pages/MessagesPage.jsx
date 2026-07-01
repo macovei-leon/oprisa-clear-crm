@@ -48,7 +48,7 @@ export const MessagesPage = () => {
     setLoading(true);
     let query = supabase
       .from('app_messages')
-      .select('*, sender:sender_id(name, email), receiver:receiver_id(name, email)')
+      .select('*, sender:sender_id(name, email, avatar_url), receiver:receiver_id(name, email, avatar_url)')
       .or(`receiver_id.eq.${profile.id},sender_id.eq.${profile.id}`)
       .order('created_at', { ascending: false });
 
@@ -81,7 +81,7 @@ export const MessagesPage = () => {
     setLoading(true);
     const { data } = await supabase
       .from('app_messages')
-      .select('*, sender:sender_id(name, email), receiver:receiver_id(name, email)')
+      .select('*, sender:sender_id(name, email, avatar_url), receiver:receiver_id(name, email, avatar_url)')
       .eq('thread_id', threadId)
       .order('created_at', { ascending: true });
       
@@ -352,9 +352,13 @@ export const MessagesPage = () => {
               <div key={msg.id} className="w-full bg-white border border-slate-200 rounded-lg shadow-sm">
                 <div className="px-4 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                   <div className="flex items-center gap-2">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${isMe ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}`}>
-                      {senderName.charAt(0).toUpperCase()}
-                    </div>
+                    {msg.sender?.avatar_url || (isMe && profile.avatar_url) ? (
+                      <img src={isMe ? profile.avatar_url : msg.sender?.avatar_url} alt="Avatar" className="w-6 h-6 rounded-full object-cover shadow-sm border border-slate-200" />
+                    ) : (
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${isMe ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}`}>
+                        {senderName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div className="font-semibold text-slate-800 text-sm flex items-center gap-2">
                       {senderName}
                       <span className="text-xs font-normal text-slate-400 hidden sm:inline">

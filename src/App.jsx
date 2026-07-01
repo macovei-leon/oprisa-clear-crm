@@ -19,6 +19,7 @@ import { MessagesPage } from './pages/MessagesPage'
 import { MainLayout } from './components/layout/MainLayout'
 import { ApiWorkspacePage } from './pages/developer/ApiWorkspacePage'
 import { ArchitecturePage } from './pages/developer/ArchitecturePage'
+import { ProfilePage } from './pages/ProfilePage'
 
 function ProtectedRoute({ children, requiredRole }) {
   const { user, profile, loading } = useAuth();
@@ -54,6 +55,11 @@ function App() {
             <Route path="/how-to-work" element={
               <ProtectedRoute>
                 <HowToWorkPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             } />
             <Route path="/notifications" element={

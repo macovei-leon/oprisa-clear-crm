@@ -13,10 +13,6 @@ export const NotificationBell = () => {
 
   useEffect(() => {
     if (profile?.id) {
-      if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
-      }
-
       fetchNotifications();
       
       const channel = supabase.channel('schema-db-changes')
@@ -40,21 +36,6 @@ export const NotificationBell = () => {
               });
             }
           }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'app_messages',
-            filter: `receiver_id=eq.${profile.id}`
-          },
-          (payload) => {
-            if ("Notification" in window && Notification.permission === "granted") {
-              new Notification(`Mesaj Nou: ${payload.new.subject}`, {
-                body: payload.new.message.replace(/<[^>]*>?/gm, '').substring(0, 100)
-              });
-            }
           }
         )
         .subscribe();
@@ -106,10 +87,17 @@ export const NotificationBell = () => {
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
+  const handleBellClick = () => {
+    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+      Notification.requestPermission();
+    }
+    setIsOpen(!isOpen);
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleBellClick}
         className="flex items-center justify-center w-10 h-10 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors relative"
       >
         <Bell size={20} />

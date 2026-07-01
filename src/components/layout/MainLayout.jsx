@@ -15,9 +15,7 @@ export const MainLayout = ({ children, title, subtitle, noPadding = false }) => 
           </div>
           <div className="flex items-center gap-4">
             <NotificationBell />
-            <div className="relative z-10 w-32 h-10">
-                <LanguageSwitcher />
-            </div>
+            <LanguageSwitcher />
           </div>
         </header>
         <div className={`flex-1 overflow-y-auto bg-slate-50 ${noPadding ? '' : 'p-8'}`}>
