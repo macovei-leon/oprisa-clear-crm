@@ -151,6 +151,14 @@ export const MessagesPage = () => {
       const { error } = await supabase.from('app_messages').insert(inserts);
       if (error) throw error;
 
+      // Create notifications for all recipients
+      const notifs = targetUserIds.map(uid => ({
+        user_id: uid,
+        message: `<b>${profile.name || profile.email}</b> ți-a trimis un tichet nou: <i>${subject}</i>`,
+        is_read: false
+      }));
+      await supabase.from('app_notifications').insert(notifs);
+
       alert(`Mesaj trimis cu succes către ${targetUserIds.length} utilizator(i).`);
       setSubject('');
       setMessageBody('');
@@ -185,6 +193,14 @@ export const MessagesPage = () => {
       });
 
       if (error) throw error;
+      
+      // Create notification for the receiver
+      await supabase.from('app_notifications').insert({
+        user_id: otherUserId,
+        message: `<b>${profile.name || profile.email}</b> a răspuns la tichetul: <i>${firstMsg.subject}</i>`,
+        is_read: false
+      });
+
       setReplyBody('');
       setReplyPreviewMode(false);
       fetchThread(activeThreadId); // refresh
@@ -205,11 +221,11 @@ export const MessagesPage = () => {
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
               <th className="px-4 py-3 font-semibold w-12 text-center">{t.msgStatus}</th>
-              <th className="px-4 py-3 font-semibold w-1/6">{t.msgFrom}</th>
-              <th className="px-4 py-3 font-semibold w-1/6">{t.msgToCol}</th>
-              <th className="px-4 py-3 font-semibold w-24">Etichetă</th>
-              <th className="px-4 py-3 font-semibold">{t.msgSubject}</th>
-              <th className="px-4 py-3 font-semibold w-40 text-right">{t.msgDate}</th>
+              <th className="px-4 py-3 font-semibold w-[20%]">{t.msgFrom}</th>
+              <th className="px-4 py-3 font-semibold w-[20%]">{t.msgToCol}</th>
+              <th className="px-4 py-3 font-semibold w-[30%]">{t.msgSubject}</th>
+              <th className="px-4 py-3 font-semibold w-24 text-center">Etichetă</th>
+              <th className="px-4 py-3 font-semibold w-32 text-right">{t.msgDate}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -255,19 +271,19 @@ export const MessagesPage = () => {
                     {receiverDisplay}
                   </td>
                   <td className="px-4 py-4 align-top">
-                    {msg.badge && (
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${msg.badge === 'Urgent' || msg.badge === 'Important' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {msg.badge}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 align-top">
                     <div className="flex items-center gap-3">
                       <div className={`text-sm ${isUnread && !isMe ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'}`}>
                         {msg.subject}
                       </div>
                     </div>
                     <div className="text-xs text-slate-500 line-clamp-1" dangerouslySetInnerHTML={{ __html: msg.message.substring(0, 100) + '...' }}></div>
+                  </td>
+                  <td className="px-4 py-4 align-top text-center">
+                    {msg.badge && (
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${msg.badge === 'Urgent' || msg.badge === 'Important' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {msg.badge}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-4 align-top text-xs text-slate-500 whitespace-nowrap text-right">
                     {new Date(msg.created_at).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}
