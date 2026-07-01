@@ -242,20 +242,22 @@ export const MessagesPage = () => {
     return (
       <div className="w-full flex flex-col bg-white flex-1 min-h-full">
         {/* Thread Header */}
-        <div className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex items-start justify-between sticky top-0 z-20 shadow-sm">
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-700 tracking-wider">
-                TKT-{activeThreadId.substring(0, 8).toUpperCase()}
-              </span>
-              <span className="text-sm font-semibold text-slate-500">
-                {new Date(firstMsg.created_at).toLocaleString('ro-RO', { dateStyle: 'long', timeStyle: 'short' })}
-              </span>
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 leading-tight">{firstMsg.subject}</h2>
-            <div className="text-sm text-slate-600 mt-3 flex items-center gap-2">
-              <span className="text-slate-400">{t.msgFrom}:</span> 
-              <span className="font-semibold text-slate-800">{otherPersonName}</span>
+        <div className="px-8 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+          <div className="flex items-center gap-6">
+            <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-700 tracking-wider">
+              TKT-{activeThreadId.substring(0, 8).toUpperCase()}
+            </span>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 leading-tight flex items-center gap-3">
+                {firstMsg.subject}
+                <span className="text-sm font-normal text-slate-500">
+                  {new Date(firstMsg.created_at).toLocaleString('ro-RO', { dateStyle: 'long', timeStyle: 'short' })}
+                </span>
+              </h2>
+              <div className="text-sm text-slate-600 mt-1 flex items-center gap-2">
+                <span className="text-slate-400">{t.msgFrom}:</span> 
+                <span className="font-semibold text-slate-800">{otherPersonName}</span>
+              </div>
             </div>
           </div>
           <button 
@@ -491,7 +493,7 @@ export const MessagesPage = () => {
           </div>
         )}
         
-        <div className="w-full pb-8">
+        <div className="w-full flex-1 flex flex-col">
           {activeTab === 'inbox' && renderMessageList()}
           {activeTab === 'compose' && renderCompose()}
           {activeTab === 'thread' && renderThread()}
