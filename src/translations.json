@@ -358,7 +358,16 @@
     "msgReplyPlaceholder": "Apasă aici pentru a scrie un răspuns (suportă HTML)...",
     "msgReplyInfo": "Răspunsul va fi adăugat ca un nou mesaj în acest ticket.",
     "msgLoading": "Se încarcă...",
-    "msgNoMessages": "Nu există mesaje aici."
+    "msgNoMessages": "Nu există mesaje aici.",
+    "profTitle": "Profilul Meu",
+    "profSub": "Gestionează setările contului tău",
+    "profName": "Nume Complet",
+    "profEmail": "Email",
+    "profPass": "Parolă",
+    "profSave": "Salvează Profilul",
+    "profErrUpload": "Eroare la încărcarea imaginii:",
+    "profErrSave": "Eroare la salvare:",
+    "profSuccess": "Profilul a fost salvat cu succes! Pagina se va reîncărca pentru a aplica schimbările."
   },
   "en": {
     "mainTitle": "Oprisa OPS",
@@ -719,6 +728,15 @@
     "msgReplyPlaceholder": "Click here to write a reply (supports HTML)...",
     "msgReplyInfo": "The reply will be added as a new message in this ticket.",
     "msgLoading": "Loading...",
-    "msgNoMessages": "There are no messages here."
+    "msgNoMessages": "There are no messages here.",
+    "profTitle": "My Profile",
+    "profSub": "Manage your account settings",
+    "profName": "Full Name",
+    "profEmail": "Email",
+    "profPass": "Password",
+    "profSave": "Save Profile",
+    "profErrUpload": "Error uploading image:",
+    "profErrSave": "Error saving:",
+    "profSuccess": "Profile saved successfully! The page will reload to apply changes."
   }
 }

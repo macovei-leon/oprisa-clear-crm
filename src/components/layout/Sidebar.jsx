@@ -329,8 +329,12 @@ export const Sidebar = () => {
 
       <div className="p-4 border-t border-slate-100">
         <div className="px-3 py-3 rounded-lg bg-slate-50 flex items-center gap-3 mb-3 border border-slate-100">
-          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-            <UserCog size={16} />
+          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 overflow-hidden shadow-sm">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <UserCog size={16} />
+            )}
           </div>
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-bold text-slate-800 truncate">{profile?.name || 'User'}</p>

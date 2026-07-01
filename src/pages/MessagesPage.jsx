@@ -353,9 +353,9 @@ export const MessagesPage = () => {
                 <div className="px-4 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                   <div className="flex items-center gap-2">
                     {msg.sender?.avatar_url || (isMe && profile.avatar_url) ? (
-                      <img src={isMe ? profile.avatar_url : msg.sender?.avatar_url} alt="Avatar" className="w-6 h-6 rounded-full object-cover shadow-sm border border-slate-200" />
+                      <img src={isMe ? profile.avatar_url : msg.sender?.avatar_url} alt="Avatar" className="w-10 h-10 rounded-full object-cover shadow-sm border border-slate-200" />
                     ) : (
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${isMe ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isMe ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}`}>
                         {senderName.charAt(0).toUpperCase()}
                       </div>
                     )}
