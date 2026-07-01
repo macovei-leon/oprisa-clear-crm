@@ -174,7 +174,7 @@ export const MessagesPage = () => {
     if (messages.length === 0) return <div className="p-8 text-center text-slate-500">{t.msgNoMessages}</div>;
 
     return (
-      <div className="max-w-4xl mx-auto w-full overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200">
+      <div className="w-full overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
@@ -239,30 +239,34 @@ export const MessagesPage = () => {
     const otherPersonName = firstMsg.sender_id === profile.id ? firstMsg.receiver?.name || firstMsg.receiver?.email : firstMsg.sender?.name || firstMsg.sender?.email;
 
     return (
-      <div className="max-w-4xl mx-auto w-full flex flex-col h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="w-full flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Thread Header */}
-        <div className="px-6 py-4 border-b border-slate-200 bg-white flex items-center gap-4 sticky top-0 z-10 shadow-sm">
-          <button 
-            onClick={() => setActiveTab('inbox')}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
-          >
-            <ArrowLeft size={20} />
-          </button>
+        <div className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">{firstMsg.subject}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
-                Ticket ID: {activeThreadId.substring(0, 8).toUpperCase()}
+            <div className="flex items-center gap-3 mb-3">
+              <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-700 tracking-wider">
+                TKT-{activeThreadId.substring(0, 8).toUpperCase()}
               </span>
-              <span className="text-sm text-slate-500">
-                {otherPersonName}
+              <span className="text-sm font-semibold text-slate-500">
+                {new Date(firstMsg.created_at).toLocaleString('ro-RO', { dateStyle: 'long', timeStyle: 'short' })}
               </span>
             </div>
+            <h2 className="text-2xl font-bold text-slate-900 leading-tight">{firstMsg.subject}</h2>
+            <div className="text-sm text-slate-600 mt-3 flex items-center gap-2">
+              <span className="text-slate-400">{t.msgFrom}:</span> 
+              <span className="font-semibold text-slate-800">{otherPersonName}</span>
+            </div>
           </div>
+          <button 
+            onClick={() => setActiveTab('inbox')}
+            className="px-4 py-2 bg-white border border-slate-300 shadow-sm rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-bold text-sm"
+          >
+            Înapoi la Inbox
+          </button>
         </div>
 
         {/* Thread Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex flex-col p-8 space-y-6 bg-slate-50/30">
           {threadMessages.map((msg, index) => {
             const isMe = msg.sender_id === profile.id;
             const senderName = isMe ? 'Tu' : (msg.sender?.name || msg.sender?.email);
@@ -299,7 +303,7 @@ export const MessagesPage = () => {
         </div>
 
         {/* Reply Area */}
-        <div className="p-6 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] mt-auto">
+        <div className="p-8 bg-white border-t border-slate-200">
           <div className="border border-slate-300 rounded-lg overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all shadow-sm">
             <div className="flex border-b border-slate-200 bg-slate-50">
               <button
@@ -321,11 +325,11 @@ export const MessagesPage = () => {
                 value={replyBody}
                 onChange={e => setReplyBody(e.target.value)}
                 placeholder={t.msgReplyPlaceholder}
-                className="w-full h-32 p-4 focus:outline-none text-sm resize-y font-mono"
+                className="w-full h-40 p-4 focus:outline-none text-sm resize-y font-mono"
               />
             ) : (
               <div 
-                className="w-full h-32 p-4 overflow-y-auto prose prose-sm max-w-none bg-white"
+                className="w-full h-40 p-4 overflow-y-auto prose prose-sm max-w-none bg-white"
                 dangerouslySetInnerHTML={{ __html: replyBody || `<p class="text-slate-400 italic">${t.msgMessageEmpty}</p>` }}
               />
             )}
@@ -335,7 +339,7 @@ export const MessagesPage = () => {
               <button 
                 onClick={handleReply}
                 disabled={isSending || !replyBody.trim()}
-                className="px-6 py-2 bg-indigo-600 text-white font-bold text-sm rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition-colors shadow-sm"
+                className="px-8 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition-colors shadow-sm"
               >
                 <Reply size={16} /> {t.msgReply}
               </button>
@@ -466,9 +470,9 @@ export const MessagesPage = () => {
 
   return (
     <MainLayout title={t.msgInternalMessages} subtitle={t.msgTicketSystem}>
-      <div className="flex flex-col h-full w-full">
+      <div className="w-full">
         {activeTab === 'inbox' && (
-          <div className="flex justify-between items-center mb-6 max-w-4xl mx-auto w-full">
+          <div className="flex justify-between items-center mb-6 w-full">
             <h2 className="text-xl font-bold text-slate-800">{t.msgInbox}</h2>
             <button
               onClick={() => setActiveTab('compose')}
@@ -479,7 +483,7 @@ export const MessagesPage = () => {
           </div>
         )}
         
-        <div className="flex-1 overflow-y-auto relative w-full pb-8">
+        <div className="w-full pb-8">
           {activeTab === 'inbox' && renderMessageList()}
           {activeTab === 'compose' && renderCompose()}
           {activeTab === 'thread' && renderThread()}
