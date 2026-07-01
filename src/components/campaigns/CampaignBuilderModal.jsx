@@ -194,7 +194,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
       if (!s.name.trim()) return alert(t.errStepNameReq || "Fiecare etapă trebuie să aibă un nume.");
       for (let b of s.branches) {
         if (!b.label.trim()) return alert(t.errBtnLabelReq || "Fiecare buton de decizie trebuie să aibă o etichetă.");
-        if (b.action.startsWith('category_') && b.action === 'category_') return alert(t.errCatNameReq || "Completați numele categoriei pentru finalizare.");
+        if (b.action.startsWith('category_') && (b.action === 'category_' || b.action === 'category_persistent_')) return alert(t.errCatNameReq || "Completați numele categoriei pentru finalizare.");
       }
     }
 
@@ -202,6 +202,18 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
     try {
       const tableFlows = isRepetitive ? 'crm_repetitive_flows' : 'crm_campaigns';
       const tableTasks = isRepetitive ? 'crm_repetitive_tasks' : 'crm_tasks';
+      
+      const extractedPermanentCategories = [];
+      campaignSteps.forEach(s => {
+        s.branches.forEach(b => {
+          if (b.action.startsWith('category_persistent_')) {
+            const catName = b.action.replace('category_persistent_', '').trim();
+            if (catName && !extractedPermanentCategories.includes(catName)) {
+              extractedPermanentCategories.push(catName);
+            }
+          }
+        });
+      });
 
       if (initialData) {
         // Edit Mode
@@ -213,6 +225,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
         if (isRepetitive) {
           updateData.reset_interval_hours = resetIntervalHours;
           updateData.reset_interval_minutes = resetIntervalMinutes;
+          updateData.permanent_categories = extractedPermanentCategories;
         }
 
         const { error } = await supabase.from(tableFlows).update(updateData).eq('id', initialData.id);
@@ -256,6 +269,7 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
       if (isRepetitive) {
         insertData.reset_interval_hours = resetIntervalHours;
         insertData.reset_interval_minutes = resetIntervalMinutes;
+        insertData.permanent_categories = extractedPermanentCategories;
       }
 
       const { data: campData, error: campErr } = await supabase
@@ -506,14 +520,15 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                         </select>
                         <select 
                           value={
-                            branch.action.startsWith('category_') ? 'category' 
+                            branch.action.startsWith('category_persistent_') ? 'category_persistent'
+                            : branch.action.startsWith('category_') ? 'category' 
                             : branch.action === 'add_badge_remain' ? 'add_badge_remain'
                             : branch.action === 'add_badge_next' ? 'add_badge_next'
                             : 'next'
                           } 
                           onChange={e=>{
                             const val = e.target.value;
-                            updateBranch(step.id, branch.id, 'action', val === 'category' ? 'category_' : val);
+                            updateBranch(step.id, branch.id, 'action', val === 'category' ? 'category_' : val === 'category_persistent' ? 'category_persistent_' : val);
                             if(val.startsWith('add_badge') && !branch.badge) {
                               updateBranch(step.id, branch.id, 'badge', { text: '', color: 'blue', persist: false });
                             }
@@ -522,13 +537,14 @@ export const CampaignBuilderModal = ({ isOpen, onClose, onSuccess, selectedRowsD
                         >
                           <option value="next">{t.optNextStep || 'Treci la Pas Următor ➔'}</option>
                           <option value="category">{t.optCloseCategory || 'Închide în Categorie 🏁'}</option>
+                          <option value="category_persistent">{t.optCloseCategoryPersistent || 'Închide în Categorie Persistentă 🏁'}</option>
                           <option value="add_badge_remain">Adaugă Insignă &amp; Rămâi 🏷️</option>
                           <option value="add_badge_next">Adaugă Insignă &amp; Pas Următor 🏷️➔</option>
                         </select>
-                        {branch.action.startsWith('category_') && (
+                        {(branch.action.startsWith('category_') || branch.action.startsWith('category_persistent_')) && (
                           <input 
-                            type="text" value={branch.action.replace('category_', '')} 
-                            onChange={e=>updateBranch(step.id, branch.id, 'action', 'category_' + e.target.value)}
+                            type="text" value={branch.action.startsWith('category_persistent_') ? branch.action.replace('category_persistent_', '') : branch.action.replace('category_', '')} 
+                            onChange={e=>updateBranch(step.id, branch.id, 'action', (branch.action.startsWith('category_persistent_') ? 'category_persistent_' : 'category_') + e.target.value)}
                             className="w-32 p-1 border border-rose-200 bg-rose-50 rounded outline-none placeholder:text-rose-300" placeholder={t.phFinalCategory || "Nume Categorie Finală"}
                           />
                         )}

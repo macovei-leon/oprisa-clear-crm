@@ -18,7 +18,12 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
   
   // Extract all unique categories defined across all steps
   const categories = Array.from(new Set(
-    steps.flatMap(s => s.branches.filter(b => b.action.startsWith('category_')).map(b => b.action.replace('category_', '')))
+    steps.flatMap(s => s.branches.filter(b => b.action.startsWith('category_')).map(b => {
+      if (b.action.startsWith('category_persistent_')) {
+        return b.action.replace('category_persistent_', '');
+      }
+      return b.action.replace('category_', '');
+    }))
   ));
 
   const allTabs = [
@@ -102,6 +107,10 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
 
       if (actionType === 'next' || actionType === 'add_badge_next') {
         updatePayload.active_step_idx = task.active_step_idx + 1;
+      } else if (actionType.startsWith('category_persistent_')) {
+        updatePayload.completed = true; 
+        updatePayload.category = actionType.replace('category_persistent_', '');
+        updatePayload.completed_at = new Date().toISOString();
       } else if (actionType.startsWith('category_')) {
         updatePayload.completed = true; 
         updatePayload.category = actionType.replace('category_', '');
@@ -231,6 +240,32 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
     } catch (err) {
       console.error(err);
       alert(t.errDeleteCard || 'Eroare la ștergerea cardului: ' + err.message);
+    }
+  };
+
+  const handleResolvePermanentTask = async (e, task) => {
+    e.stopPropagation();
+    if (!window.confirm(t.confirmResolvePermanent || "Confirmați rezolvarea (resetarea) manuală a acestei sarcini permanente?")) return;
+    
+    try {
+      const resetPayload = {
+        completed: false,
+        category: null,
+        active_step_idx: 0,
+        completed_at: null,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('crm_repetitive_tasks')
+        .update(resetPayload)
+        .eq('id', task.id);
+
+      if (error) throw error;
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...resetPayload } : t));
+    } catch (err) {
+      console.error(err);
+      alert(t.errResolvePermanent || 'Eroare la rezolvare: ' + err.message);
     }
   };
 
@@ -416,7 +451,17 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
                     {isClosed ? (
                       <div className="flex justify-between items-center text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
                         <span>{t.lblStatusFinalized || 'Status Finalizat'}</span>
-                        <span className="flex items-center gap-1"><CheckCircle2 size={12} /> {task.category}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1"><CheckCircle2 size={12} /> {task.category}</span>
+                          {(flow?.permanent_categories || []).includes(task.category) && (
+                            <button
+                              onClick={(e) => handleResolvePermanentTask(e, task)}
+                              className="bg-indigo-600 text-white px-2 py-1 rounded text-[9px] hover:bg-indigo-700 pointer-events-auto"
+                            >
+                              {t.btnResolved || 'Rezolvat'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <>

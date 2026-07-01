@@ -208,7 +208,7 @@ export const FlashcardModal = ({ task, stepConfig, onClose, onTransition, onReve
                     }}
                     className={`w-full py-3 rounded-xl text-sm font-bold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${getColorClass(branch.color)} flex items-center justify-center gap-2`}
                   >
-                    {branch.action.startsWith('category_') ? <CheckCircle size={16} /> : <Activity size={16} />}
+                    {(branch.action.startsWith('category_') || branch.action.startsWith('category_persistent_')) ? <CheckCircle size={16} /> : <Activity size={16} />}
                     {branch.label}
                   </button>
                 ))}
