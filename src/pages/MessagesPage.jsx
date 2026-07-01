@@ -85,13 +85,33 @@ export const MessagesPage = () => {
       .order('created_at', { ascending: true });
       
     if (data) {
-      setThreadMessages(data);
-      
       // Mark as read any unread messages where receiver is current user
       const unreadIds = data.filter(m => m.receiver_id === profile.id && !m.is_read).map(m => m.id);
       if (unreadIds.length > 0) {
         await supabase.from('app_messages').update({ is_read: true }).in('id', unreadIds);
       }
+
+      // Group identical messages (for department broadcasts)
+      const groupedMsgs = [];
+      data.forEach(msg => {
+        const existing = groupedMsgs.find(g => 
+          g.sender_id === msg.sender_id && 
+          g.message === msg.message && 
+          Math.abs(new Date(g.created_at) - new Date(msg.created_at)) < 5000
+        );
+
+        if (existing) {
+          existing.all_receivers.push(msg.receiver);
+          if (msg.is_read) existing.seen_by.push(msg.receiver);
+        } else {
+          groupedMsgs.push({
+            ...msg,
+            all_receivers: [msg.receiver],
+            seen_by: msg.is_read ? [msg.receiver] : []
+          });
+        }
+      });
+      setThreadMessages(groupedMsgs);
     }
     setLoading(false);
   };
@@ -116,8 +136,9 @@ export const MessagesPage = () => {
     }
 
     try {
+      const sharedThreadId = uuidv4();
       const inserts = targetUserIds.map(uid => ({
-        thread_id: uuidv4(),
+        thread_id: sharedThreadId,
         sender_id: profile.id,
         receiver_id: uid,
         subject: subject,
@@ -144,9 +165,12 @@ export const MessagesPage = () => {
     if (threadMessages.length === 0) return;
 
     setIsSending(true);
-    // Find the other person in the thread
+    // Reply to the last person who sent a message, or default to the original receiver
+    const lastOtherMsg = [...threadMessages].reverse().find(m => m.sender_id !== profile.id);
     const firstMsg = threadMessages[0];
-    const otherUserId = firstMsg.sender_id === profile.id ? firstMsg.receiver_id : firstMsg.sender_id;
+    const otherUserId = lastOtherMsg 
+      ? lastOtherMsg.sender_id 
+      : (firstMsg.sender_id === profile.id ? firstMsg.receiver_id : firstMsg.sender_id);
     
     try {
       const { error } = await supabase.from('app_messages').insert({
@@ -276,27 +300,49 @@ export const MessagesPage = () => {
 
             return (
               <div key={msg.id} className="w-full bg-white border border-slate-200 rounded-lg shadow-sm">
-                <div className="px-6 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${isMe ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}`}>
+                <div className="px-4 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${isMe ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}`}>
                       {senderName.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <div className="font-bold text-slate-800 text-sm">
-                        {senderName}
-                      </div>
-                      <div className="text-xs text-slate-500">
+                    <div className="font-semibold text-slate-800 text-sm flex items-center gap-2">
+                      {senderName}
+                      <span className="text-xs font-normal text-slate-400 hidden sm:inline">
                         {isMe ? profile.email : msg.sender?.email}
-                      </div>
+                      </span>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <div className="text-xs font-medium text-slate-400">
-                      {new Date(msg.created_at).toLocaleString('ro-RO', { dateStyle: 'full', timeStyle: 'short' })}
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-slate-400">
+                      {new Date(msg.created_at).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}
                     </div>
                     {isMe && (
-                      <div className={`text-[10px] mt-1 font-bold ${msg.is_read ? 'text-green-500' : 'text-slate-400'}`}>
-                        {msg.is_read ? `✔ ${t.msgSeen}` : t.msgUnread}
+                      <div className="relative group cursor-help flex items-center gap-1">
+                        {msg.seen_by && msg.seen_by.length > 0 ? (
+                          <>
+                            <span className="text-[10px] font-bold text-green-500">✔ {t.msgSeen}</span>
+                            <div className="flex -space-x-1 ml-1">
+                              {msg.seen_by.slice(0, 3).map((usr, i) => (
+                                <div key={i} className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[8px] font-bold border border-white" title={usr?.name || usr?.email}>
+                                  {(usr?.name || usr?.email || '?').charAt(0).toUpperCase()}
+                                </div>
+                              ))}
+                              {msg.seen_by.length > 3 && (
+                                <div className="w-4 h-4 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[8px] font-bold border border-white">
+                                  +{msg.seen_by.length - 3}
+                                </div>
+                              )}
+                            </div>
+                            <div className="absolute top-full right-0 mt-1 hidden group-hover:block w-max min-w-[120px] bg-slate-800 text-white text-[10px] rounded px-2 py-1.5 z-50 shadow-lg">
+                              <div className="font-semibold mb-1 border-b border-slate-600 pb-1">Văzut de:</div>
+                              {msg.seen_by.map((u, i) => (
+                                <div key={i} className="py-0.5">• {u?.name || u?.email}</div>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400">{t.msgUnread}</span>
+                        )}
                       </div>
                     )}
                   </div>
