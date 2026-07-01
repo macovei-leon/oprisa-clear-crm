@@ -174,7 +174,7 @@ export const MessagesPage = () => {
     if (messages.length === 0) return <div className="p-8 text-center text-slate-500">{t.msgNoMessages}</div>;
 
     return (
-      <div className="overflow-x-auto w-full">
+      <div className="max-w-4xl mx-auto w-full overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
@@ -239,7 +239,7 @@ export const MessagesPage = () => {
     const otherPersonName = firstMsg.sender_id === profile.id ? firstMsg.receiver?.name || firstMsg.receiver?.email : firstMsg.sender?.name || firstMsg.sender?.email;
 
     return (
-      <div className="flex flex-col h-full bg-slate-50">
+      <div className="max-w-4xl mx-auto w-full flex flex-col h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Thread Header */}
         <div className="px-6 py-4 border-b border-slate-200 bg-white flex items-center gap-4 sticky top-0 z-10 shadow-sm">
           <button 
@@ -347,7 +347,7 @@ export const MessagesPage = () => {
   };
 
   const renderCompose = () => (
-    <div className="p-8 mx-auto bg-white min-h-full">
+    <div className="max-w-4xl mx-auto w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8">
       <div className="flex items-center gap-4 border-b border-slate-200 pb-4 mb-8">
         <button 
           onClick={() => setActiveTab('inbox')}
@@ -466,9 +466,9 @@ export const MessagesPage = () => {
 
   return (
     <MainLayout title={t.msgInternalMessages} subtitle={t.msgTicketSystem}>
-      <div className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[600px]">
+      <div className="flex flex-col h-full w-full">
         {activeTab === 'inbox' && (
-          <div className="flex justify-between items-center p-4 border-b border-slate-200 bg-slate-50">
+          <div className="flex justify-between items-center mb-6 max-w-4xl mx-auto w-full">
             <h2 className="text-xl font-bold text-slate-800">{t.msgInbox}</h2>
             <button
               onClick={() => setActiveTab('compose')}
@@ -479,7 +479,7 @@ export const MessagesPage = () => {
           </div>
         )}
         
-        <div className="flex-1 overflow-y-auto relative">
+        <div className="flex-1 overflow-y-auto relative w-full pb-8">
           {activeTab === 'inbox' && renderMessageList()}
           {activeTab === 'compose' && renderCompose()}
           {activeTab === 'thread' && renderThread()}
