@@ -5,14 +5,36 @@ import { FlashcardModal } from './FlashcardModal';
 import { Activity, Clock, CheckCircle2, FolderClosed, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
+const getCompanyColor = (companyStr) => {
+  if (!companyStr) return 'bg-slate-100 text-slate-800 border-slate-200';
+  const str = companyStr.toLowerCase();
+  if (str.includes('berlin')) return 'bg-rose-100 text-rose-800 border-rose-200';
+  if (str.includes('munich') || str.includes('münchen')) return 'bg-sky-100 text-sky-800 border-sky-200';
+  if (str.includes('stuttgart')) return 'bg-amber-100 text-amber-800 border-amber-200';
+  
+  const colors = [
+    'bg-teal-100 text-teal-800 border-teal-200', 
+    'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200', 
+    'bg-lime-100 text-lime-800 border-lime-200', 
+    'bg-cyan-100 text-cyan-800 border-cyan-200'
+  ];
+  const hash = Array.from(str).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+};
+
 export const RepetitiveKanbanBoard = ({ flow }) => {
   const { t } = useLanguage();
   const { profile, simulatedDepartment } = useAuth();
   const [tasks, setTasks] = useState([]);
+  const [assignedProfiles, setAssignedProfiles] = useState([]);
+  const [allProfiles, setAllProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
   const [activeTabIdx, setActiveTabIdx] = useState(0);
-  const [viewMode, setViewMode] = useState('mine'); // 'mine' | 'all'
+  const [viewMode, setViewMode] = useState('mine'); // 'mine' | 'all' | 'user_uuid'
+  const [transferMode, setTransferMode] = useState(false);
+  const [selectedCards, setSelectedCards] = useState([]);
+  const [targetUser, setTargetUser] = useState('');
 
   const steps = flow?.steps || [];
   
@@ -88,6 +110,23 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
       if (!silent) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      if (effectiveRole !== 'admin') return;
+      
+      const { data: allData } = await supabase.from('profiles').select('id, name, email');
+      if (allData) setAllProfiles(allData);
+
+      const uniqueIds = [...new Set(tasks.map(t => t.assigned_to).filter(Boolean))];
+      if (uniqueIds.length === 0) return;
+      const { data, error } = await supabase.from('profiles').select('id, name, email').in('id', uniqueIds);
+      if (!error && data) {
+        setAssignedProfiles(data);
+      }
+    };
+    fetchProfiles();
+  }, [tasks, effectiveRole]);
 
   const handleTaskTransition = async (task, actionLabel, actionType, notes, badgeConfig = null) => {
     try {
@@ -269,6 +308,49 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
     }
   };
 
+  const handleTransferTasks = async () => {
+    if (!targetUser || selectedCards.length === 0) return;
+    if (!window.confirm(`Confirmați transferul a ${selectedCards.length} sarcini către utilizatorul selectat?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('crm_repetitive_tasks')
+        .update({ assigned_to: targetUser, updated_at: new Date().toISOString() })
+        .in('id', selectedCards);
+
+      if (error) throw error;
+
+      const targetProfile = allProfiles.find(p => p.id === targetUser);
+      const targetName = targetProfile ? (targetProfile.name || targetProfile.email) : targetUser;
+      
+      const historyInserts = selectedCards.map(taskId => {
+        const task = tasks.find(t => t.id === taskId);
+        return {
+          repetitive_flow_id: flow.id,
+          task_id: taskId,
+          worker_id: profile?.id,
+          category: '[Transfer]',
+          step_name: 'Transfer Sarcini',
+          action_type: 'TRANSFER',
+          notes: `Transferat către ${targetName}`,
+          card_snapshot: task?.row_data || {}
+        };
+      });
+
+      const { error: histErr } = await supabase.from('crm_repetitive_history').insert(historyInserts);
+      if (histErr) console.error('Failed to log transfer history', histErr);
+
+      alert(`S-au transferat cu succes ${selectedCards.length} sarcini!`);
+      setTransferMode(false);
+      setSelectedCards([]);
+      setTargetUser('');
+      fetchTasks(true);
+    } catch (err) {
+      console.error(err);
+      alert('Eroare la transfer: ' + err.message);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-slate-500 font-bold">{t.loadingTasks || 'Se încarcă sarcinile...'}</div>;
   }
@@ -284,7 +366,16 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
     );
   }
 
-  const activeTasks = tasks.filter(t => {
+  let filteredTasks = tasks;
+  if (effectiveRole === 'admin') {
+    if (viewMode === 'mine') {
+      filteredTasks = tasks.filter(t => t.assigned_to === profile?.id);
+    } else if (viewMode !== 'all') {
+      filteredTasks = tasks.filter(t => t.assigned_to === viewMode);
+    }
+  }
+
+  const activeTasks = filteredTasks.filter(t => {
     if (activeTabConfig.type === 'step') {
       return !t.completed && t.active_step_idx === activeTabIdx;
     } else {
@@ -304,7 +395,7 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">{flow?.description}</p>
         </div>
         <div className="flex items-center gap-4">
-          {effectiveRole !== 'admin' && (
+          {effectiveRole !== 'admin' ? (
             <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
               <button 
                 onClick={() => setViewMode('mine')}
@@ -319,9 +410,62 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
                 Toate
               </button>
             </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500">Vedere:</span>
+              <select 
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value)}
+                className="text-xs font-bold p-1.5 border border-slate-200 rounded-lg text-slate-700 bg-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="all">Toate Sarcinile</option>
+                <option value="mine">Atribuite Mie</option>
+                {assignedProfiles.map(p => (
+                  <option key={p.id} value={p.id}>{p.name || p.email}</option>
+                ))}
+              </select>
+
+              <div className="flex items-center gap-2 ml-2 pl-4 border-l border-slate-200">
+                <button 
+                  onClick={() => {
+                    setTransferMode(!transferMode);
+                    if (transferMode) {
+                      setSelectedCards([]);
+                      setTargetUser('');
+                    }
+                  }} 
+                  className={`text-xs px-3 py-1.5 rounded-lg font-bold border transition-all ${transferMode ? 'bg-indigo-600 text-white border-indigo-700 shadow-inner' : 'bg-white text-indigo-700 hover:bg-indigo-50 border-indigo-200 shadow-sm'}`}
+                >
+                  {transferMode ? 'Anulare Transfer' : 'Transfer Sarcini'}
+                </button>
+                
+                {transferMode && (
+                  <div className="flex items-center gap-2 bg-indigo-50 p-1 rounded-lg border border-indigo-100">
+                    <span className="text-xs font-bold text-indigo-800 ml-2">{selectedCards.length} selectate</span>
+                    <select 
+                      value={targetUser} 
+                      onChange={e => setTargetUser(e.target.value)} 
+                      className="text-xs p-1.5 border border-indigo-200 rounded text-slate-700 font-bold focus:outline-none focus:border-indigo-400 bg-white"
+                    >
+                      <option value="">-- Alege Destinatar --</option>
+                      {allProfiles.map(p => (
+                        <option key={p.id} value={p.id}>{p.name || p.email}</option>
+                      ))}
+                    </select>
+                    <button 
+                      onClick={handleTransferTasks} 
+                      disabled={!targetUser || selectedCards.length === 0} 
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-md font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Transferă
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
           <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold border border-indigo-100 flex items-center gap-2">
-            <Activity size={16} /> {t.lblTotalTasks || 'Total Sarcini:'} {tasks.length}
+            <Activity size={16} /> {t.lblTotalTasks || 'Total Sarcini:'} {filteredTasks.length}
           </div>
         </div>
       </div>
@@ -332,8 +476,8 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
           {allTabs.map((tab, idx) => {
             const isStep = tab.type === 'step';
             const stepTasksCount = isStep 
-              ? tasks.filter(t => !t.completed && t.active_step_idx === idx).length
-              : tasks.filter(t => t.completed && t.category === tab.name).length;
+              ? filteredTasks.filter(t => !t.completed && t.active_step_idx === idx).length
+              : filteredTasks.filter(t => t.completed && t.category === tab.name).length;
               
             const isActive = activeTabIdx === idx;
             
@@ -381,6 +525,34 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
               const rowData = task.row_data || {};
               const titleStr = rowData.nume_complet || rowData.nume || rowData.name || rowData.denumire || rowData.titlu || t.defaultCardTitle || 'FIȘĂ DOSAR CAMPANIE SARCINI';
               const isMissing = rowData.is_missing;
+              let rawCompany = null;
+              for (const key of Object.keys(rowData)) {
+                if (['company', 'companie'].includes(key.toLowerCase())) {
+                  const val = rowData[key];
+                  if (val && typeof val === 'string' && !['unspecified', 'null', '-'].includes(val.toLowerCase().trim())) {
+                    rawCompany = val;
+                    break;
+                  }
+                }
+              }
+
+              let cityStr = null;
+              if (!rawCompany) {
+                for (const key of Object.keys(rowData)) {
+                  const lowerKey = key.toLowerCase();
+                  if (['city', 'oras', 'oraș', 'localitate', 'stadt', 'ort'].some(c => lowerKey.includes(c))) {
+                    if (rowData[key] && typeof rowData[key] === 'string' && rowData[key].trim() !== '') {
+                      cityStr = rowData[key];
+                      break;
+                    }
+                  }
+                }
+              }
+              const companyStr = rawCompany || cityStr || '';
+              const idStr = rowData.id || rowData.uuid || task.id;
+              const pnStr = rowData.pn || rowData.PN || '';
+              const isNew = rowData.new === 'Da' || rowData.new === true || rowData.nou === 'Da';
+              const isSelected = selectedCards.includes(task.id);
               
               const totalSteps = steps.length;
               const progressPercent = totalSteps > 0 ? ((task.active_step_idx + 1) / totalSteps) * 100 : 0;
@@ -389,13 +561,25 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
               return (
                 <div 
                   key={task.id}
-                  onClick={() => setSelectedTask(task)}
-                  className={`bg-white p-4 rounded-xl border shadow-sm hover:shadow-md cursor-pointer transition-all group flex flex-col justify-between min-h-[160px] relative overflow-hidden ${isClosed ? 'border-emerald-200 hover:border-emerald-300' : isMissing ? 'border-red-300 hover:border-red-400' : 'border-slate-200 hover:border-indigo-300'}`}
+                  onClick={(e) => {
+                    if (transferMode) {
+                      e.stopPropagation();
+                      setSelectedCards(prev => prev.includes(task.id) ? prev.filter(id => id !== task.id) : [...prev, task.id]);
+                    } else {
+                      setSelectedTask(task);
+                    }
+                  }}
+                  className={`bg-white p-4 rounded-xl border shadow-sm cursor-pointer transition-all group flex flex-col justify-between min-h-[160px] relative overflow-hidden ${transferMode ? (isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/50' : 'opacity-60 hover:opacity-100') : 'hover:shadow-md'} ${isClosed ? 'border-emerald-200 hover:border-emerald-300' : isMissing ? 'border-red-300 hover:border-red-400' : 'border-slate-200 hover:border-indigo-300'}`}
                 >
                   {/* Subtle top color bar */}
                   <div className={`absolute top-0 left-0 right-0 h-1 transition-colors ${isClosed ? 'bg-emerald-300 group-hover:bg-emerald-400' : isMissing ? 'bg-red-300 group-hover:bg-red-400' : 'bg-indigo-100 group-hover:bg-indigo-400'}`}></div>
                   
                   <div>
+                    {companyStr && (
+                      <div className={`mb-2 px-2 py-1 text-[11px] font-black uppercase rounded text-center border shadow-sm ${getCompanyColor(companyStr)}`}>
+                        {companyStr}
+                      </div>
+                    )}
                     <div className="flex justify-between items-start mb-3 mt-1">
                       <span className="font-black text-slate-800 line-clamp-1 text-base">{titleStr}</span>
                     </div>
@@ -443,6 +627,13 @@ export const RepetitiveKanbanBoard = ({ flow }) => {
                           </span>
                         </div>
                       ))}
+                    </div>
+                    <div className="mt-2 flex justify-between items-center text-[10px] text-slate-500 font-bold bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                      <div className="flex gap-2">
+                        <span title="ID">ID: {String(idStr).substring(0,8)}...</span>
+                        {pnStr && <span title="PN">PN: {pnStr}</span>}
+                      </div>
+                      {isNew && <span className="text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200">NOU</span>}
                     </div>
                   </div>
 
