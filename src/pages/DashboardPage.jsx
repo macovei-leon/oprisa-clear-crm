@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { MainLayout } from '../components/layout/MainLayout';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Activity, Users, CheckCircle2, TrendingUp, BarChart3, Building, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Activity, Users, CheckCircle2, TrendingUp, BarChart3, Building, ChevronRight, ArrowLeft, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#14b8a6'];
@@ -22,6 +22,9 @@ export const DashboardPage = () => {
   const [campaignChartData, setCampaignChartData] = useState([]);
   const [workerChartData, setWorkerChartData] = useState([]);
   const [categoryKeys, setCategoryKeys] = useState([]);
+  const [allProfiles, setAllProfiles] = useState([]);
+  const [detailedWorkers, setDetailedWorkers] = useState([]);
+  const [selectedWorker, setSelectedWorker] = useState(null);
 
   useEffect(() => {
     if (profile) {
@@ -43,24 +46,55 @@ export const DashboardPage = () => {
         taskQuery = taskQuery.eq('assigned_to', profile.id);
       }
 
-      const [{ data: tasks, error: tasksError }, { data: allProfs, error: profsError }] = await Promise.all([
+      let repTaskQuery = supabase.from('crm_repetitive_tasks').select(`
+        id, repetitive_flow_id, completed, category, assigned_to, active_step_idx,
+        crm_repetitive_flows:repetitive_flow_id ( name, steps )
+      `);
+
+      if (profile.role !== 'admin') {
+        repTaskQuery = repTaskQuery.eq('assigned_to', profile.id);
+      }
+
+      const [{ data: tasks, error: tasksError }, { data: repTasks, error: repTasksError }, { data: allProfs, error: profsError }] = await Promise.all([
         taskQuery,
+        repTaskQuery,
         supabase.from('profiles').select('id, name, email, department_id')
       ]);
       
       if (tasksError) throw tasksError;
+      if (repTasksError) throw repTasksError;
       if (profsError) throw profsError;
 
       // Merge profiles into tasks manually
       const profilesMap = {};
       (allProfs || []).forEach(p => { profilesMap[p.id] = p; });
+      setAllProfiles(allProfs || []);
 
       const mergedTasks = (tasks || []).map(t => ({
         ...t,
         profiles: profilesMap[t.assigned_to] || null
       }));
 
-      setAllTasks(mergedTasks);
+      const mappedRepTasks = (repTasks || []).map(t => {
+        const flowName = t.crm_repetitive_flows?.name || 'Flux Necunoscut';
+        const steps = t.crm_repetitive_flows?.steps || [];
+        const stepName = (!t.completed && steps[t.active_step_idx]?.name) ? steps[t.active_step_idx].name : `Pas ${t.active_step_idx + 1}`;
+        
+        return {
+          id: t.id,
+          campaign_id: t.repetitive_flow_id,
+          completed: t.completed,
+          category: t.category,
+          assigned_to: t.assigned_to,
+          crm_campaigns: { name: flowName },
+          isRepetitive: true,
+          active_step_idx: t.active_step_idx,
+          stepName: stepName,
+          profiles: profilesMap[t.assigned_to] || null
+        };
+      });
+
+      setAllTasks([...mergedTasks, ...mappedRepTasks]);
 
       // 2. If admin, fetch departments
       if (profile.role === 'admin') {
@@ -132,7 +166,37 @@ export const DashboardPage = () => {
 
     setWorkerChartData(workerDataArray);
 
-  }, [allTasks, simulatedDepartment, profile]);
+    // Detailed Workers for Simulated Department View
+    if (profile?.role === 'admin' && simulatedDepartment) {
+      const detailedMap = {};
+      
+      allProfiles.filter(p => p.department_id === simulatedDepartment.id).forEach(p => {
+        detailedMap[p.id] = {
+          name: p.name || p.email,
+          total: 0,
+          steps: {},
+          categories: {}
+        };
+      });
+
+      filteredTasks.forEach(t => {
+        const workerId = t.assigned_to;
+        if (!workerId || !detailedMap[workerId]) return;
+        
+        detailedMap[workerId].total += 1;
+        if (t.completed) {
+          const cat = t.category || (t.lblNoCategory || 'Fără categorie');
+          detailedMap[workerId].categories[cat] = (detailedMap[workerId].categories[cat] || 0) + 1;
+        } else {
+          const step = t.isRepetitive ? (t.stepName || 'Pas Necunoscut') : 'În Lucru';
+          detailedMap[workerId].steps[step] = (detailedMap[workerId].steps[step] || 0) + 1;
+        }
+      });
+      
+      setDetailedWorkers(Object.values(detailedMap).sort((a, b) => b.total - a.total));
+    }
+
+  }, [allTasks, simulatedDepartment, profile, allProfiles]);
 
   if (loading) {
     return (
@@ -263,7 +327,66 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {profile?.role === 'admin' && simulatedDepartment ? (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+            <Users className="text-indigo-600" size={20} /> 
+            Situație Detaliată Operatori ({simulatedDepartment.name})
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-y border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                  <th className="py-3 px-4 font-bold">Operator</th>
+                  <th className="py-3 px-4 font-bold text-center">Total Sarcini</th>
+                  <th className="py-3 px-4 font-bold">În Lucru (Pe Pași)</th>
+                  <th className="py-3 px-4 font-bold">Finalizate (Pe Categorii)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {detailedWorkers.map((w, idx) => (
+                  <tr 
+                    key={idx} 
+                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                    onClick={() => setSelectedWorker(w)}
+                  >
+                    <td className="py-3 px-4 font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{w.name}</td>
+                    <td className="py-3 px-4 text-center font-black text-indigo-600">{w.total}</td>
+                    <td className="py-3 px-4">
+                      {Object.keys(w.steps).length === 0 ? <span className="text-slate-400">-</span> : 
+                        <div className="flex flex-col gap-1">
+                          {Object.entries(w.steps).map(([step, count]) => (
+                            <span key={step} className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200 w-fit">
+                              {step}: <span className="ml-1 text-amber-900">{count}</span>
+                            </span>
+                          ))}
+                        </div>
+                      }
+                    </td>
+                    <td className="py-3 px-4">
+                      {Object.keys(w.categories).length === 0 ? <span className="text-slate-400">-</span> : 
+                        <div className="flex flex-wrap gap-1">
+                          {Object.entries(w.categories).map(([cat, count]) => (
+                            <span key={cat} className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[11px] font-bold border border-emerald-200">
+                              {cat}: <span className="ml-1 text-emerald-900">{count}</span>
+                            </span>
+                          ))}
+                        </div>
+                      }
+                    </td>
+                  </tr>
+                ))}
+                {detailedWorkers.length === 0 && (
+                  <tr>
+                    <td colSpan="4" className="py-8 text-center text-slate-500 font-bold">Nu există operatori alocați acestui departament.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Campaign Stacked Bar Chart */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
@@ -327,7 +450,77 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-      </div>
+        </div>
+      )}
+
+      {selectedWorker && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                <Users className="text-indigo-600" />
+                Progres Detaliat: {selectedWorker.name}
+              </h2>
+              <button 
+                onClick={() => setSelectedWorker(null)}
+                className="text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 p-2 rounded-xl transition-colors border border-slate-200 shadow-sm"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-8">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex flex-col justify-center items-center text-center">
+                  <span className="text-indigo-400 font-bold text-xs uppercase tracking-wider mb-1">Total Carduri</span>
+                  <span className="text-3xl font-black text-indigo-700">{selectedWorker.total}</span>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex flex-col justify-center items-center text-center">
+                  <span className="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">În Lucru</span>
+                  <span className="text-3xl font-black text-amber-700">{Object.values(selectedWorker.steps).reduce((a,b)=>a+b, 0)}</span>
+                </div>
+                <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex flex-col justify-center items-center text-center">
+                  <span className="text-emerald-500 font-bold text-xs uppercase tracking-wider mb-1">Finalizate</span>
+                  <span className="text-3xl font-black text-emerald-700">{Object.values(selectedWorker.categories).reduce((a,b)=>a+b, 0)}</span>
+                </div>
+              </div>
+
+              {/* Steps */}
+              {Object.keys(selectedWorker.steps).length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Defalcare: În Lucru (Pe Pași)</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {Object.entries(selectedWorker.steps).map(([step, count]) => (
+                      <div key={step} className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                        <span className="font-bold text-slate-700 truncate mr-2" title={step}>{step}</span>
+                        <span className="bg-amber-100 text-amber-800 text-sm font-black px-2.5 py-1 rounded-lg">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Categories */}
+              {Object.keys(selectedWorker.categories).length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Defalcare: Finalizate (Pe Categorii)</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {Object.entries(selectedWorker.categories).map(([cat, count]) => (
+                      <div key={cat} className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                        <span className="font-bold text-slate-700 truncate mr-2" title={cat}>{cat}</span>
+                        <span className="bg-emerald-100 text-emerald-800 text-sm font-black px-2.5 py-1 rounded-lg">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </MainLayout>
   );
 };
